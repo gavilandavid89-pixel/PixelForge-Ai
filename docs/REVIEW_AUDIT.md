@@ -43,7 +43,7 @@ The following review roles were applied independently, then reconciled against t
 **Resolutions:**
 - The AI-callable operation is `ai.create_proposal`; `ai.apply_result` is explicitly not an AI-callable tool and legacy aliases are rejected closed.
 - Canonical acceptance remains a separate human-originated, destination-scoped transaction with revision validation.
-- Project/layer IDs, duplicate IDs, dimensions, pixel-buffer lengths, opacity and boolean layer flags are validated.
+- Native project import creates fresh project and layer IDs, resets imported revision/history and preserves the source record. A basic local project picker makes saved copies and sources selectable.\n- Project/layer IDs, duplicate IDs, dimensions, pixel-buffer lengths, opacity, revision metadata and boolean layer flags are validated.
 - File-size, dimensions, total pixel-memory and history-memory limits are explicit.
 
 **Current state:** provider-backed AI, remote upload and sandbox permissions are specified but not implemented in the editor. The present app sends no artwork to an AI provider.
@@ -55,7 +55,7 @@ The following review roles were applied independently, then reconciled against t
 - Added headless-Chromium smoke coverage for startup, mouse drawing, undo/redo, layers, PNG signature, IndexedDB recovery, keyboard save and mobile virtual-cursor behavior.
 - Test documentation distinguishes verified checks from release gates that remain open.
 
-**Latest verified browser run:** [GitHub Actions run #40](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/39906815994) — both core and browser-smoke jobs passed on the tested commit.
+**Latest verified browser run:** [GitHub Actions run #72](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/39908071542) — both core and browser-smoke jobs passed on the tested commit.
 
 **Not claimed:** visual-regression approval, physical Android/stylus readiness, screen-reader conformance, stress-performance targets or completion of the full editor.
 
