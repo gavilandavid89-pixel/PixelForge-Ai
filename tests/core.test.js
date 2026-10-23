@@ -183,3 +183,11 @@ test('project import rejects invalid active-layer references and revisions', () 
   const badRevision = structuredClone(base); badRevision.revision = -1;
   assert.throws(() => RasterDocument.fromJSON(badRevision), /revision must be a non-negative integer/);
 });
+
+test('layer commands validate names and boolean visibility instead of coercing invalid inputs', () => {
+  const doc = new RasterDocument(4, 4);
+  assert.throws(() => doc.addLayer('   '), /Layer name/);
+  assert.throws(() => doc.addLayer('x'.repeat(181)), /Layer name/);
+  assert.throws(() => doc.setLayerVisibility(doc.activeLayerId, 'false'), /must be a boolean/);
+  assert.equal(doc.activeLayer.visible, true);
+});
