@@ -38,12 +38,13 @@ The following review roles were applied independently, then reconciled against t
 
 ## 4. Security and privacy reviewer — permissions and imported files
 
-**Risks found:** the AI API originally exposed a result-application name that could be misread as a direct canonical-document write permission. Imported project metadata could also contain ambiguous identities or malformed flags.
+**Risks found:** the AI API originally exposed a result-application name that could be misread as a direct canonical-document write permission. Importing an older project with the same ID could overwrite a local source, and malformed project metadata could contain ambiguous identities or flags.
 
 **Resolutions:**
 - The AI-callable operation is `ai.create_proposal`; `ai.apply_result` is explicitly not an AI-callable tool and legacy aliases are rejected closed.
 - Canonical acceptance remains a separate human-originated, destination-scoped transaction with revision validation.
-- Native project import creates fresh project and layer IDs, resets imported revision/history and preserves the source record. A basic local project picker makes saved copies and sources selectable.\n- Project/layer IDs, duplicate IDs, dimensions, pixel-buffer lengths, opacity, revision metadata and boolean layer flags are validated.
+- Native project import creates fresh project and layer IDs, resets imported revision/history and preserves the source record. A basic local project picker makes saved copies and sources selectable.
+- Project/layer IDs, duplicate IDs, dimensions, pixel-buffer lengths, opacity, revision metadata and boolean layer flags are validated.
 - File-size, dimensions, total pixel-memory and history-memory limits are explicit.
 
 **Current state:** provider-backed AI, remote upload and sandbox permissions are specified but not implemented in the editor. The present app sends no artwork to an AI provider.
@@ -52,7 +53,7 @@ The following review roles were applied independently, then reconciled against t
 
 **Resolutions:**
 - Added Node-based regression tests and a CI workflow.
-- Added headless-Chromium smoke coverage for startup, mouse drawing, undo/redo, layers, PNG signature, IndexedDB recovery, keyboard save and mobile virtual-cursor behavior.
+- Added headless-Chromium smoke coverage for startup, mouse drawing, undo/redo, layers, PNG signature, project-copy import, saved-project switching, last-opened recovery, keyboard save and mobile virtual-cursor behavior.
 - Test documentation distinguishes verified checks from release gates that remain open.
 
 **Latest verified browser run:** [GitHub Actions run #72](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/39908071542) — both core and browser-smoke jobs passed on the tested commit.
