@@ -6,7 +6,7 @@ This is the capability checklist, not a promise that every item already exists. 
 - New document presets, custom dimensions, DPI metadata, transparent/solid backgrounds.
 - Multiple open documents/tabs, dirty-state indicators, recovery after refresh/crash.
 - Zoom, pan, fit, 100%, pixel-perfect zoom steps, minimap, rulers, guides and snapping.
-- Pixel grid, rectangular/isometric/hex grids, symmetry/mirror view, tile/repeat preview.
+- Optional canvas grid independent of the art style: choose no grid, pixel grid, or configurable rectangular/isometric/hex grids; adjust cell width/height or spacing, line strength/opacity, color and subdivisions. Grid is a non-destructive view overlay and is never included in exports unless the user explicitly enables a separate guides/grid export option. Also support symmetry/mirror view and tile/repeat preview.
 - Canvas resize, crop, resample, rotate, flip, trim transparent pixels, center content.
 - Reference images with opacity/scale/lock and guides/vanishing-line helpers for raster painting.
 - Color profile/bit-depth metadata where supported; make unsupported conversions explicit.
@@ -224,3 +224,52 @@ This is the capability checklist, not a promise that every item already exists. 
 - Keep social/community features modular and isolated from the document engine, AI sandbox, and local project storage. Community availability must not be required to draw or edit offline.
 - Future social phase should define moderation, reporting/blocking, privacy controls, storage/cost limits, and safe account/profile handling before implementation.
 - Recommended milestones: (1) reliable editor engine and project format, (2) local project home/library, (3) profiles and account sync if needed, (4) voluntary art publishing/feed and community safety systems.
+
+
+## Q. Shared cursor contract for painting and drawing tools
+
+- Every freehand painting/drawing tool uses the same virtual cursor positioning and stroke lifecycle: cursor movement is independent from whether the tool is currently applying marks, and the dedicated hold control starts/stops the active tool action.
+- This shared contract applies to pencil, pixel brush, raster brush, eraser, smudge, blur/sharpen brushes, dodge/burn, clone/retouch tools, spray, and other tools whose behavior follows a dragged stroke. New tools must declare whether they implement the shared stroke contract.
+- Geometric drawing tools (line, rectangle, ellipse, polygon, curve and similar) reuse the same cursor coordinates and pointer tracking, but may use a drag-to-preview / release-to-commit interaction appropriate to their shape rather than stamping continuously.
+- The fill/bucket tool is the explicit exception: it is a discrete tap/click operation, not a continuous cursor stroke. It uses its own fill preview/options (contiguous or global, tolerance, sampling target, gap behavior) and must not unexpectedly fill merely because the user moves the cursor or changes tools.
+- Eyedropper and selection/navigation tools are actions rather than paint strokes; they may share cursor positioning but must declare their own activation semantics.
+- Changing among compatible stroke tools preserves the virtual cursor position, input modality, stroke lifecycle, and individually linked settings. Tool-specific parameters remain separate unless the user explicitly links them.
+- The input controller, cursor mapper and stroke lifecycle must be implemented once and reused by tools; do not create slightly different cursor mechanics in every tool. Tool behavior is supplied through a registered tool profile/adapter.
+- Switching tools ends any active stroke safely, commits/undoes it according to normal command rules, and never leaves an action stuck. Movement without the required activation state never changes artwork.
+- Tests cover every tool category, especially pencil-to-brush, pencil-to-eraser, eraser-to-smudge, and paint-tool-to-bucket transitions; the bucket must perform no fill on passive cursor movement and must fill only after deliberate activation.
+
+## R. Grid and non-pixel-art workspace modes
+
+- Grid visibility is optional and can be switched off completely; pixel art is a supported workflow, not a forced project mode.
+- Offer a one-tap grid visibility toggle plus a grid settings panel for grid type, spacing/cell width and height, subdivisions, origin/offset, line color, opacity, thickness and snapping.
+- Support rectangular grids with independent horizontal/vertical spacing, square/pixel grids, isometric grids and hexagonal grids where practical. Keep unsupported grid modes clearly labeled rather than faking their geometry.
+- Grid display and snapping are separate settings: users can show a grid without snapping, snap without showing the grid, or disable both.
+- Keep guides, rulers, pixel-grid overlays, selection boundaries and animation overlays as separate render layers so they can be toggled independently.
+- The grid is a view aid and must not alter image pixels, document dimensions, saved artwork or export output by default. If exporting a grid/guide overlay is supported, expose it as an explicit, reversible export option.
+
+## S. Export formats, dimensions, background and transparency
+
+### Export format registry
+- Provide an export dialog that lists every format actually supported by the current build, grouped by still images, animation, sprite sheets/sequences, palettes and native project/backup formats. Never advertise a format as available until its encoder/adapter is implemented and tested.
+- Core raster targets should include PNG, JPEG, WebP, GIF, APNG and SVG import/rasterization as applicable; animated exports should include GIF, APNG and animated WebP where the runtime encoder is reliable. Support frame sequences and sprite sheets, plus ZIP bundles of sequences/metadata when feasible.
+- Add format adapters through a registry so formats can be added without rewriting the document engine. Show capability differences such as alpha support, animation, color depth, metadata, frame/layer support and lossy compression before export.
+- Preserve the editable native project format separately from flattened image exports. Never imply a PNG/JPEG or sprite sheet preserves editable layers/timeline unless its format and export options explicitly do so.
+- Warn when a target format cannot represent transparency, animation, color depth, layers or metadata. Offer a suitable alternative when possible rather than silently discarding content.
+
+### Dimensions, scaling and bounds
+- Let the user set exact output width and height independently, including non-square dimensions, and optionally lock/unlock aspect ratio.
+- Offer original document size, custom pixel dimensions, scale multipliers, resize/resample, crop/trim and sprite-sheet layout controls. Explain whether each option changes the source document or only the exported copy; export settings must not silently resize the project.
+- Support the full range of dimensions allowed by the chosen encoder, browser/runtime and available memory, with per-format limits surfaced in the UI. Do not claim mathematically unlimited dimensions: validate dimensions and estimated memory before allocation, show clear errors/warnings, and offer tiled/worker-based processing where practical.
+- Provide presets for common uses (icons, game sprites, social images, high-resolution raster artwork and sprite sheets) while always allowing custom width/height within validated limits.
+- For sprite sheets, expose columns/rows or packing, padding, extrusion, trimming, frame order, pivot/origin and metadata sidecar options where supported.
+
+### Background and alpha controls
+- Provide explicit output background choices: transparent, black, white, custom solid color, or the document's configured background. Include an alpha/transparency preview checkerboard that is UI-only and never exported as pixels.
+- For formats with alpha, preserve transparency by default when the source contains transparent pixels unless the user chooses a background. For formats without alpha (such as JPEG), require or clearly select a compositing background; default to a safe visible choice and show the resulting preview.
+- Support exporting on a black background, white background, custom color, or transparent background without modifying the original document. Composite only in the export pipeline unless the user deliberately changes the document background.
+- Include options for matte color, alpha handling, transparent-pixel trimming, padding, bleed/extrusion and color profile/metadata when supported. Clearly identify lossy formats and quality/compression settings.
+- Show a final preview with dimensions, estimated file size where feasible, background/alpha state and format-specific warnings. Never silently overwrite an existing file; support safe filenames, batch naming templates and cancellation.
+- Include export presets and rememberable user presets, but require an explicit user action to export. Export remains a human-only capability; the AI agent cannot invoke export or bypass the UI permission boundary.
+
+### Export verification
+- Tests verify exact output dimensions, alpha preservation, black/white/custom compositing, JPEG background behavior, format capability declarations, animation frame count/order, sprite-sheet bounds, cancellation, large-dimension validation and no mutation of the source document.
