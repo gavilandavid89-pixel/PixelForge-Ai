@@ -39,6 +39,7 @@ export class RasterDocument {
     this.#markAllCompositeDirty();
     this.activeLayerId = this.layers[0].id;
     this.revision = 0;
+    this.saveVersion = 0;
     this.history = [];
     this.future = [];
     this.maxHistory = 30;
@@ -144,6 +145,7 @@ export class RasterDocument {
     this.#markAllCompositeDirty();
     this.future.push(entry);
     this.revision++;
+    this.saveVersion++;
     this.dirty = true;
     return true;
   }
@@ -186,6 +188,7 @@ export class RasterDocument {
     doc.#markAllCompositeDirty();
     doc.activeLayerId = doc.layers.some(layer => layer.id === data.activeLayerId) ? data.activeLayerId : doc.layers[0].id;
     doc.revision = Number.isInteger(data.revision) && data.revision >= 0 ? data.revision : 0;
+    doc.saveVersion = Number.isInteger(data.saveVersion) && data.saveVersion >= 0 ? data.saveVersion : doc.revision;
     doc.history = []; doc.future = []; doc.historyBytes = 0; doc.dirty = false;
     return doc;
   }
