@@ -305,7 +305,7 @@ async function renderProjects() {
   }
   for (const project of projects) {
     const row = document.createElement('div'); row.className = 'saved-project';
-    const open = document.createElement('button'); open.className = 'saved-project-open';
+    const open = document.createElement('button'); open.className = 'saved-project-open'; open.dataset.projectId = project.id;
     open.textContent = project.name || 'Untitled artwork';
     const details = document.createElement('small'); details.textContent = `${project.width} × ${project.height}`;
     open.append(details);
