@@ -77,4 +77,4 @@ python3 -m http.server 8000
 
 Then open `http://localhost:8000` in a modern browser. Use a local HTTP server rather than opening `index.html` directly so ES modules and IndexedDB behave consistently.
 
-For the optional headless browser smoke suite, run `npm install --no-save --package-lock=false playwright`, then `npx playwright install chromium` and `node tests/browser-smoke.mjs`. CI does this in a separate job without adding Playwright as an app runtime dependency.
+For the optional headless browser smoke suite, run `npm install --no-save --package-lock=false playwright@1.55.0`, then `npx playwright install chromium` and `node tests/browser-smoke.mjs`. CI does this in a separate job without adding Playwright as an app runtime dependency.
