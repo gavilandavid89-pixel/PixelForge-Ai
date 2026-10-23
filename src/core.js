@@ -103,6 +103,13 @@ export class RasterDocument {
     this.#record({ type: 'pixels', layerId: layer.id, tiles });
     return true;
   }
+  getCompositeDirtyTiles() {
+    return [...this.compositeDirtyTiles].map(key => {
+      const [tileX, tileY] = key.split(':').map(Number);
+      return { tileX, tileY, width: Math.min(TILE_SIZE, this.width - tileX * TILE_SIZE), height: Math.min(TILE_SIZE, this.height - tileY * TILE_SIZE) };
+    });
+  }
+  clearCompositeDirtyTiles() { this.compositeDirtyTiles.clear(); }
   composite() {
     for (const key of this.compositeDirtyTiles) {
       const [tileX, tileY] = key.split(':').map(Number);
@@ -128,7 +135,6 @@ export class RasterDocument {
         this.compositeCache[i + 3] = Math.round(alpha * 255);
       }
     }
-    this.compositeDirtyTiles.clear();
     return this.compositeCache;
   }
   undo() {
