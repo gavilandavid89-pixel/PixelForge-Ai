@@ -252,3 +252,18 @@ The renderer and input controller are still co-located in the bootstrap controll
 - Undo history: at most 30 entries and 64 MiB estimated history payload, using 64 × 64 pixel tile snapshots for strokes.
 
 These are conservative bootstrap limits, not claims about the final editor. Any increase requires stress tests on named target devices, including composite/rendering temporaries, autosave serialization and export allocations—not just raw layer buffers.
+
+
+## Mobile virtual cursor and hold-to-apply contract
+
+The first slice now implements the planned mobile interaction rather than treating every touch as a direct drawing stroke:
+
+- Mouse and stylus pointer input use direct strokes in this build.
+- A touch on the artwork surface positions a virtual cursor and is view-only by default. Moving that finger without the hold control must not create pixels or an undo entry.
+- The dedicated `draw-hold` control is a momentary hold, not a toggle. While held, a second touch can draw or erase using the selected tool. Releasing the hold commits the current valid stroke; pointer cancellation or focus loss cancels it.
+- Touch cursor graphics are rendered as a view overlay on the display canvas only. They are excluded from document pixels, native project data, PNG exports and AI artwork captures.
+- The cursor touch and hold-control touch have separate pointer identities. Releasing either pointer must not accidentally leave drawing active.
+- If the selected tool is Pan, the draw-hold control is disabled. Switching tools while a stroke is active cancels that stroke safely and resets the hold state.
+- Browser smoke tests must verify: touch movement without hold creates no undo entry; simultaneous hold + canvas touch creates one undoable stroke; releasing the hold stops subsequent painting; cancelling either pointer leaves no partial edit.
+
+This first implementation covers pencil/eraser with the shared hold gesture. Additional painting tools must opt into the same input contract rather than adding competing touch handlers.
