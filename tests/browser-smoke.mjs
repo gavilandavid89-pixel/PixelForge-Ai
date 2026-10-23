@@ -220,6 +220,28 @@ try {
   await mobile.locator('#pan-tool').focus();
   assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'leaving the hold control must cancel a held keyboard gesture');
   await mobile.keyboard.up('Space');
+
+  const holdBox = await mobile.locator('#draw-hold').boundingBox();
+  assert.ok(holdBox);
+  await mobile.locator('#draw-hold').focus();
+  await mobile.keyboard.down('Space');
+  await mobile.mouse.move(holdBox.x + holdBox.width / 2, holdBox.y + holdBox.height / 2);
+  await mobile.mouse.down();
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'true', 'pointer input must not steal keyboard hold ownership');
+  await mobile.mouse.up();
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'true', 'a pointer release must not release a keyboard-owned hold');
+  await mobile.keyboard.up('Space');
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false');
+
+  await mobile.mouse.move(holdBox.x + holdBox.width / 2, holdBox.y + holdBox.height / 2);
+  await mobile.mouse.down();
+  await mobile.keyboard.down('Space');
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'true', 'keyboard input must not steal pointer hold ownership');
+  await mobile.keyboard.up('Space');
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'true');
+  await mobile.mouse.up();
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false');
+
   await mobile.locator('#pan-tool').click();
   await mobile.mouse.move(mobileBox.x + mobileBox.width / 2, mobileBox.y + mobileBox.height / 2);
   await mobile.mouse.down();
