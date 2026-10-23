@@ -238,6 +238,7 @@ The first functional slice deliberately has fewer modules than the target archit
 
 - `src/core.js`: raster document, pixel layers, tiled compositing cache, validated stroke coordinates, tile-based undo/redo, content revisions, persisted-state versions and project serialization.
 - `src/persistence.js`: IndexedDB snapshots, saved-project listing, ID-scoped loading and last-opened-project recovery.
+- `src/image-import.js`: bounded PNG/JPEG/WebP/GIF header inspection and dimension validation before browser pixel decoding.
 - `src/editor.js`: bootstrap UI orchestration, Canvas 2D rendering, pointer/keyboard input, layer controls and import/export flows.
 - `index.html` and `styles.css`: application shell and responsive presentation.
 - `tests/core.test.js`: deterministic engine tests run with Node's built-in test runner.
@@ -272,4 +273,9 @@ This first implementation covers pencil/eraser with the shared hold gesture. Add
 
 ## Autosave race invariant
 
-A save operation captures both an immutable project snapshot and its `saveVersion`. After the storage transaction completes, mark the document clean only if the live document still has that version. If edits or workspace-state changes occurred during the write, keep it dirty and save the newer snapshot before a document switch or explicit flush completes. A late completion for an old document must never clear the dirty flag or overwrite status for a different active document. This protects against editing while IndexedDB is busy, concurrent manual/autosave requests and rapid document changes.
+A save operation captures both an immutable project snapshot and its `saveVersion`. After the storage transaction completes, mark the document clean only if the live document still has that version. Explicit save commits a valid active stroke, releases the draw-hold state and blocks new drawing input until the flush finishes; Escape and focus loss cancel the active stroke instead. If edits or workspace-state changes occurred during the write, keep it dirty and save the newer snapshot before a document switch or explicit flush completes. A late completion for an old document must never clear the dirty flag or overwrite status for a different active document. This protects against editing while IndexedDB is busy, concurrent manual/autosave requests and rapid document changes.
+
+
+## Safe image import boundary
+
+Only PNG, JPEG, WebP and GIF are advertised for image import. Before invoking the browser decoder, inspect at most the first 1 MiB for the format's dimensions, validate those dimensions against the document pixel limits, and reject unsupported or unverifiable headers. After decoding, validate the returned dimensions again; permit width/height swapping for valid EXIF-oriented JPEGs. Animated image formats flatten to a still frame in this slice. The file-size cap is checked before header parsing. Never decode first and only then discover that the requested dimensions exceed the editor's resource budget.
