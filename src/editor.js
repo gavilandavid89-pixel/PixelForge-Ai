@@ -243,15 +243,16 @@ function updateDrawHoldUI() {
   drawHoldButton.querySelector('small').textContent = tool === 'erase' ? 'Hold to erase' : tool === 'pan' ? 'Pan selected' : 'Hold to draw';
 }
 drawHoldButton?.addEventListener('pointerdown', event => {
-  if (tool === 'pan' || flushInProgress) return;
+  if (tool === 'pan' || flushInProgress || drawHeld) { event.preventDefault(); return; }
   event.preventDefault(); drawHeld = true; drawHoldPointerId = event.pointerId; updateDrawHoldUI();
   try { drawHoldButton.setPointerCapture(event.pointerId); } catch {}
   if (virtualCursorPointerId !== null && virtualCursorPoint?.inside && !activeStroke) startStrokeAt(virtualCursorPoint, virtualCursorPointerId);
   render();
 });
 drawHoldButton?.addEventListener('keydown', event => {
-  if (!['Space', 'Enter'].includes(event.code) || event.repeat || tool === 'pan' || flushInProgress) return;
+  if (!['Space', 'Enter'].includes(event.code)) return;
   event.preventDefault();
+  if (event.repeat || drawHeld || tool === 'pan' || flushInProgress) return;
   drawHeld = true; drawHoldPointerId = 'keyboard'; updateDrawHoldUI();
   if (virtualCursorPointerId !== null && virtualCursorPoint?.inside && !activeStroke) startStrokeAt(virtualCursorPoint, virtualCursorPointerId);
   render();
