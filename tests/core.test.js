@@ -1,0 +1,102 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES } from '../src/core.js';
+
+test('dimension validation rejects invalid and oversized canvases', () => {
+  assert.throws(() => validateDimensions(0, 20), RangeError);
+  assert.throws(() => validateDimensions(2049, 1), RangeError);
+  assert.throws(() => validateDimensions(2048, 2049), RangeError);
+  assert.deepEqual(validateDimensions(128, 64), { width: 128, height: 64 });
+});
+test('screen coordinates map into document coordinates with zoom and pan', () => {
+  const viewport = { zoom: 4, panX: 20, panY: 12 };
+  assert.deepEqual(screenToDocument({ x: 28, y: 20 }, viewport, { width: 10, height: 10 }), { x: 2, y: 2, inside: true });
+  assert.equal(screenToDocument({ x: 19, y: 20 }, viewport, { width: 10, height: 10 }).inside, false);
+  assert.equal(screenToDocument({ x: 60, y: 20 }, viewport, { width: 10, height: 10 }).inside, false);
+});
+test('stroke paints, composites and is undoable/redoable as one action', () => {
+  const doc = new RasterDocument(8, 8);
+  const stroke = doc.beginStroke({ color: '#f00', size: 1 });
+  doc.strokeTo(stroke, 2, 3); doc.strokeTo(stroke, 5, 3);
+  assert.equal(doc.activeLayer.pixels[(3 * 8 + 2) * 4 + 3], 255);
+  doc.endStroke(stroke);
+  assert.equal(doc.history.length, 1);
+  assert.equal(doc.composite()[(3 * 8 + 4) * 4], 255);
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.activeLayer.pixels[(3 * 8 + 2) * 4 + 3], 0);
+  assert.equal(doc.redo(), true);
+  assert.equal(doc.activeLayer.pixels[(3 * 8 + 2) * 4], 255);
+});
+test('cancelled stroke restores exact prior pixels without history', () => {
+  const doc = new RasterDocument(5, 5), before = new Uint8ClampedArray(doc.activeLayer.pixels);
+  const stroke = doc.beginStroke({ color: '#00ff00', size: 2 });
+  doc.strokeTo(stroke, 2, 2); doc.endStroke(stroke, { commit: false });
+  assert.deepEqual(doc.activeLayer.pixels, before);
+  assert.equal(doc.history.length, 0);
+  assert.equal(doc.dirty, false);
+});
+test('eraser clears alpha without painting a background color', () => {
+  const doc = new RasterDocument(4, 4);
+  let stroke = doc.beginStroke({ color: '#ffffff', size: 1 });
+  doc.strokeTo(stroke, 1, 1); doc.endStroke(stroke);
+  stroke = doc.beginStroke({ size: 1, mode: 'erase' });
+  doc.strokeTo(stroke, 1, 1); doc.endStroke(stroke);
+  assert.equal(doc.activeLayer.pixels[(1 * 4 + 1) * 4 + 3], 0);
+});
+test('layer addition and visibility can be undone and redone', () => {
+  const doc = new RasterDocument(4, 4), originalId = doc.activeLayerId;
+  const layer = doc.addLayer('Ink');
+  assert.equal(doc.layers.length, 2); assert.equal(doc.activeLayerId, layer.id);
+  doc.undo(); assert.equal(doc.layers.length, 1); assert.equal(doc.activeLayerId, originalId);
+  doc.redo(); assert.equal(doc.layers.length, 2);
+  doc.setLayerVisibility(doc.layers[1].id, false); assert.equal(doc.layers[1].visible, false);
+  doc.undo(); assert.equal(doc.layers[1].visible, true);
+});
+test('project serialization round-trips pixels, layers, identity and metadata', () => {
+  const doc = new RasterDocument(6, 7, 'Test artwork');
+  const stroke = doc.beginStroke({ color: '#abc', size: 1 });
+  doc.strokeTo(stroke, 3, 4); doc.endStroke(stroke); doc.addLayer('Highlights');
+  const restored = RasterDocument.fromJSON(JSON.parse(JSON.stringify(doc.toJSON())));
+  assert.equal(restored.id, doc.id); assert.equal(restored.name, 'Test artwork');
+  assert.equal(restored.width, 6); assert.equal(restored.layers.length, 2);
+  assert.deepEqual(restored.layers[0].pixels, doc.layers[0].pixels);
+  assert.equal(restored.activeLayerId, doc.activeLayerId);
+  assert.equal(restored.history.length, 0); assert.equal(restored.dirty, false);
+});
+test('project import rejects mismatched pixel buffers and unsupported versions', () => {
+  const invalid = new RasterDocument(2, 2).toJSON(); invalid.layers[0].pixels = 'AA==';
+  assert.throws(() => RasterDocument.fromJSON(invalid), /pixel data length/);
+  assert.throws(() => RasterDocument.fromJSON({ format: 'pixelforge-project', version: 900, width: 2, height: 2, layers: [] }), /Unsupported/);
+});
+test('hex color parsing supports short and long formats and rejects invalid values', () => {
+  assert.deepEqual(parseHexColor('#abc'), [170, 187, 204]);
+  assert.deepEqual(parseHexColor('12ef90'), [18, 239, 144]);
+  assert.throws(() => parseHexColor('nope'), TypeError);
+});
+test('brush sizes create exact square pixel footprints and use bounded tile patches', () => {
+  const doc = new RasterDocument(128, 128);
+  const stroke = doc.beginStroke({ color: '#ffffff', size: 2 });
+  doc.strokeTo(stroke, 10, 10); doc.endStroke(stroke);
+  let count = 0;
+  for (let i = 3; i < doc.activeLayer.pixels.length; i += 4) if (doc.activeLayer.pixels[i]) count++;
+  assert.equal(count, 4);
+  assert.equal(doc.history[0].type, 'pixels');
+  assert.equal(doc.history[0].tiles.length, 1);
+  assert.equal(doc.history[0].tiles[0].before.byteLength, 64 * 64 * 4);
+  assert.ok(doc.historyBytes <= doc.maxHistoryBytes);
+});
+test('new edit after undo clears redo history', () => {
+  const doc = new RasterDocument(8, 8);
+  let stroke = doc.beginStroke({ color: '#fff', size: 1 });
+  doc.strokeTo(stroke, 1, 1); doc.endStroke(stroke); doc.undo();
+  assert.equal(doc.future.length, 1);
+  stroke = doc.beginStroke({ color: '#f00', size: 1 });
+  doc.strokeTo(stroke, 2, 2); doc.endStroke(stroke);
+  assert.equal(doc.future.length, 0); assert.equal(doc.redo(), false);
+});
+test('document refuses layers that exceed its memory budget', () => {
+  const doc = new RasterDocument(2048, 2048);
+  doc.addLayer('Second layer'); doc.addLayer('Third layer'); doc.addLayer('Fourth layer');
+  assert.equal(doc.layers.length * doc.width * doc.height * 4, MAX_DOCUMENT_BYTES);
+  assert.throws(() => doc.addLayer('Too much memory'), /64 MiB/);
+});
