@@ -242,6 +242,15 @@ try {
   await mobile.mouse.up();
   assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false');
 
+  await mobile.locator('#draw-hold').focus();
+  await mobile.mouse.move(holdBox.x + holdBox.width / 2, holdBox.y + holdBox.height / 2);
+  await mobile.mouse.down();
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'true');
+  await mobile.locator('#pan-tool').focus();
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'pointer-held drawing must cancel when the hold control loses focus');
+  await mobile.mouse.up();
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false');
+
   await mobile.locator('#pan-tool').click();
   await mobile.mouse.move(mobileBox.x + mobileBox.width / 2, mobileBox.y + mobileBox.height / 2);
   await mobile.mouse.down();
