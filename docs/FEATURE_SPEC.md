@@ -462,3 +462,29 @@ This is the capability checklist, not a promise that every item already exists. 
 - Add configurable outlines, shadow/glow generation and palette-aware recoloring where implemented.
 - Include a pixel inspector showing coordinates, RGBA/hex value and layer/cel source where available.
 - Every cleanup operation stays within the chosen layer/selection, is undoable and never mutates the source during preview.
+
+
+## AL. Game-art and UI asset production suite
+
+- Provide templates and validation profiles for sprites, tiles, tilemaps, UI icons, nine-slice panels, cursors, portraits, effects and animation strips.
+- Include pivot/origin markers, attachment guides, safe margins, consistent frame bounds and named export variants.
+- Support nine-slice preview with editable margins, spritesheet metadata, trim/padding/extrusion and batch export at multiple scales.
+- Offer configurable, versioned metadata adapters for common game engines when feasible.
+- Validate transparent padding, mismatched frame dimensions, inconsistent pivots, palette limits and export naming.
+- Tests verify dimensions, metadata, pivots, frame order and batch-export reproducibility.
+
+## AM. Photo and raster retouch workflow
+
+- Add non-destructive crop/straighten, perspective correction where feasible, spot cleanup, clone/heal-like tools, blur/sharpen, dodge/burn and local color adjustments.
+- Support masks for localized adjustments, feathered transitions and mask visualization.
+- Provide side-by-side before/after, split comparison and temporary hold-to-preview-original controls.
+- Upscaling and noise reduction are available only when a real implemented algorithm/model exists; disclose limits and never promise guaranteed detail recovery.
+- Preserve source dimensions and metadata unless explicitly changed. Large filters should be cancellable and recover gracefully from memory limits.
+
+## AN. Multi-document workspace
+
+- Support multiple open documents with tabs and per-document unsaved, recovery and background-job status.
+- Offer split-view editing, side-by-side reference comparison and copy/paste between documents where supported.
+- Provide configurable shortcuts for switching documents, changing brush size, nudging selections and navigating frames.
+- Add focus mode that hides nonessential panels while retaining a reliable exit path.
+- Restore each document viewport without leaking selections or tool state between documents.
