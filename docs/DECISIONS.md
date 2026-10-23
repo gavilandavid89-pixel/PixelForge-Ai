@@ -16,7 +16,7 @@ This file records current defaults so product, architecture, UI and tests do not
 | Color | 8-bit RGBA buffers, browser-default sRGB canvas behavior; no ICC-profile-managed editing workflow in this slice | Provisional; color-management features are planned |
 | Native project | Version 1 `.pforge` file is JSON containing document metadata and base64-encoded RGBA layer buffers | Provisional bootstrap format; uncompressed and not a final archival format |
 | Project import identity | Importing a `.pforge` creates a copy with fresh document and layer IDs and reset revision/history; the source record remains available in the local project picker | Implemented and covered by browser smoke tests |
-| Image import | Browser-decoded PNG/JPEG/WebP and GIF first frame, plus `.pforge` project JSON | Browser-decoder dependent; animated GIF timelines are not imported |
+| Image import | PNG/JPEG/WebP/GIF; bounded header preflight validates dimensions before decoding, decoded dimensions are rechecked, and animated images flatten to a still frame | Implemented for the advertised formats; unsupported extensions and dimensions over 2048 px per side are rejected before pixel decode |
 | Image export | PNG with transparent pixels preserved; editable project export is separate | Implemented; no other export formats are advertised |
 | Persistence | IndexedDB stores local project snapshots, a basic saved-project list/open picker, and a separate last-opened timestamp; startup recovers the last-opened project | Implemented; rename/delete, multi-tab editing and cross-device sync are not shipped |
 | Autosave | Debounced save after changes, plus manual save and Ctrl/Cmd+S; storage failures are reported | Implemented; save failure must not be described as success |
