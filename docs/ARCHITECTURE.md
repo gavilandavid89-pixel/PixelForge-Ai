@@ -46,3 +46,32 @@ Expose an interface such as `generate(input, options, signal) -> result`, plus `
 
 ## Dependency and provenance policy
 Every dependency must have a recorded version and license. Avoid GPL source reuse unless we intentionally commit to compatible copyleft distribution. No copied proprietary assets, icons, code or branding. Keep a third-party notices file as dependencies are added.
+
+
+## Dual-editor architecture: user workspace and AI sandbox
+
+The application has two editor workspaces backed by separate document states:
+
+- **User document (authoritative):** the only canonical project. Manual user edits are committed here.
+- **AI working document (isolated branch):** initialized from a consistent snapshot of the user's document and then edited independently by AI. It may be discarded at any time without affecting the user document.
+
+### Synchronization rules
+
+1. User edits flow into the AI workspace automatically as incremental, versioned updates when safe; otherwise the AI workspace is refreshed from a new snapshot.
+2. AI edits never flow directly into the user document.
+3. AI suggestions are stored as a proposal/branch with a base document revision, command list and affected regions—not as mutations to the canonical document.
+4. The user may inspect the AI workspace, accept the full proposal, accept selected changes/regions, or reject/discard it.
+5. Rejecting or deleting a proposal deletes only the sandbox state/proposal; it cannot delete or roll back the user document.
+6. If the user edits the original while a proposal is being prepared, compare revisions and detect conflicts before applying. Never silently overwrite newer user work.
+7. Applying a proposal creates a single undoable transaction on the user document. The application should preview the diff and report conflicts first.
+8. The AI sandbox is disposable and recoverable separately; canonical project deletion and export remain human-only operations.
+
+### Suggested modules
+
+- `core/workspaces`: user workspace, AI sandbox lifecycle and document revision IDs.
+- `core/sync`: one-way user-to-sandbox patches, snapshot refresh, conflict detection.
+- `core/proposals`: proposal manifests, diffs, region/layer-level acceptance and discard.
+- `core/commands`: validated commands shared by both workspaces, with workspace-scoped permissions.
+- `core/permissions`: deny AI project deletion/export and deny sandbox-to-user writes except through an explicit user-approved apply transaction.
+
+Do not implement the sandbox as a second UI canvas that merely points at the same mutable document object. It must have independent document state, pixel buffers, layer/frame data and history. Shared immutable assets may be referenced safely if edits use copy-on-write.
