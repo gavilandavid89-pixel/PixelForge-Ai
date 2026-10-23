@@ -152,3 +152,10 @@ test('changing active layer marks workspace metadata for autosave without creati
   assert.equal(doc.history.length, historyCount);
   assert.equal(doc.activeLayerId, doc.layers[0].id);
 });
+
+test('project import rejects empty project IDs and non-boolean layer flags', () => {
+  const emptyId = new RasterDocument(2, 2).toJSON(); emptyId.id = '';
+  assert.throws(() => RasterDocument.fromJSON(emptyId), /Invalid project ID/);
+  const badFlag = new RasterDocument(2, 2).toJSON(); badFlag.layers[0].visible = 'false';
+  assert.throws(() => RasterDocument.fromJSON(badFlag), /must be booleans/);
+});
