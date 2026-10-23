@@ -21,6 +21,7 @@ Research and define the editing engine before building the visual interface. Use
 - `docs/ARCHITECTURE.md` — modular editor architecture, input/document contracts, renderer policy and implementation priorities.
 - `docs/AI_TOOL_API.md` — AI tool registry, permissions, proposal lifecycle and command contract.
 - `docs/ENGINE_TEST_PLAN.md` — central acceptance matrix, release gates, adversarial scenarios and manual test record template.
+- `docs/DECISIONS.md` — accepted defaults, provisional behavior, format support and release blockers.
 
 ## Product principles
 
