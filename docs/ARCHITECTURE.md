@@ -75,3 +75,22 @@ The application has two editor workspaces backed by separate document states:
 - `core/permissions`: deny AI project deletion/export and deny sandbox-to-user writes except through an explicit user-approved apply transaction.
 
 Do not implement the sandbox as a second UI canvas that merely points at the same mutable document object. It must have independent document state, pixel buffers, layer/frame data and history. Shared immutable assets may be referenced safely if edits use copy-on-write.
+
+
+## Shared input and tool behavior contract
+
+- Implement one input controller that maps touch, mouse and stylus coordinates into document coordinates and owns cursor movement, activation state, stroke begin/update/end, cancellation and tool switching.
+- Each tool registers an interaction category such as `freehand-stroke`, `drag-preview`, `discrete-action`, `selection`, or `navigation`. Tools reuse the common cursor contract where applicable instead of implementing independent gesture handling.
+- Freehand painting tools (pencil, brush, eraser, smudge and compatible retouch tools) share cursor positioning and hold-to-apply mechanics. Geometry tools share cursor tracking but can preview a shape during drag and commit on release.
+- The bucket/fill tool is a discrete action, explicitly outside the continuous stroke contract. It executes only on deliberate tap/click activation and supports a preview/options stage when appropriate.
+- Keep view navigation, cursor movement, and applying a tool as separate state dimensions. Pointer cancellation, focus loss, orientation changes and tool switches must safely terminate active operations.
+- Linked settings are per-property preferences, not a single global preset overwrite. Tool identity and tool-specific settings remain independent unless the user links selected properties.
+
+## Grid and export services
+
+- Render grids, guides, rulers, pixel boundaries, selections and animation overlays as separate view overlays. Grid geometry/configuration is independent from pixel data and is excluded from normal exports.
+- Implement an export-format registry whose adapters declare tested support for alpha, animation, layers, color depth, metadata, compression and dimension limits.
+- The export pipeline works from an immutable document snapshot or export-only composite, supports optional background compositing and custom output dimensions, and never mutates the canonical source document.
+- Validate output dimensions and estimated memory before allocation; use workers and cancellable jobs for expensive encoders/large outputs when supported.
+- Keep native project serialization separate from flattened interchange formats. Export permissions are enforced in the command/API layer; AI sandbox tools cannot export or route around the human-only export action.
+- Every format adapter requires fixture-based tests for dimensions, alpha/background behavior and supported capabilities before it appears in the user's export list.
