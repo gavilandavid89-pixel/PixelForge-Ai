@@ -72,14 +72,15 @@ try {
     return { png: await encode('image/png'), jpeg: await encode('image/jpeg'), webp: await encode('image/webp') };
   });
   const importImage = async (name, mimeType, buffer, dimensions) => {
+    const expectedName = name.slice(0, name.lastIndexOf('.'));
     await imagePage.locator('#import-file').setInputFiles({ name, mimeType, buffer });
-    await imagePage.waitForFunction(() => /Import complete and saved locally/.test(document.querySelector('#status')?.textContent ?? ''));
+    await imagePage.waitForFunction(expected => /Import complete and saved locally/.test(document.querySelector('#status')?.textContent ?? '') && document.querySelector('#document-name')?.textContent === expected, expectedName);
     assert.equal(await imagePage.locator('#document-size').textContent(), dimensions, `${name} should decode at the verified dimensions`);
   };
-  await importImage('valid.png', 'image/png', Buffer.from(generatedImages.png, 'base64'), '3 × 2');
-  await importImage('valid.jpg', 'image/jpeg', Buffer.from(generatedImages.jpeg, 'base64'), '3 × 2');
-  await importImage('valid.webp', 'image/webp', Buffer.from(generatedImages.webp, 'base64'), '3 × 2');
-  await importImage('valid.gif', 'image/gif', Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==', 'base64'), '1 × 1');
+  await importImage('valid-png.png', 'image/png', Buffer.from(generatedImages.png, 'base64'), '3 × 2');
+  await importImage('valid-jpeg.jpg', 'image/jpeg', Buffer.from(generatedImages.jpeg, 'base64'), '3 × 2');
+  await importImage('valid-webp.webp', 'image/webp', Buffer.from(generatedImages.webp, 'base64'), '3 × 2');
+  await importImage('valid-gif.gif', 'image/gif', Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==', 'base64'), '1 × 1');
   await imageContext.close();
 
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 960 }, acceptDownloads: true });
