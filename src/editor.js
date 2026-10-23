@@ -10,7 +10,7 @@ let color = $('#color').value, brushSize = Number($('#brush-size').value);
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null;
 let drawHeld = false, drawHoldPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false;
-let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), renderQueued = false, previewReady = false;
+let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
 
 function status(message, kind = 'neutral') {
   $('#status').textContent = message;
@@ -92,41 +92,50 @@ function eventPoint(event) {
 }
 function docPoint(event) { return screenToDocument(eventPoint(event), { zoom, panX, panY }, doc); }
 function scheduleAutosave() {
-  clearTimeout(autosaveTimer);
+  clearTimeout(autosaveTimer); autosaveTimer = null;
   status('Unsaved changes', 'warning');
+  if (flushInProgress) return;
   autosaveTimer = setTimeout(() => {
     autosaveTimer = null;
     const savingDoc = doc, version = savingDoc.saveVersion, snapshot = savingDoc.toJSON();
-    autosaveInFlight = (async () => {
-      try {
-        await saveProject(snapshot);
-        savingDoc.dirty = savingDoc.saveVersion !== version;
-        if (doc === savingDoc) {
-          status(savingDoc.dirty ? 'Unsaved changes' : 'Saved on this device', savingDoc.dirty ? 'warning' : 'success');
-          updateTitle();
-        }
-      } catch (error) {
-        if (doc === savingDoc) status(`Autosave unavailable: ${error.message}`, 'error');
-        throw error;
+    const operation = autosaveInFlight.catch(() => {}).then(async () => {
+      await saveProject(snapshot);
+      savingDoc.dirty = savingDoc.saveVersion !== version;
+      if (doc === savingDoc) {
+        status(savingDoc.dirty ? 'Unsaved changes' : 'Saved on this device', savingDoc.dirty ? 'warning' : 'success');
+        updateTitle();
       }
-    })().catch(() => {});
+    });
+    autosaveInFlight = operation.catch(error => {
+      if (doc === savingDoc) status(`Autosave unavailable: ${error.message}`, 'error');
+    });
   }, 800);
 }
 async function flushAutosave() {
-  if (activeStroke) finishActiveStroke(false);
-  const pending = autosaveTimer !== null;
-  if (pending) { clearTimeout(autosaveTimer); autosaveTimer = null; }
-  await autosaveInFlight;
-  const savingDoc = doc;
-  if (!savingDoc.dirty && !pending) return;
-  while (doc === savingDoc) {
-    const version = savingDoc.saveVersion, snapshot = savingDoc.toJSON();
-    await saveProject(snapshot);
-    if (savingDoc.saveVersion === version) { savingDoc.dirty = false; break; }
-    savingDoc.dirty = true;
-  }
-  if (autosaveTimer !== null) { clearTimeout(autosaveTimer); autosaveTimer = null; }
-  if (doc === savingDoc) updateTitle();
+  if (flushPromise) return flushPromise;
+  flushPromise = (async () => {
+    if (activeStroke) finishActiveStroke(false);
+    const pending = autosaveTimer !== null;
+    if (pending) { clearTimeout(autosaveTimer); autosaveTimer = null; }
+    const savingDoc = doc;
+    flushInProgress = true;
+    try {
+      await autosaveInFlight;
+      if (!savingDoc.dirty && !pending) return;
+      while (doc === savingDoc) {
+        const version = savingDoc.saveVersion, snapshot = savingDoc.toJSON();
+        await saveProject(snapshot);
+        if (savingDoc.saveVersion === version) { savingDoc.dirty = false; break; }
+        savingDoc.dirty = true;
+      }
+      if (doc === savingDoc) updateTitle();
+    } finally {
+      flushInProgress = false;
+      if (doc === savingDoc && savingDoc.dirty) scheduleAutosave();
+    }
+  })();
+  try { await flushPromise; }
+  finally { flushPromise = null; }
 }
 function changed() { render(); updateTitle(); scheduleAutosave(); }
 function startStrokeAt(point, id) {
