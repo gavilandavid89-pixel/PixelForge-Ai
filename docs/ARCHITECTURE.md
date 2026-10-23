@@ -242,7 +242,7 @@ The first functional slice deliberately has fewer modules than the target archit
 - `src/editor.js`: bootstrap UI orchestration, Canvas 2D rendering, pointer/keyboard input, layer controls and import/export flows.
 - `index.html` and `styles.css`: application shell and responsive presentation.
 - `tests/core.test.js`: deterministic engine tests run with Node's built-in test runner.
-- `tests/image-import.test.js`: bounded image-header preflight tests for PNG, JPEG, WebP and GIF.
+- `tests/image-import.test.js`: bounded image-header preflight tests for PNG, JPEG, GIF and VP8X/VP8/VP8L WebP variants.
 - `tests/browser-smoke.mjs`: headless-browser integration tests for successful PNG/JPEG/WebP/GIF imports, dimension preservation and safe rejection behavior.
 
 The renderer and input controller are still co-located in the bootstrap controller; they are **not yet** independent production modules. Before adding complex tools, extract renderer and input-controller modules behind stable interfaces and add browser-level tests. Do not describe this early layout as the final modular architecture.
