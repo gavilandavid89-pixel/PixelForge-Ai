@@ -167,10 +167,12 @@ export class RasterDocument {
     if (data.layers.length < 1 || data.layers.length > 64) throw new RangeError('Project layer count is outside the supported limit.');
     if (data.width * data.height * 4 * data.layers.length > MAX_DOCUMENT_BYTES) throw new RangeError('Project exceeds the 64 MiB total pixel-memory budget.');
     const doc = new RasterDocument(data.width, data.height, typeof data.name === 'string' ? data.name.slice(0, 180) : 'Imported project');
-    doc.id = typeof data.id === 'string' && data.id.length <= 180 ? data.id : doc.id;
+    if (data.id !== undefined && (typeof data.id !== 'string' || !data.id || data.id.length > 180)) throw new TypeError('Invalid project ID.');
+    doc.id = typeof data.id === 'string' ? data.id : doc.id;
     const layerIds = new Set();
     doc.layers = data.layers.map(item => {
       if (!item || typeof item.id !== 'string' || !item.id || item.id.length > 180 || typeof item.name !== 'string') throw new TypeError('Invalid layer metadata.');
+      if ((item.visible !== undefined && typeof item.visible !== 'boolean') || (item.locked !== undefined && typeof item.locked !== 'boolean')) throw new TypeError('Layer visibility and lock flags must be booleans.');
       if (layerIds.has(item.id)) throw new TypeError('Project contains duplicate layer IDs.');
       layerIds.add(item.id);
       const opacity = Number(item.opacity ?? 1);
