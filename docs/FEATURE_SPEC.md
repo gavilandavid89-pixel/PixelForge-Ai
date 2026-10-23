@@ -421,3 +421,27 @@ This is the capability checklist, not a promise that every item already exists. 
 - 3D model/reference preview or simple turntable reference support as a separate optional module, not a dependency of the 2D engine.
 - Community profiles and voluntary art feed remain a later phase; public sharing requires explicit publication and privacy controls.
 - Feature flags and modular packages keep optional features from bloating startup, memory use or the core editor bundle.
+
+
+## AG. Non-destructive workflow and smart history
+
+- Provide an optional operation stack for compatible filters, adjustments, transforms and procedural effects. Each operation exposes parameters, enable/disable, reorder where mathematically valid, reset and before/after preview.
+- Clearly mark operations that must rasterize or flatten content; ask before irreversible conversion and keep a recoverable checkpoint.
+- History entries use meaningful names and can be grouped into named sessions. Support snapshots/checkpoints and restore-to-copy.
+- Add history memory settings and safe limits; explain when older history must be discarded and preserve recovery snapshots where possible.
+- Tests verify deterministic undo/redo, grouped operations, checkpoint restoration and no hidden source mutation from previews.
+
+## AH. Reference workspace and visual research tools
+
+- Provide a reference board where users collect local images, colors, notes and composition thumbnails without merging them into the artwork.
+- References can be positioned, scaled, rotated, faded, locked, grouped, labeled and hidden independently; exclude them from artwork exports by default.
+- Add color sampling from references into the project palette with confirmation and side-by-side, overlay and difference comparison between versions.
+- Reference assets remain local unless explicitly imported or shared. Tests verify that references do not affect exported pixels and can be relinked if moved.
+
+## AI. Pixel-art and illustration quality assistants
+
+- Optional pixel-art checks flag inconsistent clusters, stray pixels, palette overflow, uneven outlines and accidental semi-transparency using selectable overlays.
+- Optional illustration checks may flag gaps, tangencies or low-contrast regions only where a deterministic check is defensible; label heuristics as suggestions, not objective truth.
+- Offer findings as a review list with zoom-to-region, dismiss/ignore and undoable fixes. Never auto-correct without user action.
+- Add symmetry, tiling and seamless-edge validation previews. AI critique is user-initiated and opt-in; no automatic artwork upload.
+- Tests use known fixtures and track false positives so noisy checks can be disabled or removed.
