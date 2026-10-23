@@ -159,3 +159,18 @@ test('project import rejects empty project IDs and non-boolean layer flags', () 
   const badFlag = new RasterDocument(2, 2).toJSON(); badFlag.layers[0].visible = 'false';
   assert.throws(() => RasterDocument.fromJSON(badFlag), /must be booleans/);
 });
+
+test('save version advances for persisted state without conflating workspace state with content revision', () => {
+  const doc = new RasterDocument(4, 4);
+  const contentRevision = doc.revision, initialSaveVersion = doc.saveVersion;
+  doc.addLayer('Second');
+  assert.ok(doc.saveVersion > initialSaveVersion);
+  const revisionAfterLayer = doc.revision;
+  doc.setActiveLayer(doc.layers[0].id);
+  assert.equal(doc.revision, revisionAfterLayer);
+  assert.ok(doc.saveVersion > initialSaveVersion + 1);
+  const stroke = doc.beginStroke({ color: '#fff', size: 1 });
+  doc.strokeTo(stroke, 1, 1); doc.endStroke(stroke);
+  assert.ok(doc.revision > contentRevision);
+  assert.ok(doc.saveVersion > revisionAfterLayer);
+});
