@@ -205,3 +205,22 @@ This is the capability checklist, not a promise that every item already exists. 
 - Allow user-defined tool presets, duplicate/rename/reset, favorites, recent tools, and customizable shortcuts/gestures.
 - Use a consistent option-schema system so tools can contribute nested controls without bespoke layout code for each tool. Persist settings with versioning and migrate them safely when schemas evolve.
 - Test distributed panels, hide-all/restore, layout persistence, UI scale and density, nested option groups, cursor movement from different starting points, no joystick behavior, shared draw/erase mechanics, compatible settings linkage, and safe active-stroke termination during tool changes.
+
+
+## O. User-initiated AI only
+- The AI must not draw, modify artwork, generate variations, or start background creative tasks merely because the user is drawing, changes tools, moves the cursor, or edits the canvas.
+- AI generation/editing tasks may begin only after an explicit user request or a deliberate user action that clearly starts a named AI operation.
+- Passive UI events, document synchronization into the AI workspace, selection changes, and tool changes must never be interpreted as permission to generate artwork.
+- The AI sandbox may stay synchronized with user-originated edits for context, but this synchronization is not an instruction to act. No AI-generated changes occur until the user asks.
+- Show queued/running AI tasks with clear controls to cancel; do not auto-apply any result. Every result remains a reviewable proposal requiring explicit user acceptance.
+- Test that drawing, erasing, changing tools, moving the cursor, opening panels, and synchronizing the sandbox never trigger AI generation by themselves.
+
+## P. Future product shell and creative community (planned, not part of the first editor milestone)
+- Provide a separate main/home screen before opening the editor, with a clear list/grid of the user's projects and actions to create, open, rename, duplicate, organize, and archive projects.
+- Keep projects separate and independently persisted; show thumbnails, last-opened information, dimensions, and unsaved/recovery status where available.
+- Include a user profile page with display name, avatar, short biography/description, and the user's own published/shared artworks when the social phase is implemented.
+- Plan a small art feed where users can voluntarily publish artworks, browse other creators' posts, and open artwork details. This is a future phase, not a dependency for the core editor.
+- Design future publishing around explicit consent: private projects remain private by default; publishing requires a clear user action and review of what will be shared. Do not expose local project files or unpublished art automatically.
+- Keep social/community features modular and isolated from the document engine, AI sandbox, and local project storage. Community availability must not be required to draw or edit offline.
+- Future social phase should define moderation, reporting/blocking, privacy controls, storage/cost limits, and safe account/profile handling before implementation.
+- Recommended milestones: (1) reliable editor engine and project format, (2) local project home/library, (3) profiles and account sync if needed, (4) voluntary art publishing/feed and community safety systems.
