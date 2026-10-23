@@ -28,6 +28,20 @@ function webpHeader(width, height) {
   bytes.writeUIntLE(width - 1, 24, 3); bytes.writeUIntLE(height - 1, 27, 3);
   return bytes;
 }
+function webpLossyHeader(width, height) {
+  const bytes = Buffer.alloc(30);
+  bytes.write('RIFF', 0, 'ascii'); bytes.writeUInt32LE(22, 4); bytes.write('WEBP', 8, 'ascii');
+  bytes.write('VP8 ', 12, 'ascii'); bytes.writeUInt32LE(10, 16);
+  bytes.set([0x9d, 0x01, 0x2a], 23); bytes.writeUInt16LE(width, 26); bytes.writeUInt16LE(height, 28);
+  return bytes;
+}
+function webpLosslessHeader(width, height) {
+  const bytes = Buffer.alloc(26);
+  bytes.write('RIFF', 0, 'ascii'); bytes.writeUInt32LE(18, 4); bytes.write('WEBP', 8, 'ascii');
+  bytes.write('VP8L', 12, 'ascii'); bytes.writeUInt32LE(5, 16);
+  bytes.set([0x2f, (width - 1) & 255, (((width - 1) >> 8) & 0x3f) | (((height - 1) & 0x03) << 6), ((height - 1) >> 2) & 255, ((height - 1) >> 10) & 0x0f], 20);
+  return bytes;
+}
 
 test('preflight reads PNG dimensions without decoding pixels', async () => {
   assert.deepEqual(await preflightImageFile(file(pngHeader(2, 3), 'sample.png', 'image/png')), { width: 2, height: 3, format: 'png' });
@@ -40,6 +54,12 @@ test('preflight reads JPEG start-of-frame dimensions', async () => {
 });
 test('preflight reads extended WebP dimensions', async () => {
   assert.deepEqual(await preflightImageFile(file(webpHeader(2, 3), 'sample.webp', 'image/webp')), { width: 2, height: 3, format: 'webp' });
+});
+test('preflight reads lossy VP8 WebP dimensions', async () => {
+  assert.deepEqual(await preflightImageFile(file(webpLossyHeader(2, 3), 'sample.webp', 'image/webp')), { width: 2, height: 3, format: 'webp' });
+});
+test('preflight reads lossless VP8L WebP dimensions', async () => {
+  assert.deepEqual(await preflightImageFile(file(webpLosslessHeader(2, 3), 'sample.webp', 'image/webp')), { width: 2, height: 3, format: 'webp' });
 });
 test('oversized compressed-image dimensions are rejected before browser decoding', async () => {
   await assert.rejects(preflightImageFile(file(pngHeader(2049, 1), 'oversized.png', 'image/png')), /safe limit/);
