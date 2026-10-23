@@ -26,6 +26,34 @@ let browser;
 const failures = [];
 try {
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+  const migrationContext = await browser.newContext();
+  const migrationPage = await migrationContext.newPage();
+  migrationPage.on('pageerror', error => failures.push(`migration page error: ${error.message}`));
+  await migrationPage.goto('http://127.0.0.1:4173/tests/fixtures/blank.html');
+  await migrationPage.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('pixelforge-ai', 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('documents', { keyPath: 'id' });
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result, tx = db.transaction('documents', 'readwrite');
+      tx.objectStore('documents').put({
+        id: 'legacy-project', name: 'Legacy Project', updatedAt: 1, lastOpenedAt: 1,
+        project: { format: 'pforge', version: 1, id: 'legacy-project', name: 'Legacy Project', width: 2, height: 2, activeLayerId: 'legacy-layer', revision: 0, saveVersion: 0,
+          layers: [{ id: 'legacy-layer', name: 'Legacy', visible: true, opacity: 1, locked: false, pixels: 'AAAAAAAAAAAAAAAAAAAAAA==' }] }
+      });
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    };
+  }));
+  await migrationPage.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+  await migrationPage.waitForFunction(() => /Recovered latest local project/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.equal(await migrationPage.locator('#document-name').textContent(), 'Legacy Project', 'version-1 local projects must survive the version-2 metadata migration');
+  await migrationPage.locator('#projects-button').click();
+  await migrationPage.waitForFunction(() => document.querySelector('#projects-dialog')?.open === true);
+  assert.equal(await migrationPage.locator('#projects-list .saved-project-open').count(), 1, 'migrated project metadata must appear in the local library');
+  await migrationPage.locator('#close-projects').click();
+  await migrationContext.close();
+
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 960 }, acceptDownloads: true });
   desktop.on('pageerror', error => failures.push(`desktop page error: ${error.message}`));
   await desktop.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
