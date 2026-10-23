@@ -59,7 +59,7 @@ export class RasterDocument {
   }
   setActiveLayer(id) {
     if (!this.layers.some(layer => layer.id === id)) throw new Error('Unknown layer ID.');
-    if (this.activeLayerId !== id) { this.activeLayerId = id; this.dirty = true; }
+    if (this.activeLayerId !== id) { this.activeLayerId = id; this.dirty = true; this.saveVersion++; }
   }
   setLayerVisibility(id, visible) {
     const layer = this.layers.find(item => item.id === id);
@@ -156,6 +156,7 @@ export class RasterDocument {
     this.#markAllCompositeDirty();
     this.history.push(entry);
     this.revision++;
+    this.saveVersion++;
     this.dirty = true;
     return true;
   }
@@ -219,6 +220,7 @@ export class RasterDocument {
       this.historyBytes -= entryBytes(removed);
     }
     this.revision++;
+    this.saveVersion++;
     this.dirty = true;
   }
   #captureTile(layer, tileX, tileY) {
