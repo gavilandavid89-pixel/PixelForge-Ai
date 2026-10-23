@@ -25,7 +25,7 @@ function updateTitle() {
 function resizeCanvas() {
   const rect = workArea.getBoundingClientRect(), dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-  canvas.height = Math.max(1, Math.floor(rect.height * dpr);
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
   canvas.style.width = `${rect.width}px`;
   canvas.style.height = `${rect.height}px`;
   render();
