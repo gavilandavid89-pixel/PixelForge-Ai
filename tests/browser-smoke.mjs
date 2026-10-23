@@ -91,15 +91,25 @@ try {
   const holdBox = await mobile.locator('#draw-hold').boundingBox();
   assert.ok(holdBox && holdBox.width > 70, 'mobile draw-hold control must be reachable');
   const holdX = holdBox.x + holdBox.width / 2, holdY = holdBox.y + holdBox.height / 2;
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 1, x: holdX, y: holdY }, { id: 2, x: startX, y: startY }] });
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 1, x: holdX, y: holdY }, { id: 2, x: startX + 18, y: startY + 8 }] });
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ id: 2, x: startX + 18, y: startY + 8 }] });
+
+  // Releasing the hold while the cursor finger remains down must stop drawing immediately.
+  await mobile.mouse.move(holdX, holdY);
+  await mobile.mouse.down();
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 2, x: startX, y: startY }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 2, x: startX + 18, y: startY + 8 }] });
+  await mobile.mouse.up();
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 2, x: startX + 28, y: startY + 14 }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
-  assert.equal(await mobile.locator('#undo').isEnabled(), true, 'holding the draw control while moving a finger must create an undoable stroke');
   await mobile.locator('#undo').click();
-  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'releasing the hold must stop drawing and keep the gesture as one undoable action');
+  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'release must stop drawing without leaving a second history action');
+
+  // Also exercise the real two-touch pattern: one touch holds the control, the other moves the cursor.
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 3, x: holdX, y: holdY }, { id: 4, x: startX, y: startY }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 3, x: holdX, y: holdY }, { id: 4, x: startX + 18, y: startY + 8 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
+  assert.equal(await mobile.locator('#undo').isEnabled(), true, 'two-touch hold-to-draw must create an undoable stroke');
   assert.deepEqual(failures, [], 'no uncaught browser JavaScript errors should occur');
   console.log('Browser smoke checks passed: startup, drawing, undo/redo, layers, PNG export, IndexedDB recovery and mobile touch.');
 } finally {
