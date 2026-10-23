@@ -445,3 +445,20 @@ This is the capability checklist, not a promise that every item already exists. 
 - Offer findings as a review list with zoom-to-region, dismiss/ignore and undoable fixes. Never auto-correct without user action.
 - Add symmetry, tiling and seamless-edge validation previews. AI critique is user-initiated and opt-in; no automatic artwork upload.
 - Tests use known fixtures and track false positives so noisy checks can be disabled or removed.
+
+
+## AJ. Pattern and texture studio
+
+- Create repeating patterns with offset, rotation, scale, mirror-repeat and adjustable origin.
+- Offer procedural textures such as grain, halftone, hatch, checker, crosshatch and gradient fills where implemented.
+- Save patterns as reusable assets for fills, brush tips or layer effects; preview 3x3 or 5x5 repeats and inspect seams.
+- Seeded procedural output should be reproducible and clearly distinguished from model-generated artwork.
+- Bound complexity and resolution; expensive tasks should be cancellable.
+
+## AK. Pixel cleanup and compositing tools
+
+- Add transparent-edge fringe cleanup, matte removal and edge-color extension for sprites, with before/after preview.
+- Provide alpha-threshold and semi-transparency inspection modes plus a safe visualization of transparent pixels.
+- Add configurable outlines, shadow/glow generation and palette-aware recoloring where implemented.
+- Include a pixel inspector showing coordinates, RGBA/hex value and layer/cel source where available.
+- Every cleanup operation stays within the chosen layer/selection, is undoable and never mutates the source during preview.
