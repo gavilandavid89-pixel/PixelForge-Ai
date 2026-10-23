@@ -108,3 +108,19 @@ test('stroke commands reject out-of-bounds coordinates without changing pixels',
   assert.equal(doc.activeLayer.pixels.some(value => value !== 0), false);
   doc.endStroke(stroke, { commit: false });
 });
+
+test('compositor blends layers in order and visibility updates the cached composite', () => {
+  const doc = new RasterDocument(2, 2);
+  const bottom = doc.activeLayer;
+  bottom.pixels.set([255, 0, 0, 255], 0);
+  const top = doc.addLayer('Blue overlay');
+  top.pixels.set([0, 0, 255, 128], 0);
+  doc.compositeDirtyTiles.add('0:0');
+  const blended = doc.composite();
+  assert.ok(blended[0] >= 126 && blended[0] <= 127);
+  assert.equal(blended[1], 0);
+  assert.ok(blended[2] >= 128 && blended[2] <= 129);
+  assert.equal(blended[3], 255);
+  doc.setLayerVisibility(top.id, false);
+  assert.deepEqual(Array.from(doc.composite().slice(0, 4)), [255, 0, 0, 255]);
+});
