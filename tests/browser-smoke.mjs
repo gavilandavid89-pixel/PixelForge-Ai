@@ -41,6 +41,7 @@ try {
   await desktop.mouse.down();
   await desktop.mouse.move(box.x + box.width / 2 + 24, box.y + box.height / 2 + 12, { steps: 5 });
   await desktop.mouse.up();
+  await canvas.evaluate(element => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const after = await canvas.evaluate(element => element.toDataURL());
   assert.notEqual(after, before, 'drawing must change rendered artwork');
   assert.equal(await desktop.locator('#undo').isEnabled(), true, 'a committed stroke must enable undo');
@@ -78,6 +79,7 @@ try {
   await mobile.locator('#brush-tool').click();
   const mobileBefore = await mobileCanvas.evaluate(element => element.toDataURL());
   await mobile.touchscreen.tap(mobileBox.x + mobileBox.width / 2, mobileBox.y + mobileBox.height / 2);
+  await mobileCanvas.evaluate(element => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const mobileAfter = await mobileCanvas.evaluate(element => element.toDataURL());
   assert.notEqual(mobileAfter, mobileBefore, 'touch input must paint on the mobile canvas');
   assert.deepEqual(failures, [], 'no uncaught browser JavaScript errors should occur');
