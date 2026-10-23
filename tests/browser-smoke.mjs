@@ -129,6 +129,14 @@ try {
   await desktop.locator(importedSelector).click();
   await desktop.waitForFunction(() => /\(imported\)$/.test(document.querySelector('#document-name')?.textContent ?? ''));
 
+  const oversizedPng = Buffer.alloc(24);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(oversizedPng, 0);
+  oversizedPng.writeUInt32BE(13, 8); oversizedPng.write('IHDR', 12, 'ascii');
+  oversizedPng.writeUInt32BE(2049, 16); oversizedPng.writeUInt32BE(1, 20);
+  await desktop.locator('#import-file').setInputFiles({ name: 'oversized.png', mimeType: 'image/png', buffer: oversizedPng });
+  await desktop.waitForFunction(() => /Import failed:.*safe limit/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.match(await desktop.locator('#document-name').textContent(), /\(imported\)$/ , 'a rejected image must not replace the current project');
+
   await desktop.waitForTimeout(1000);
   await desktop.reload({ waitUntil: 'networkidle' });
   await desktop.waitForFunction(() => /Recovered latest local project/.test(document.querySelector('#status')?.textContent ?? ''), null, { timeout: 5000 });
