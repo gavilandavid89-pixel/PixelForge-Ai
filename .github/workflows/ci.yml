@@ -1,5 +1,9 @@
 name: Editor core checks
 
+concurrency:
+  group: pixelforge-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
