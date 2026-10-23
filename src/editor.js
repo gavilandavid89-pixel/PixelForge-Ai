@@ -198,7 +198,13 @@ canvas.addEventListener('pointercancel', event => {
   }
   endStroke(event, false);
 });
-canvas.addEventListener('lostpointercapture', event => endStroke(event, false));
+canvas.addEventListener('lostpointercapture', event => {
+  if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
+    if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
+    virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; render(); return;
+  }
+  endStroke(event, false);
+});
 const drawHoldButton = $('#draw-hold');
 function updateDrawHoldUI() {
   if (!drawHoldButton) return;
@@ -219,6 +225,10 @@ window.addEventListener('pointerup', event => {
   drawHeld = false; drawHoldPointerId = null; finishActiveStroke(true); updateDrawHoldUI(); render();
 });
 window.addEventListener('pointercancel', event => {
+  if (drawHoldPointerId !== event.pointerId) return;
+  drawHeld = false; drawHoldPointerId = null; finishActiveStroke(false); updateDrawHoldUI(); render();
+});
+drawHoldButton?.addEventListener('lostpointercapture', event => {
   if (drawHoldPointerId !== event.pointerId) return;
   drawHeld = false; drawHoldPointerId = null; finishActiveStroke(false); updateDrawHoldUI(); render();
 });
