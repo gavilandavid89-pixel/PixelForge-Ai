@@ -135,3 +135,27 @@ Cloning creates a new document/project identity with independent mutable layer/f
 4. Proposal discard/delete cannot delete, restore or rewrite canonical documents.
 5. AI export and canonical project deletion remain human-only actions.
 6. Unit and integration tests simulate rapid tab switching, split-view changes, clone edits, excluded documents, stale revisions and rejected proposals.
+
+
+## Dedicated canvas renderer and isolated editor contexts
+
+The application shell may use web technologies, but the artwork area is a dedicated rendering surface with its own coordinate system and render lifecycle. Do not implement the canvas as an ordinary webpage section whose layout, toolbar DOM, or CSS becomes part of the document. On web, use an appropriate dedicated canvas/GPU renderer; a future native build may use its platform renderer while preserving the same document and tool contracts.
+
+### Rendering boundaries
+
+- Separate `application-shell`, `canvas-renderer`, `document-model`, `input-controller`, `user-tool-registry`, `ai-tool-registry`, and `export-renderer`.
+- UI panels are overlays/layout siblings, never document layers. Canvas composition and export consume document state only; they never screenshot the app UI.
+- Maintain stable document-space coordinates independently from screen coordinates. Moving/resizing panels or entering full-screen changes view layout, not artwork pixels or document coordinates.
+- Provide an artwork-only render API for AI context capture and export, with explicit viewport/full-document modes. AI vision input must not contain toolbars, docks, cursor overlays, selection handles or panel occlusion.
+
+### Separate user and AI sessions
+
+Represent each editing context with its own session state, including document/snapshot identity, viewport, active tool, tool parameters, cursor, selection, active layer/frame, temporary previews, clipboard scope, history and cancellation token. User and AI sessions may call shared immutable algorithms, but must not share mutable interaction state.
+
+- The **User Canvas** owns canonical edits and user input.
+- The **AI Sandbox Canvas** receives a revision-pinned snapshot and owns all AI-generated modifications and proposal history.
+- AI observation tools (zoom, pan, crop, inspect-pixel/region) operate only on an AI inspection viewport over a read-only snapshot.
+- AI write commands target only the sandbox. Applying a proposal requires explicit user approval, a revision/conflict check and one undoable transaction against a named destination document.
+- Cancellation, timeout, failure, or sandbox discard cannot mutate the user document. Enforce this in command permissions, not only in UI.
+- Tool names may overlap (e.g. brush, eraser, zoom), but user and AI tool registries, active-tool state and permissions remain distinct. A user changing tools or viewport must not affect AI jobs; AI inspection must not move the user's cursor or change their view.
+- Tests must check state isolation, renderer/export separation, no UI contamination, revision stability on cancelled jobs, and destination-scoped proposal application.
