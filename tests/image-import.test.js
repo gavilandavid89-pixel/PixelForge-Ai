@@ -46,5 +46,7 @@ test('oversized compressed-image dimensions are rejected before browser decoding
 });
 test('malformed headers and unsupported extensions are rejected closed', async () => {
   await assert.rejects(preflightImageFile(file(Buffer.alloc(24), 'broken.png', 'image/png')), /header is incomplete or invalid/);
+  const badIhdr = pngHeader(2, 3); badIhdr.writeUInt32BE(12, 8);
+  await assert.rejects(preflightImageFile(file(badIhdr, 'bad-ihdr.png', 'image/png')), /header is incomplete or invalid/);
   await assert.rejects(preflightImageFile(file(Buffer.alloc(32), 'drawing.svg', 'image/svg+xml')), /Supported image imports/);
 });
