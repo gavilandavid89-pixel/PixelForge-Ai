@@ -174,3 +174,11 @@ test('save version advances for persisted state without conflating workspace sta
   assert.ok(doc.revision > contentRevision);
   assert.ok(doc.saveVersion > revisionAfterLayer);
 });
+
+test('project import rejects invalid active-layer references and revisions', () => {
+  const base = new RasterDocument(2, 2).toJSON();
+  const badLayer = structuredClone(base); badLayer.activeLayerId = 'missing-layer';
+  assert.throws(() => RasterDocument.fromJSON(badLayer), /Active layer ID/);
+  const badRevision = structuredClone(base); badRevision.revision = -1;
+  assert.throws(() => RasterDocument.fromJSON(badRevision), /revision must be a non-negative integer/);
+});
