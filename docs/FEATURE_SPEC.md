@@ -384,6 +384,7 @@ This is the capability checklist, not a promise that every item already exists. 
 - Provide compact and comfortable density, adjustable UI scale, icon-only versus icon-plus-label mode, high-contrast theme, reduced motion and configurable animation in the interface.
 - Do not rely on color alone for selection, active tool, warnings or disabled states; combine color with shape, text or icons.
 - Keyboard users can navigate panels, dialogs, tool options and timeline without being trapped; return focus to the invoking control after a dialog closes.
+- The momentary draw/erase hold control supports keyboard press-and-hold (Space or Enter while focused) and releases on keyup, cancellation or focus loss; native keyboard activation for other focused controls must not be intercepted by canvas shortcuts.
 - Support localization infrastructure, pluralization and text expansion without clipping; language packs can be added without changing engine code.
 - Gesture alternatives must exist for long-press, pinch and other touch-only actions. Users can remap supported gestures and disable accidental gesture conflicts.
 - Remember per-user preferences and per-project settings separately; offer reset and export/import of preferences without including private project artwork by default.
