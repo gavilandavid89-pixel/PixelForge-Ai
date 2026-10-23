@@ -136,3 +136,19 @@ test('composite exposes dirty tile regions until the renderer acknowledges them'
   doc.strokeTo(stroke, 129, 69); doc.endStroke(stroke);
   assert.deepEqual(doc.getCompositeDirtyTiles(), [{ tileX: 2, tileY: 1, width: 2, height: 6 }]);
 });
+
+test('project import rejects duplicate IDs and invalid opacity values', () => {
+  const doc = new RasterDocument(2, 2); doc.addLayer('Second');
+  const duplicate = doc.toJSON(); duplicate.layers[1].id = duplicate.layers[0].id;
+  assert.throws(() => RasterDocument.fromJSON(duplicate), /duplicate layer IDs/);
+  const badOpacity = doc.toJSON(); badOpacity.layers[0].opacity = Number.NaN;
+  assert.throws(() => RasterDocument.fromJSON(badOpacity), /opacity must be between/);
+});
+test('changing active layer marks workspace metadata for autosave without creating edit history', () => {
+  const doc = new RasterDocument(4, 4); doc.addLayer('Second');
+  doc.dirty = false; const historyCount = doc.history.length;
+  doc.setActiveLayer(doc.layers[0].id);
+  assert.equal(doc.dirty, true);
+  assert.equal(doc.history.length, historyCount);
+  assert.equal(doc.activeLayerId, doc.layers[0].id);
+});
