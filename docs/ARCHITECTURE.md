@@ -125,7 +125,7 @@ Every AI job receives an immutable request manifest containing these IDs, scope,
 
 ### Clone semantics
 
-Cloning creates a new document/project identity with independent mutable layer/frame/pixel state, history, save identity and proposal state. Record optional source lineage (source ID and source revision) for comparison, but never share mutable buffers. Immutable assets may use copy-on-write. Clone deletion and proposal cleanup must be scoped to their own IDs and cannot cascade to the source.
+Cloning and importing a native project as a copy create a new document/project identity and fresh layer/frame IDs with independent mutable pixel state, history, save identity and proposal state. Record optional source lineage (source ID and source revision) for comparison, but never share mutable buffers. Immutable assets may use copy-on-write. Import-as-copy preserves the source's stored project ID; the local project picker makes both source and copy selectable. Clone deletion and proposal cleanup must be scoped to their own IDs and cannot cascade to the source.
 
 ### Required invariants
 
@@ -237,7 +237,7 @@ A screenshot, mockup, static control or code review alone does not make an opera
 The first functional slice deliberately has fewer modules than the target architecture. The current repository layout is:
 
 - `src/core.js`: raster document, pixel layers, tiled compositing cache, validated stroke coordinates, tile-based undo/redo, content revisions, persisted-state versions and project serialization.
-- `src/persistence.js`: IndexedDB save and most-recent-project recovery.
+- `src/persistence.js`: IndexedDB snapshots, saved-project listing, ID-scoped loading and last-opened-project recovery.
 - `src/editor.js`: bootstrap UI orchestration, Canvas 2D rendering, pointer/keyboard input, layer controls and import/export flows.
 - `index.html` and `styles.css`: application shell and responsive presentation.
 - `tests/core.test.js`: deterministic engine tests run with Node's built-in test runner.
