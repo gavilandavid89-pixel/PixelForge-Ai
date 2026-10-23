@@ -261,6 +261,10 @@ drawHoldButton?.addEventListener('keyup', event => {
   event.preventDefault();
   drawHeld = false; drawHoldPointerId = null; finishActiveStroke(true); updateDrawHoldUI(); render();
 });
+drawHoldButton?.addEventListener('blur', () => {
+  if (drawHoldPointerId !== 'keyboard') return;
+  drawHeld = false; drawHoldPointerId = null; finishActiveStroke(false); updateDrawHoldUI(); render();
+});
 window.addEventListener('pointerup', event => {
   if (drawHoldPointerId !== event.pointerId) return;
   drawHeld = false; drawHoldPointerId = null; finishActiveStroke(true); updateDrawHoldUI(); render();
