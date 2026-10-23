@@ -180,7 +180,7 @@ Do not expose controls for features that are not implemented. Animation, advance
 
 ## Current verification record
 
-### Engine-core checks — 2026-10-23
+### Node regression checks — 2026-10-23
 
 - Environment: Node.js 22.16.0, Linux container.
 - Command: `npm test`.
