@@ -167,6 +167,7 @@ These rules are implementation requirements, not suggestions:
 
 - The document model is the source of truth. UI components and render surfaces never mutate raw canonical buffers directly.
 - Every persisted entity has a stable ID scoped to its project/document; identity is never inferred from tab order, filenames or array indices.
+- Keep content `revision` separate from persisted-state `saveVersion`: changing active layer/workspace metadata must be saved without pretending the artwork content changed. Autosave clears the dirty flag only if the saveVersion still matches the snapshot that was written.
 - Every mutation runs through a validated command/transaction boundary with expected revision, permissions, resource limits and declared dependencies.
 - A command is atomic: it either commits all intended changes and one history entry, or leaves canonical state unchanged. Multi-command transactions roll back as a unit.
 - One user gesture produces one logical history action. Freehand samples are grouped until pointer-up, tool switch, focus loss, orientation interruption, explicit cancellation or commit.
@@ -235,7 +236,7 @@ A screenshot, mockup, static control or code review alone does not make an opera
 
 The first functional slice deliberately has fewer modules than the target architecture. The current repository layout is:
 
-- `src/core.js`: raster document, pixel layers, tiled compositing cache, validated stroke coordinates, tile-based undo/redo and project serialization.
+- `src/core.js`: raster document, pixel layers, tiled compositing cache, validated stroke coordinates, tile-based undo/redo, content revisions, persisted-state versions and project serialization.
 - `src/persistence.js`: IndexedDB save and most-recent-project recovery.
 - `src/editor.js`: bootstrap UI orchestration, Canvas 2D rendering, pointer/keyboard input, layer controls and import/export flows.
 - `index.html` and `styles.css`: application shell and responsive presentation.
@@ -267,3 +268,8 @@ The first slice now implements the planned mobile interaction rather than treati
 - Browser smoke tests must verify: touch movement without hold creates no undo entry; simultaneous hold + canvas touch creates one undoable stroke; releasing the hold stops subsequent painting; cancelling either pointer leaves no partial edit.
 
 This first implementation covers pencil/eraser with the shared hold gesture. Additional painting tools must opt into the same input contract rather than adding competing touch handlers.
+
+
+## Autosave race invariant
+
+A save operation captures both an immutable project snapshot and its `saveVersion`. After the storage transaction completes, mark the document clean only if the live document still has that version. If edits or workspace-state changes occurred during the write, keep it dirty and save the newer snapshot before a document switch or explicit flush completes. A late completion for an old document must never clear the dirty flag or overwrite status for a different active document. This protects against editing while IndexedDB is busy, concurrent manual/autosave requests and rapid document changes.
