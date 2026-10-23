@@ -89,6 +89,14 @@ try {
   assert.notEqual(importedRecord.id, originalRecord.id);
   assert.notDeepEqual(importedRecord.layerIds, originalLayerIds, 'imported layers must receive new IDs');
   assert.equal(storedProjects.length, 2, 'the source project and imported copy should both remain stored');
+  await desktop.locator('#projects-button').click();
+  assert.equal(await desktop.locator('#projects-dialog').evaluate(element => element.open), true);
+  const projectRows = desktop.locator('#projects-list .saved-project-open');
+  assert.equal(await projectRows.count(), 2, 'the local project library must list both saved projects');
+  const projectNames = await projectRows.allTextContents();
+  assert.ok(projectNames.some(name => name.includes('(imported)')));
+  assert.ok(projectNames.some(name => name.includes(exportedProject.name)));
+  await desktop.locator('#close-projects').click();
 
   await desktop.waitForTimeout(1000);
   await desktop.reload({ waitUntil: 'networkidle' });
