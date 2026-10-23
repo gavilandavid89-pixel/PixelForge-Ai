@@ -52,12 +52,12 @@ Use these labels consistently:
 - Mobile virtual cursor: touch movement is view-only; a separate hold-to-draw/erase control is required to modify pixels.
 - Color selection, brush-size control, multiple layers and visibility toggles.
 - Undo/redo with tile-based pixel history and a bounded history-memory budget.
-- PNG/JPEG/WebP/GIF-still import, transparent PNG export and editable `.pforge` project import/export. Imported projects receive fresh document/layer IDs so they cannot overwrite their source.
+- PNG/JPEG/WebP/GIF import with bounded header preflight before decoding (animated files flatten to a still frame), transparent PNG export and editable `.pforge` project import/export. Imported projects receive fresh document/layer IDs so they cannot overwrite their source.
 - Local IndexedDB autosave, a saved-project picker (open/switch local projects), and recovery of the last-opened project.
 - Canvas-size, per-document pixel-memory and file-size safety limits.
 - Automated engine tests run with `npm test`; syntax checks run with `npm run check`.
 
-**Verification boundary:** GitHub Actions now passes 22 engine tests and a headless-Chromium smoke path covering startup, drawing, undo/redo, layers, PNG/project export, safe project-copy import, saved-project switching, last-opened recovery, keyboard save and the mobile virtual-cursor/hold-to-draw contract. This does not yet establish real Android/stylus support, accessibility conformance, visual regression or performance under stress. See `docs/ENGINE_TEST_PLAN.md`. The first release remains a small end-to-end raster-editor slice; the broad feature specification is the long-term vision, not a claim that every feature is implemented.
+**Verification boundary:** GitHub Actions now passes 28 engine tests and a headless-Chromium smoke path covering startup, drawing, undo/redo, layers, PNG/project export, safe project-copy import, saved-project switching, last-opened recovery, oversized-image rejection before decode, transparent PNG export, keyboard save and the mobile virtual-cursor/hold-to-draw/cancellation contract. This does not yet establish real Android/stylus support, accessibility conformance, visual regression or performance under stress. See `docs/ENGINE_TEST_PLAN.md`. The first release remains a small end-to-end raster-editor slice; the broad feature specification is the long-term vision, not a claim that every feature is implemented.
 
 
 ## Licensing status
