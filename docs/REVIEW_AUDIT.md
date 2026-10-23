@@ -87,7 +87,7 @@ The following review roles were applied independently, then reconciled against t
 
 - No AI sandbox/provider implementation yet.
 - No animation timeline, advanced masks/effects, broad interchange formats, macro/plugin runtime or community layer yet.
-- No full project-library UI or cross-device sync.
+- Basic local project list/open exists; rename/delete, multi-tab editing and cross-device sync are not shipped.
 - No physical Android/stylus or accessibility audit yet.
 - No numeric performance promises until representative device baselines exist.
 - Project license not selected.
