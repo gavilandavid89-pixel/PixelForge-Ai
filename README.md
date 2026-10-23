@@ -50,3 +50,18 @@ Use these labels consistently:
 ## Licensing status
 
 The repository does not yet declare a project-wide reuse license. Public visibility on GitHub is not a license grant. Until the owner selects a license, do not advertise this project as open-source or copy code/assets from the benchmark projects into it. The current editor slice has no third-party runtime dependencies; reference projects are research sources only.
+
+
+## Run locally
+
+Requires Node.js 20 or newer for the test commands. The editor itself has no runtime package dependencies.
+
+```bash
+npm test
+npm run check
+python3 -m http.server 8000
+```
+
+Then open `http://localhost:8000` in a modern browser. Use a local HTTP server rather than opening `index.html` directly so ES modules and IndexedDB behave consistently.
+
+For the optional headless browser smoke suite, install Playwright and Chromium, then run `node tests/browser-smoke.mjs`. CI does this in a separate job without adding Playwright as an app runtime dependency.
