@@ -51,6 +51,8 @@ try {
 
   await desktop.locator('#add-layer').click();
   assert.match(await desktop.locator('#layer-count').textContent(), /2 layers/);
+  await desktop.keyboard.press('Control+s');
+  await desktop.waitForFunction(() => /Saved on this device/.test(document.querySelector('#status')?.textContent ?? ''));
   const downloadPromise = desktop.waitForEvent('download');
   await desktop.locator('#export-png').click();
   const download = await downloadPromise;
