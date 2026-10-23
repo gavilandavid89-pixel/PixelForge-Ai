@@ -22,6 +22,7 @@ Research and define the editing engine before building the visual interface. Use
 - `docs/AI_TOOL_API.md` — AI tool registry, permissions, proposal lifecycle and command contract.
 - `docs/ENGINE_TEST_PLAN.md` — central acceptance matrix, release gates, adversarial scenarios and manual test record template.
 - `docs/DECISIONS.md` — accepted defaults, provisional behavior, format support and release blockers.
+- `docs/REVIEW_AUDIT.md` — multi-angle audit findings, resolutions and remaining release gates.
 
 ## Product principles
 
