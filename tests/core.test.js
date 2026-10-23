@@ -61,6 +61,7 @@ test('project serialization round-trips pixels, layers, identity and metadata', 
   assert.equal(restored.width, 6); assert.equal(restored.layers.length, 2);
   assert.deepEqual(restored.layers[0].pixels, doc.layers[0].pixels);
   assert.equal(restored.activeLayerId, doc.activeLayerId);
+  assert.equal(restored.saveVersion, doc.saveVersion);
   assert.equal(restored.history.length, 0); assert.equal(restored.dirty, false);
 });
 test('project import rejects mismatched pixel buffers and unsupported versions', () => {
