@@ -273,3 +273,151 @@ This is the capability checklist, not a promise that every item already exists. 
 
 ### Export verification
 - Tests verify exact output dimensions, alpha preservation, black/white/custom compositing, JPEG background behavior, format capability declarations, animation frame count/order, sprite-sheet bounds, cancellation, large-dimension validation and no mutation of the source document.
+
+
+## T. Advanced brush engine and stroke control
+
+- Brush tip library: round, square, pixel, calligraphic, image-stamp, procedural and textured tips, with preview thumbnails and searchable categories.
+- Brush dynamics per property: size, opacity, flow, angle, spacing, hardness and color can respond independently to pressure, tilt, velocity, direction, randomness or stroke progress when the input device supports them.
+- Stroke modes: freehand, straight-line constraint, curve assist, lazy-mouse/ruler stabilizer, mirrored, radial, ribbon and stamp scatter, with clear performance limits.
+- Brush editor with editable tip shape, texture, grain, dual brush, blending behavior, jitter, rotation, spacing, wet-edge approximation and stroke start/end taper where feasible.
+- Save, duplicate, rename, tag, favorite, import and export brush presets; show missing-resource warnings instead of silently substituting a different brush.
+- Stroke smoothing has adjustable strength and latency trade-offs; always provide a way to disable it for pixel-precise work.
+- Pressure curves and per-device calibration where browser APIs allow; clearly state when a browser/device does not expose pressure or tilt.
+- Preview brush footprint and sampled texture before a stroke; option to show size in document pixels or screen pixels.
+- Tests for deterministic brush settings, input-device fallback, preset round-trips, pressure curve behavior, cancellation and undo of complete strokes.
+
+## U. Text, typography and vector-like objects
+
+- Add editable text objects with font family, size, weight, style, alignment, line spacing, letter spacing, paragraph spacing, outline, fill, shadow and rotation where supported.
+- Text remains editable in the native project; rasterize only on explicit conversion or when exporting to a format that cannot preserve it.
+- Font chooser includes installed/browser-available fonts, preview text, favorites, recent fonts and missing-font substitution warnings. Do not silently embed fonts or upload text to remote services.
+- Support multiline text, basic text boxes, wrapping, alignment guides and text-on-path where technically feasible.
+- Provide vector-like shape objects for lines, rectangles, ellipses, polygons, paths and curves with fill/stroke, width, joins, caps, dash patterns and transform handles.
+- Offer conversion between shape/text objects and raster pixels as an explicit undoable command; warn when conversion loses editability.
+- Include snapping and alignment tools for object edges, centers, baselines and canvas bounds.
+- Tests verify editability round-trips in the native format, rasterization output, missing fonts and export behavior.
+
+## V. Layer, mask and compositing power tools
+
+- Layer search/filter by name, type, visibility, lock, tag and color label; bulk rename, show/hide, lock/unlock and organize selected layers.
+- Groups support pass-through or isolated compositing where implemented; show clear indicators for clipping, alpha lock, masks and linked cels.
+- Support raster masks, vector-like masks where available, layer masks and selection-to-mask conversion; editing a mask must not unexpectedly paint onto the layer pixels.
+- Add non-destructive layer effects with reorderable stacks, enable/disable toggles, per-effect reset and before/after preview.
+- Blend modes must be implemented and tested individually; unavailable modes are not shown as working options. Include opacity, fill opacity where supported, and clipping/knockout behavior.
+- Layer references can be pinned, locked against accidental selection, tinted for visibility, and hidden from exports by default unless explicitly included.
+- Offer quick isolate, solo, invert visibility, merge visible, stamp-visible-to-new-layer, duplicate merged result and flatten with confirmation.
+- Preserve a clear distinction between deleting a layer and deleting the whole project; bulk destructive actions require confirmation and are undoable when feasible.
+
+## W. Color management and tonal tools
+
+- Color picker supports RGB, HSL, HSV, HEX and alpha, recent/favorite colors, color history, foreground/background swap and sampling from merged image or current layer.
+- Add color harmony suggestions, palette extraction from an image, palette ramp generation, gradient editor with multiple stops, easing/interpolation choices and alpha stops.
+- Add adjustment tools for exposure, brightness/contrast, hue/saturation, temperature/tint, vibrance, levels, curves, threshold, posterize, channel mixer and grayscale conversion where feasible.
+- Prefer adjustment layers or reversible preview transactions; show clipping warnings/histograms when useful and available.
+- Support blend-if/range masking only if the engine can explain and test the behavior; avoid presenting advanced color controls that do nothing.
+- Color profiles and bit depth are capability-gated: display supported modes, preserve metadata when possible, and warn before conversion or gamut loss.
+- Accessibility helpers: color-vision simulation preview, contrast check, grayscale check, palette distinguishability and optional color-name labels.
+- Tests cover alpha preservation, palette conversions, adjustment preview/cancel, profile warnings and deterministic output.
+
+## X. Guides, layout and composition aids
+
+- Add rulers, draggable guides, guide locking, guide colors, guide groups and quick hide/show; guides remain non-destructive.
+- Add configurable snapping to canvas edges/center, grid, guides, selections, object bounds, centers and frame boundaries, with independent toggles and snap-distance controls.
+- Provide composition overlays such as thirds, center cross, diagonals, golden-ratio approximation and safe-area guides; these are view-only and excluded from export by default.
+- Support perspective guides/vanishing points and horizon lines as optional visual aids that do not alter pixels.
+- Add alignment/distribution commands for selected objects or layers: left/center/right, top/middle/bottom, equal spacing and canvas-relative alignment.
+- Provide a navigator/minimap, quick zoom presets, rotate-canvas view where supported, flip-view preview, and reset/fit view; view-only rotation/flip must never mutate artwork.
+- Make guide visibility, grid visibility, snapping and exported overlays independent controls.
+- Tests verify overlays do not affect pixel buffers, view-only transforms do not change saved art, and snapping respects enabled targets.
+
+## Y. Selection, masks and safe transforms
+
+- Selection feathering, border/outline, expand/contract, smooth, sharpen, grow-to-connected-color and save/load named selections where feasible.
+- Selection masks can be inverted, intersected, added, subtracted, copied, transformed and converted to layer masks.
+- Transform preview supports anchor/pivot selection, numeric X/Y/width/height/rotation, aspect lock, flip, skew and supported perspective transforms.
+- Provide nearest-neighbor, bilinear, bicubic and other implemented resampling choices with before/after preview; recommend nearest-neighbor for pixel art without forcing it on all projects.
+- Add transform handles, keyboard nudging, constrain-to-axis and snapping; prevent hidden selection pixels from being lost when moving or transforming.
+- Crop, resize canvas and resample image are distinct operations with plain-language explanations and undo support.
+- For destructive edits, offer preview/cancel and ensure the command history can restore original pixels.
+- Tests cover selection edges, transparent pixels, transform bounds, cancel behavior, undo/redo and resampling consistency.
+
+## Z. Animation and motion workflow enhancements
+
+- Timeline supports zoom, scroll, frame range selection, named tags, duplicate ranges, reorder ranges and batch duration changes.
+- Onion-skin controls include previous/next frame counts, opacity, tint, outline-only mode and independent enablement for selected layers where feasible.
+- Playback offers FPS, loop/once/ping-pong modes, playhead scrubbing, frame stepping and a clear stop state; background playback must not unexpectedly mutate the document.
+- Provide animation preview at actual size and scaled preview, transparent/solid preview background, playback speed controls and export-range selection.
+- Add cel/layer linking, break-link, copy/paste cel, move cel, clear cel and blank-frame operations with explicit distinction between empty and missing cels.
+- Sprite-sheet preview displays frame order, padding, extrusion, trim, pivot and metadata before export; warn when packing changes layout or exceeds dimensions.
+- Add pixel-art-friendly animation tools such as smear/onion guides and optional tag-based playback, without requiring pixel-art mode.
+- Tests verify timing, loop modes, frame order, linked-cel isolation, playback/export parity and no accidental edits during playback.
+
+## AA. Import, asset management and interoperability
+
+- Import images, image sequences, sprite sheets, palettes and supported project formats through dedicated adapters; show a preview and import options before modifying the document.
+- Sprite-sheet importer supports grid-based slicing, automatic region detection where feasible, custom cell size, margins, spacing and frame naming.
+- Offer layer import from supported layered formats only when the parser is reliable; disclose when a file must be flattened.
+- Drag-and-drop and paste-from-clipboard should be supported on compatible desktop browsers, with file-picker alternatives for touch devices.
+- Asset browser organizes brushes, stamps, textures, palettes, gradients, templates, reference images and export presets with tags, favorites and search.
+- Allow reusable assets to be stored locally and optionally exported/imported as portable bundles; never execute imported asset files as code.
+- Show file size, dimensions, frame count, layer count, transparency and format compatibility before import.
+- Detect unsupported/corrupt files and provide actionable errors; preserve the current project if import fails.
+- Tests cover malformed files, oversized image guards, clipboard/file-picker fallbacks, sprite-sheet slicing and asset bundle round-trips.
+
+## AB. Productivity, recovery and project organization
+
+- Command palette supports fuzzy search, categories, keyboard shortcuts and recent actions; it must invoke the same validated commands as menus.
+- Editable shortcuts include conflict detection, reset-to-default and platform-aware modifier labels; provide equivalent discoverable menu actions.
+- History panel shows named transactions, timestamps where useful, grouping, checkpoints and safe revert-to-checkpoint; do not imply unlimited history when memory is bounded.
+- Autosave status is visible; support recovery after refresh/crash, periodic snapshots, manual checkpoints and restore-to-copy so recovery never silently overwrites the only good version.
+- Project manager supports create/open/rename/duplicate/archive, thumbnails, search, tags, sorting, favorites, last-opened and recovery state, independently of the future public art feed.
+- Templates can define dimensions, background, color mode, grid, palette, layer structure, animation settings and export presets.
+- Batch actions may process selected layers, frames or files with a dry-run/preview for destructive operations and progress/cancel for long jobs.
+- Provide a recent-files list, pinned projects, duplicate detection where practical and a clear missing-file relink flow for external references.
+- Tests simulate reload/crash recovery, duplicate/rename/archive, checkpoint restore, shortcut conflicts and interrupted batch operations.
+
+## AC. Accessibility, localization and personalization
+
+- Every interactive control has an accessible name, focus state, keyboard access where appropriate and a sufficiently large touch target.
+- Provide compact and comfortable density, adjustable UI scale, icon-only versus icon-plus-label mode, high-contrast theme, reduced motion and configurable animation in the interface.
+- Do not rely on color alone for selection, active tool, warnings or disabled states; combine color with shape, text or icons.
+- Keyboard users can navigate panels, dialogs, tool options and timeline without being trapped; return focus to the invoking control after a dialog closes.
+- Support localization infrastructure, pluralization and text expansion without clipping; language packs can be added without changing engine code.
+- Gesture alternatives must exist for long-press, pinch and other touch-only actions. Users can remap supported gestures and disable accidental gesture conflicts.
+- Remember per-user preferences and per-project settings separately; offer reset and export/import of preferences without including private project artwork by default.
+- Tests include keyboard-only flows, narrow screens, high zoom/UI scale, localization expansion, reduced motion and non-color-only indicators.
+
+## AD. AI workflow, privacy and cost controls
+
+- AI command entry supports natural-language requests, explicit target selection, selected-region masks, layer/frame scope, output count and style/reference inputs when appropriate.
+- Before a remote model receives artwork, disclose what data will be sent, which configured service receives it and whether the request can be processed locally; require explicit consent for remote transfer.
+- Show model/service name, procedural versus model-generated status, estimated limits when known, queue state, progress, cancellation and clear failure reasons.
+- Keep model credentials server-side; rate-limit requests, cap image dimensions/output count, validate responses and avoid sending hidden project metadata.
+- AI can inspect and edit only the isolated sandbox through the registered command API. It cannot export, delete the entire project, apply its own proposal, or bypass human approval through macros/extensions.
+- Let users compare multiple variations side by side, pin favorites, discard individual variants and accept selected lasso regions; proposals are revision-aware and undoable after acceptance.
+- Do not start generation from passive drawing, cursor movement, tool changes, autosave or workspace synchronization.
+- Add local procedural tools as an offline fallback, clearly labeled as procedural rather than a neural model.
+- Tests verify consent gating, sandbox isolation, request limits, cancellation, failed-service recovery, stale-proposal conflicts and blocked privileged commands.
+
+## AE. Performance, diagnostics and robustness
+
+- Use dirty-region rendering, stroke batching, tiled buffers or other measured optimizations where appropriate; profile before introducing complex rendering infrastructure.
+- Long operations expose progress and cancellation where technically possible and move CPU-heavy work off the UI thread when supported.
+- Provide document memory estimates, dimension warnings, safe allocation limits and graceful failure when a device cannot handle a requested canvas or export.
+- Include a diagnostics view for frame rate, render time, active document dimensions, layer/frame counts, memory estimates and worker/job status where available.
+- Use a capability registry so unavailable browser APIs, formats, stylus features and codecs are disabled or clearly explained rather than simulated.
+- Avoid data loss on tab close, browser storage quota errors, worker crashes and interrupted exports; use transactional saves and recoverable job state where feasible.
+- Add fuzz/fixture tests for file parsers and importers, deterministic algorithm tests, command-history invariants, browser E2E smoke tests and performance regression budgets.
+- Define minimum supported browsers/devices and document degraded-mode behavior; do not claim a platform capability before testing it.
+
+## AF. Future optional features (not required for the first usable release)
+
+- Multi-document reference boards, moodboards and side-by-side comparison workspaces.
+- Timelapse recording of committed user strokes, with clear privacy/storage controls and no recording of unrelated screen activity.
+- Optional local collaboration or shared review links after authentication, permission and conflict handling are designed.
+- Plugin/extensions API with explicit permission scopes, version compatibility, sandboxing and a trust indicator; imported scripts never run silently.
+- Procedural patterns, texture synthesis, seamless texture validation, map/terrain generators and sprite cleanup utilities.
+- 3D model/reference preview or simple turntable reference support as a separate optional module, not a dependency of the 2D engine.
+- Community profiles and voluntary art feed remain a later phase; public sharing requires explicit publication and privacy controls.
+- Feature flags and modular packages keep optional features from bloating startup, memory use or the core editor bundle.
