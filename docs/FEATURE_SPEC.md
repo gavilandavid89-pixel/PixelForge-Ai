@@ -363,6 +363,7 @@ This is the capability checklist, not a promise that every item already exists. 
 - Allow reusable assets to be stored locally and optionally exported/imported as portable bundles; never execute imported asset files as code.
 - Show file size, dimensions, frame count, layer count, transparency and format compatibility before import.
 - Detect unsupported/corrupt files and provide actionable errors; preserve the current project if import fails.
+- First-slice safety contract: advertise only PNG/JPEG/WebP/GIF image files plus `.pforge` projects; inspect a bounded header (at most 1 MiB) and reject unsupported formats or oversized dimensions before pixel decoding, then revalidate decoded dimensions. Animated images flatten to a still frame, and a failed import must leave the active document unchanged.
 - Tests cover malformed files, oversized image guards, clipboard/file-picker fallbacks, sprite-sheet slicing and asset bundle round-trips.
 
 ## AB. Productivity, recovery and project organization
