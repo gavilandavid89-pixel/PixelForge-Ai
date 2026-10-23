@@ -96,3 +96,19 @@ This is the capability checklist, not a promise that every item already exists. 
 - Large operations can be canceled where possible and never freeze the entire UI indefinitely.
 - Mobile/touch is not treated as an afterthought; no essential control is inaccessible on narrow screens.
 - AI features are visibly separated from deterministic tools and disclose whether they are procedural or model-powered.
+
+
+## J. Dual editor and AI proposals
+
+- Every project has an authoritative user editor and an isolated AI working editor.
+- User-originated edits synchronize automatically from the user document to the AI workspace.
+- AI-originated edits never synchronize automatically back to the user document.
+- The AI workspace starts from a consistent snapshot and records the source document revision.
+- AI can make and undo its own edits freely inside its sandbox.
+- The user can open the AI workspace, inspect a visual diff, accept all changes, accept selected safe changes/regions, or discard the proposal.
+- Discarding an AI proposal removes only the sandbox changes; the user document remains untouched.
+- Applying accepted changes checks for edits made to the original since the AI snapshot, surfaces conflicts, and commits approved changes as one undoable transaction.
+- Stale proposals must never silently overwrite newer user work.
+- AI tools cannot invoke proposal application, project deletion or project export. Applying a proposal requires a direct user action in the UI.
+- User and AI workspaces have independent document state, pixel buffers and history; copy-on-write may share immutable data only.
+- Add automated isolation tests that verify deleting artwork in the AI workspace never deletes the corresponding user artwork.
