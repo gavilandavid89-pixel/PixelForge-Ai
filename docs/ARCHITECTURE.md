@@ -94,3 +94,38 @@ Do not implement the sandbox as a second UI canvas that merely points at the sam
 - Validate output dimensions and estimated memory before allocation; use workers and cancellable jobs for expensive encoders/large outputs when supported.
 - Keep native project serialization separate from flattened interchange formats. Export permissions are enforced in the command/API layer; AI sandbox tools cannot export or route around the human-only export action.
 - Every format adapter requires fixture-based tests for dimensions, alpha/background behavior and supported capabilities before it appears in the user's export list.
+
+
+## Multi-document identity and AI context isolation
+
+The workspace must not infer AI permissions from whichever tab happens to have focus. Model these independently:
+
+- `openDocumentIds`: documents currently open in the workspace.
+- `activeDocumentId`: the current manual editing destination.
+- `aiContextScope`: either `selected-document` or `all-authorized`.
+- `aiContextDocumentIds`: a frozen, user-approved list captured when a request begins.
+- `aiTargetDocumentIds`: the destination set for the resulting proposal; defaults to the selected document and is separate from context scope.
+- `baseRevisions`: immutable revision IDs for every document included in the request.
+
+Every AI job receives an immutable request manifest containing these IDs, scope, revision IDs, permission set and user prompt. Tab focus changes cannot mutate a running job's manifest. The UI should show the selected target and whether ALL context is enabled before submission.
+
+### Selected-document and ALL semantics
+
+- **Selected document**: expose only the chosen document's authorized snapshot and required metadata.
+- **ALL**: allow analysis across the explicitly included, authorized open documents/projects. The model may infer shared visual direction and relationships, but context breadth does not expand write permissions.
+- Under either scope, proposal generation is read-only with respect to canonical documents. Proposal application requires a validated, user-approved transaction.
+- A multi-document proposal must enumerate each target document, base revision and change summary. Require explicit approval of the complete target set; no implicit fan-out from ALL.
+- Exclude documents by default if access is not authorized. Do not transmit remote-provider content until the user has explicitly consented to that transfer.
+
+### Clone semantics
+
+Cloning creates a new document/project identity with independent mutable layer/frame/pixel state, history, save identity and proposal state. Record optional source lineage (source ID and source revision) for comparison, but never share mutable buffers. Immutable assets may use copy-on-write. Clone deletion and proposal cleanup must be scoped to their own IDs and cannot cascade to the source.
+
+### Required invariants
+
+1. Active-tab changes never retarget an existing AI job.
+2. ALL changes context only; it does not grant multi-document write access.
+3. Every applied proposal validates all base revisions and presents conflicts when any target has changed.
+4. Proposal discard/delete cannot delete, restore or rewrite canonical documents.
+5. AI export and canonical project deletion remain human-only actions.
+6. Unit and integration tests simulate rapid tab switching, split-view changes, clone edits, excluded documents, stale revisions and rejected proposals.
