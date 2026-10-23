@@ -167,36 +167,39 @@ export class RasterDocument {
     return { format: 'pixelforge-project', version: 1, id: this.id, name: this.name, width: this.width, height: this.height, activeLayerId: this.activeLayerId, revision: this.revision, saveVersion: this.saveVersion,
       layers: this.layers.map(layer => ({ id: layer.id, name: layer.name, visible: layer.visible, opacity: layer.opacity, locked: layer.locked, pixels: bytesToBase64(layer.pixels) })) };
   }
-  static fromJSON(data) {
+  static fromJSON(data, { newIdentity = false } = {}) {
     if (!data || data.format !== 'pixelforge-project' || data.version !== 1 || !Array.isArray(data.layers)) throw new TypeError('Unsupported or invalid PixelForge project file.');
     validateDimensions(data.width, data.height);
     if (data.layers.length < 1 || data.layers.length > 64) throw new RangeError('Project layer count is outside the supported limit.');
     if (data.width * data.height * 4 * data.layers.length > MAX_DOCUMENT_BYTES) throw new RangeError('Project exceeds the 64 MiB total pixel-memory budget.');
     const projectName = typeof data.name === 'string' ? data.name.trim().slice(0, 180) : '';
     const doc = new RasterDocument(data.width, data.height, projectName || 'Imported project');
+    if (newIdentity) doc.name = `${doc.name.slice(0, 169)} (imported)`;
     if (data.id !== undefined && (typeof data.id !== 'string' || !data.id || data.id.length > 180)) throw new TypeError('Invalid project ID.');
-    doc.id = typeof data.id === 'string' ? data.id : doc.id;
-    const layerIds = new Set();
+    if (!newIdentity && typeof data.id === 'string') doc.id = data.id;
+    const layerIds = new Set(), layerIdMap = new Map();
     doc.layers = data.layers.map((item, index) => {
       if (!item || typeof item.id !== 'string' || !item.id || item.id.length > 180 || typeof item.name !== 'string') throw new TypeError('Invalid layer metadata.');
       if ((item.visible !== undefined && typeof item.visible !== 'boolean') || (item.locked !== undefined && typeof item.locked !== 'boolean')) throw new TypeError('Layer visibility and lock flags must be booleans.');
       if (layerIds.has(item.id)) throw new TypeError('Project contains duplicate layer IDs.');
       layerIds.add(item.id);
+      const newLayerId = newIdentity ? crypto.randomUUID() : item.id;
+      layerIdMap.set(item.id, newLayerId);
       const opacity = Number(item.opacity ?? 1);
       if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new RangeError('Layer opacity must be between 0 and 1.');
       const pixels = base64ToBytes(item.pixels);
       if (pixels.length !== data.width * data.height * 4) throw new RangeError('Layer pixel data length does not match document dimensions.');
-      return { id: item.id, name: item.name.trim().slice(0, 180) || `Layer ${index + 1}`, visible: item.visible !== false, opacity, locked: Boolean(item.locked), pixels };
+      return { id: newLayerId, name: item.name.trim().slice(0, 180) || `Layer ${index + 1}`, visible: item.visible !== false, opacity, locked: Boolean(item.locked), pixels };
     });
     doc.compositeCache = new Uint8ClampedArray(doc.width * doc.height * 4);
     doc.compositeDirtyTiles = new Set();
     doc.#markAllCompositeDirty();
-    if (data.activeLayerId !== undefined && (typeof data.activeLayerId !== 'string' || !doc.layers.some(layer => layer.id === data.activeLayerId))) throw new TypeError('Active layer ID does not match a project layer.');
+    if (data.activeLayerId !== undefined && (typeof data.activeLayerId !== 'string' || !layerIds.has(data.activeLayerId))) throw new TypeError('Active layer ID does not match a project layer.');
     if (data.revision !== undefined && (!Number.isInteger(data.revision) || data.revision < 0)) throw new RangeError('Document revision must be a non-negative integer.');
     if (data.saveVersion !== undefined && (!Number.isInteger(data.saveVersion) || data.saveVersion < 0)) throw new RangeError('Save version must be a non-negative integer.');
-    doc.activeLayerId = data.activeLayerId ?? doc.layers[0].id;
-    doc.revision = data.revision ?? 0;
-    doc.saveVersion = data.saveVersion ?? doc.revision;
+    doc.activeLayerId = data.activeLayerId === undefined ? doc.layers[0].id : (newIdentity ? layerIdMap.get(data.activeLayerId) : data.activeLayerId);
+    doc.revision = newIdentity ? 0 : (data.revision ?? 0);
+    doc.saveVersion = newIdentity ? 0 : (data.saveVersion ?? doc.revision);
     doc.history = []; doc.future = []; doc.historyBytes = 0; doc.dirty = false;
     return doc;
   }
