@@ -56,7 +56,7 @@ The following review roles were applied independently, then reconciled against t
 - Added headless-Chromium smoke coverage for startup, mouse drawing, undo/redo, layers, PNG signature, project-copy import, saved-project switching, last-opened recovery, keyboard save and mobile virtual-cursor behavior.
 - Test documentation distinguishes verified checks from release gates that remain open.
 
-**Latest verified browser run:** [GitHub Actions run #127](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/40041429104) — both core and browser-smoke jobs passed on the tested commit.
+**Latest verified browser run:** [GitHub Actions run #134](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/40041707286) — both core and browser-smoke jobs passed on the tested commit.
 
 **Not claimed:** visual-regression approval, physical Android/stylus readiness, screen-reader conformance, stress-performance targets or completion of the full editor.
 
@@ -74,7 +74,7 @@ The following review roles were applied independently, then reconciled against t
 - Explicit save settles a valid active stroke before snapshotting, prevents new drawing during the flush, and keeps Escape/focus loss cancellation non-destructive. Fit zoom now retains a 0.01 minimum instead of rounding small valid scales to zero and falling back to 1×.
 - Focused native controls retain browser keyboard activation; editor shortcuts do not hijack Space while a button, link, select or editable field has focus.
 
-**Verification:** browser smoke coverage passes for the version-1-to-version-2 IndexedDB migration, image rejection before decoding, save during a live stroke, Escape cancellation, keyboard activation, project-copy identity and transparent PNG export. The latest verified run is [GitHub Actions run #127](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/40041429104).
+**Verification:** browser smoke coverage passes for the version-1-to-version-2 IndexedDB migration, image rejection before decoding, save during a live stroke, Escape cancellation, keyboard activation, project-copy identity and transparent PNG export. The latest verified run is [GitHub Actions run #134](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/40041707286).
 
 ## 7. Product operations reviewer — portability and release obligations
 
