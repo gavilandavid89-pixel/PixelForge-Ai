@@ -100,3 +100,11 @@ test('document refuses layers that exceed its memory budget', () => {
   assert.equal(doc.layers.length * doc.width * doc.height * 4, MAX_DOCUMENT_BYTES);
   assert.throws(() => doc.addLayer('Too much memory'), /64 MiB/);
 });
+
+test('stroke commands reject out-of-bounds coordinates without changing pixels', () => {
+  const doc = new RasterDocument(8, 8);
+  const stroke = doc.beginStroke({ color: '#fff', size: 1 });
+  assert.throws(() => doc.strokeTo(stroke, -1, 3), /outside the document bounds/);
+  assert.equal(doc.activeLayer.pixels.some(value => value !== 0), false);
+  doc.endStroke(stroke, { commit: false });
+});
