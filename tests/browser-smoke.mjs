@@ -38,7 +38,7 @@ try {
       const db = request.result, tx = db.transaction('documents', 'readwrite');
       tx.objectStore('documents').put({
         id: 'legacy-project', name: 'Legacy Project', updatedAt: 1,
-        project: { format: 'pforge', version: 1, id: 'legacy-project', name: 'Legacy Project', width: 2, height: 2, activeLayerId: 'legacy-layer', revision: 0, saveVersion: 0,
+        project: { format: 'pixelforge-project', version: 1, id: 'legacy-project', name: 'Legacy Project', width: 2, height: 2, activeLayerId: 'legacy-layer', revision: 0, saveVersion: 0,
           layers: [{ id: 'legacy-layer', name: 'Legacy', visible: true, opacity: 1, locked: false, pixels: 'AAAAAAAAAAAAAAAAAAAAAA==' }] }
       });
       tx.oncomplete = () => { db.close(); resolve(); };
