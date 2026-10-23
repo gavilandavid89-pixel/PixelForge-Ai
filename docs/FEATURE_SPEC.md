@@ -150,3 +150,24 @@ This is the capability checklist, not a promise that every item already exists. 
 - Preserve precision at high zoom with pixel-grid feedback and predictable coordinate mapping; keep the stroke aligned with the displayed canvas after zoom, pan, orientation changes, and viewport resizing.
 - Keep touch actions undoable; use a short configurable delay for long-press context menus and never make long-press alone destructive.
 - Test on narrow mobile viewports and touch input: view lock, scroll/pinch suppression, draw/navigation gesture separation, stylus/touch fallback, undo/redo reachability, orientation changes, and no coordinate drift.
+
+
+## M. Collapsible interface and virtual pencil input
+
+### Collapsible tool interface
+- The canvas is the primary full-screen workspace. Tool panels are hidden/collapsed by default on mobile so they do not permanently cover or constrain the drawing area.
+- Provide a compact edge toggle: `>` opens the tools interface and `<` closes it. The toggle remains reachable in both states.
+- Opening reveals tools, layers, colors, AI proposal review, and settings. Closing hides the panel without changing document pixels, active selection, zoom, or pan.
+- Preserve the viewport center/zoom when the panel opens or closes. Recompute layout and input coordinates without shifting artwork or causing coordinate drift.
+- Do not overlay the canvas with a permanently visible tool dock. The toggle must have an accessible label and clear open/closed state.
+
+### Virtual pencil and explicit draw-to-ink control
+- Provide a virtual pencil/cursor that the user can position by dragging a finger anywhere in the canvas interaction area, even when the brush is not actively drawing.
+- Add a dedicated `🖌️` draw/ink hold control. While held, movement of the virtual pencil generates a stroke; releasing it stops drawing immediately so the pencil can be repositioned without leaving a mark.
+- Press-and-hold drawing is the default. A configurable latch/toggle alternative may be offered for accessibility.
+- Map virtual pencil position predictably to canvas coordinates at any zoom/pan. Show a cursor preview where practical without obscuring the target pixel.
+- Moving the pencil while ink is inactive must not alter pixels. Inking must not accidentally pan or zoom the canvas.
+- Handle pointer cancellation, interruptions, app/browser focus loss, and touch release safely; always end an active stroke on cancellation or release.
+- Make the ink control a large touch target with a clear active indicator. Support touch and stylus without requiring the user to keep a finger over the exact pixel being drawn.
+- Keep quick undo/redo and brush/eraser/color controls inside the collapsible panel; no essential editing option should permanently cover artwork.
+- Tests: open/close preserves viewport and artwork; hidden panel is not touch-blocking; pencil movement without ink creates no pixels; holding ink while moving creates one continuous stroke; release stops the stroke; cancellation leaves no stuck stroke; coordinate mapping remains correct under zoom/pan and responsive layout.
