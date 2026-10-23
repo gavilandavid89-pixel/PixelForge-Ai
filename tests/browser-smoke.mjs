@@ -61,6 +61,35 @@ try {
   const pngHeader = await readFile(exportedPath);
   assert.deepEqual([...pngHeader.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10], 'export must be a real PNG file');
 
+  const projectDownloadPromise = desktop.waitForEvent('download');
+  await desktop.locator('#export-project').click();
+  const projectDownload = await projectDownloadPromise;
+  assert.ok(projectDownload.suggestedFilename().toLowerCase().endsWith('.pforge'));
+  const projectPath = await projectDownload.path();
+  const projectText = await readFile(projectPath, 'utf8');
+  const exportedProject = JSON.parse(projectText);
+  const originalLayerIds = exportedProject.layers.map(layer => layer.id);
+  await desktop.locator('#import-file').setInputFiles({ name: projectDownload.suggestedFilename(), mimeType: 'application/json', buffer: Buffer.from(projectText) });
+  await desktop.waitForFunction(() => /Import complete and saved locally/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.match(await desktop.locator('#document-name').textContent(), /\(imported\)$/);
+  const storedProjects = await desktop.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('pixelforge-ai', 1);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result, tx = db.transaction('documents', 'readonly');
+      const getAll = tx.objectStore('documents').getAll();
+      getAll.onsuccess = () => { resolve(getAll.result.map(item => ({ id: item.id, name: item.name, layerIds: item.project.layers.map(layer => layer.id) }))); db.close(); };
+      getAll.onerror = () => { db.close(); reject(getAll.error); };
+    };
+  }));
+  const originalRecord = storedProjects.find(item => item.id === exportedProject.id);
+  const importedRecord = storedProjects.find(item => item.name.endsWith('(imported)'));
+  assert.ok(originalRecord, 'import must not overwrite the previously saved project');
+  assert.ok(importedRecord, 'imported copy must be stored independently');
+  assert.notEqual(importedRecord.id, originalRecord.id);
+  assert.notDeepEqual(importedRecord.layerIds, originalLayerIds, 'imported layers must receive new IDs');
+  assert.equal(storedProjects.length, 2, 'the source project and imported copy should both remain stored');
+
   await desktop.waitForTimeout(1000);
   await desktop.reload({ waitUntil: 'networkidle' });
   await desktop.waitForFunction(() => /Recovered latest local project/.test(document.querySelector('#status')?.textContent ?? ''), null, { timeout: 5000 });
@@ -111,7 +140,7 @@ try {
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
   assert.equal(await mobile.locator('#undo').isEnabled(), true, 'two-touch hold-to-draw must create an undoable stroke');
   assert.deepEqual(failures, [], 'no uncaught browser JavaScript errors should occur');
-  console.log('Browser smoke checks passed: startup, drawing, undo/redo, layers, PNG export, IndexedDB recovery and mobile touch.');
+  console.log('Browser smoke checks passed: startup, drawing, undo/redo, layers, PNG export, safe project-copy import, IndexedDB recovery and mobile touch.');
 } finally {
   if (browser) await browser.close();
   await new Promise(resolve => server.close(resolve));
