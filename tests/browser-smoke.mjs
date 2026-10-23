@@ -49,6 +49,22 @@ try {
   assert.equal(await desktop.locator('#redo').isEnabled(), true, 'undo must enable redo');
   await desktop.locator('#redo').click();
 
+  // Ctrl/Cmd+S during a live pointer stroke must commit it before saving.
+  const saveStrokeStartX = box.x + box.width / 2 + 36, saveStrokeStartY = box.y + box.height / 2 + 20;
+  await desktop.mouse.move(saveStrokeStartX, saveStrokeStartY);
+  await desktop.mouse.down();
+  await desktop.mouse.move(saveStrokeStartX + 18, saveStrokeStartY + 8, { steps: 3 });
+  await desktop.keyboard.press('Control+s');
+  await desktop.waitForFunction(() => /Saved on this device/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.mouse.up();
+  await desktop.locator('#undo').click();
+  assert.equal(await desktop.locator('#undo').isEnabled(), true, 'saving during a stroke must commit that stroke as one history action');
+  await desktop.locator('#undo').click();
+  assert.equal(await desktop.locator('#undo').isEnabled(), false, 'both strokes should be individually undoable');
+  await desktop.locator('#redo').click();
+  await desktop.locator('#redo').click();
+  assert.equal(await desktop.locator('#redo').isEnabled(), false);
+
   await desktop.locator('#add-layer').click();
   assert.match(await desktop.locator('#layer-count').textContent(), /2 layers/);
   await desktop.keyboard.press('Control+s');
@@ -60,6 +76,14 @@ try {
   const exportedPath = await download.path();
   const pngHeader = await readFile(exportedPath);
   assert.deepEqual([...pngHeader.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10], 'export must be a real PNG file');
+  const alphaCheck = await desktop.evaluate(async base64 => {
+    const image = new Image(); image.src = 'data:image/png;base64,' + base64; await image.decode();
+    const probe = document.createElement('canvas'); probe.width = image.width; probe.height = image.height;
+    const context = probe.getContext('2d', { willReadFrequently: true }); context.drawImage(image, 0, 0);
+    return { cornerAlpha: context.getImageData(0, 0, 1, 1).data[3], centerAlpha: context.getImageData(Math.floor(image.width / 2), Math.floor(image.height / 2), 1, 1).data[3] };
+  }, pngHeader.toString('base64'));
+  assert.equal(alphaCheck.cornerAlpha, 0, 'PNG export must preserve transparent background pixels');
+  assert.equal(alphaCheck.centerAlpha, 255, 'drawn pixels must remain opaque in PNG export');
 
   const projectDownloadPromise = desktop.waitForEvent('download');
   await desktop.locator('#export-project').click();
