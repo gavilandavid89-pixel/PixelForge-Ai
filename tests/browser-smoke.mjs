@@ -90,6 +90,7 @@ try {
   assert.notDeepEqual(importedRecord.layerIds, originalLayerIds, 'imported layers must receive new IDs');
   assert.equal(storedProjects.length, 2, 'the source project and imported copy should both remain stored');
   await desktop.locator('#projects-button').click();
+  await desktop.waitForFunction(() => document.querySelector('#projects-dialog')?.open === true);
   assert.equal(await desktop.locator('#projects-dialog').evaluate(element => element.open), true);
   const projectRows = desktop.locator('#projects-list .saved-project-open');
   assert.equal(await projectRows.count(), 2, 'the local project library must list both saved projects');
