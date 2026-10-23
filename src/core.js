@@ -78,6 +78,7 @@ export class RasterDocument {
   }
   strokeTo(stroke, x, y) {
     if (!Number.isInteger(x) || !Number.isInteger(y)) throw new TypeError('Stroke coordinates must be integer document coordinates.');
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) throw new RangeError('Stroke coordinates are outside the document bounds.');
     const layer = this.layers.find(item => item.id === stroke.layerId);
     if (!layer) throw new Error('Stroke layer no longer exists.');
     const point = { x, y };
