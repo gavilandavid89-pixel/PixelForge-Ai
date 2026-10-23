@@ -58,7 +58,7 @@ export class RasterDocument {
   }
   setActiveLayer(id) {
     if (!this.layers.some(layer => layer.id === id)) throw new Error('Unknown layer ID.');
-    this.activeLayerId = id;
+    if (this.activeLayerId !== id) { this.activeLayerId = id; this.dirty = true; }
   }
   setLayerVisibility(id, visible) {
     const layer = this.layers.find(item => item.id === id);
@@ -167,12 +167,17 @@ export class RasterDocument {
     if (data.layers.length < 1 || data.layers.length > 64) throw new RangeError('Project layer count is outside the supported limit.');
     if (data.width * data.height * 4 * data.layers.length > MAX_DOCUMENT_BYTES) throw new RangeError('Project exceeds the 64 MiB total pixel-memory budget.');
     const doc = new RasterDocument(data.width, data.height, typeof data.name === 'string' ? data.name.slice(0, 180) : 'Imported project');
-    doc.id = typeof data.id === 'string' ? data.id : doc.id;
+    doc.id = typeof data.id === 'string' && data.id.length <= 180 ? data.id : doc.id;
+    const layerIds = new Set();
     doc.layers = data.layers.map(item => {
-      if (!item || typeof item.id !== 'string' || typeof item.name !== 'string') throw new TypeError('Invalid layer metadata.');
+      if (!item || typeof item.id !== 'string' || !item.id || item.id.length > 180 || typeof item.name !== 'string') throw new TypeError('Invalid layer metadata.');
+      if (layerIds.has(item.id)) throw new TypeError('Project contains duplicate layer IDs.');
+      layerIds.add(item.id);
+      const opacity = Number(item.opacity ?? 1);
+      if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new RangeError('Layer opacity must be between 0 and 1.');
       const pixels = base64ToBytes(item.pixels);
       if (pixels.length !== data.width * data.height * 4) throw new RangeError('Layer pixel data length does not match document dimensions.');
-      return { id: item.id, name: item.name.slice(0, 180), visible: item.visible !== false, opacity: Math.max(0, Math.min(1, Number(item.opacity ?? 1))), locked: Boolean(item.locked), pixels };
+      return { id: item.id, name: item.name.slice(0, 180), visible: item.visible !== false, opacity, locked: Boolean(item.locked), pixels };
     });
     doc.compositeCache = new Uint8ClampedArray(doc.width * doc.height * 4);
     doc.compositeDirtyTiles = new Set();
