@@ -1,5 +1,5 @@
 import { RasterDocument, screenToDocument, validateDimensions } from './core.js';
-import { loadMostRecentProject, saveProject } from './persistence.js';
+import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#canvas'), ctx = canvas.getContext('2d', { alpha: true });
@@ -287,6 +287,43 @@ $('#add-layer').addEventListener('click', () => {
   try { doc.addLayer(); changed(); renderLayers(); status('Layer added', 'success'); }
   catch (error) { status(error.message, 'error'); }
 });
+$('#projects-button').addEventListener('click', async () => {
+  try {
+    await flushAutosave();
+    await renderProjects();
+    $('#projects-dialog').showModal();
+  } catch (error) { status(`Could not open saved projects: ${error.message}`, 'error'); }
+});
+$('#close-projects').addEventListener('click', () => $('#projects-dialog').close());
+async function renderProjects() {
+  const list = $('#projects-list'); list.replaceChildren();
+  const projects = await listSavedProjects();
+  if (!projects.length) {
+    const empty = document.createElement('p'); empty.className = 'project-empty';
+    empty.textContent = 'No saved projects yet. Draw something and save it to see it here.';
+    list.append(empty); return;
+  }
+  for (const project of projects) {
+    const row = document.createElement('div'); row.className = 'saved-project';
+    const open = document.createElement('button'); open.className = 'saved-project-open';
+    open.textContent = project.name || 'Untitled artwork';
+    const details = document.createElement('small'); details.textContent = `${project.width} × ${project.height}`;
+    open.append(details);
+    if (project.id === doc.id) { open.disabled = true; open.classList.add('current'); }
+    open.addEventListener('click', async () => {
+      try {
+        await flushAutosave();
+        const saved = await loadProjectById(project.id);
+        if (!saved) throw new Error('That saved project no longer exists.');
+        doc = RasterDocument.fromJSON(saved);
+        $('#projects-dialog').close(); fitCanvas(); updateTitle(); renderLayers();
+        status('Opened saved project', 'success');
+      } catch (error) { status(`Could not open project: ${error.message}`, 'error'); }
+    });
+    row.append(open); list.append(row);
+  }
+}
+
 $('#new-document').addEventListener('click', () => $('#new-dialog').showModal());
 $('#cancel-new').addEventListener('click', () => $('#new-dialog').close());
 $('#create-new').addEventListener('click', async () => {
