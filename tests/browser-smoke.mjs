@@ -96,7 +96,13 @@ try {
   const projectNames = await projectRows.allTextContents();
   assert.ok(projectNames.some(name => name.includes('(imported)')));
   assert.ok(projectNames.some(name => name.includes(exportedProject.name)));
-  await desktop.locator('#close-projects').click();
+  const sourceSelector = '#projects-list .saved-project-open[data-project-id="' + originalRecord.id + '"]';
+  await desktop.locator(sourceSelector).click();
+  await desktop.waitForFunction(name => document.querySelector('#document-name')?.textContent === name, exportedProject.name);
+  await desktop.locator('#projects-button').click();
+  const importedSelector = '#projects-list .saved-project-open[data-project-id="' + importedRecord.id + '"]';
+  await desktop.locator(importedSelector).click();
+  await desktop.waitForFunction(() => /\\(imported\\)$/.test(document.querySelector('#document-name')?.textContent ?? ''));
 
   await desktop.waitForTimeout(1000);
   await desktop.reload({ waitUntil: 'networkidle' });
