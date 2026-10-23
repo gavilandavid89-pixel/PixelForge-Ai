@@ -176,3 +176,19 @@ The first shippable slice must be deliberately small and end-to-end functional:
 7. Unit/integration tests for coordinate mapping, strokes, history, save round-trip and export immutability.
 
 Do not expose controls for features that are not implemented. Animation, advanced masks/effects, broad format support, AI providers, macros and community features remain gated until their prerequisites pass.
+
+
+## Current verification record
+
+### Engine-core checks — 2026-10-23
+
+- Environment: Node.js 22.16.0, Linux container.
+- Command: `npm test`.
+- Result: **12 passed, 0 failed**.
+- Command: `npm run check`.
+- Result: **passed** (JavaScript syntax checks for core, persistence and editor controller).
+- Covered: dimension and memory guards, coordinate mapping, pixel stroke, compositing, undo/redo, cancellation rollback, eraser alpha, layer visibility/addition, native project round-trip, invalid project rejection, color parsing, tile-patch history and redo invalidation.
+- Not covered by this run: browser rendering, pointer capture, actual touch/stylus behavior, IndexedDB persistence in a browser, file picker/download behavior, visual regression, screen-reader audit or real Android/desktop device testing.
+- Release status: the engine-core checks are verified in the stated Node environment; the browser editor is **implemented but not browser-verified**. Do not label the full first slice as release-ready.
+
+Next test milestone: add browser automation for startup, drawing, undo/redo, layer visibility, import/export, IndexedDB recovery, keyboard/pan/zoom and mobile viewport layout; then run a manual smoke test on a real Android touch device.
