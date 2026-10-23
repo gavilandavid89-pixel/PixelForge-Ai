@@ -347,7 +347,9 @@ window.addEventListener('keydown', event => {
     if (activeStroke) endStroke({ pointerId }, false);
   }
   if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+    event.preventDefault(); $('#save').click(); return;
+  } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
     event.preventDefault(); if (event.shiftKey) { if (doc.redo()) changed(); } else if (doc.undo()) changed();
   } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
     event.preventDefault(); if (doc.redo()) changed();
