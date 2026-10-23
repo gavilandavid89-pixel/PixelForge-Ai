@@ -184,10 +184,10 @@ Do not expose controls for features that are not implemented. Animation, advance
 
 - Environment: Node.js 22.16.0, Linux container.
 - Command: `npm test`.
-- Result: **13 passed, 0 failed**.
+- Result: **14 passed, 0 failed**.
 - Command: `npm run check`.
 - Result: **passed** (JavaScript syntax checks for core, persistence and editor controller).
-- Covered: dimension and memory guards, coordinate mapping, pixel stroke, compositing, undo/redo, cancellation rollback, eraser alpha, layer visibility/addition, native project round-trip, invalid project rejection, color parsing, tile-patch history, redo invalidation and out-of-bounds command rejection.
+- Covered: dimension and memory guards, coordinate mapping, pixel stroke, compositing, undo/redo, cancellation rollback, eraser alpha, layer visibility/addition, native project round-trip, invalid project rejection, color parsing, tile-patch history, redo invalidation and out-of-bounds command rejection and ordered alpha compositing/cache invalidation.
 - Not covered by this run: browser rendering, pointer capture, actual touch/stylus behavior, IndexedDB persistence in a browser, file picker/download behavior, visual regression, screen-reader audit or real Android/desktop device testing.
 - Release status: the engine-core checks are verified in the stated Node environment; the browser editor is **implemented but not browser-verified**. Do not label the full first slice as release-ready.
 
