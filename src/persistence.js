@@ -38,3 +38,29 @@ export async function loadMostRecentProject() {
     });
   } finally { db.close(); }
 }
+
+export async function listSavedProjects() {
+  const db = await openDB();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const request = tx.objectStore(STORE).getAll();
+      request.onsuccess = () => resolve(request.result.map(record => ({
+        id: record.id, name: record.name, width: record.project.width,
+        height: record.project.height, updatedAt: record.updatedAt
+      })).sort((a, b) => b.updatedAt - a.updatedAt));
+      request.onerror = () => reject(request.error ?? new Error('Could not list saved projects.'));
+    });
+  } finally { db.close(); }
+}
+export async function loadProjectById(id) {
+  const db = await openDB();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const request = tx.objectStore(STORE).get(id);
+      request.onsuccess = () => resolve(request.result?.project ?? null);
+      request.onerror = () => reject(request.error ?? new Error('Could not open the selected project.'));
+    });
+  } finally { db.close(); }
+}
