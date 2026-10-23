@@ -167,11 +167,11 @@ Do not invent universal numeric performance targets before profiling. First publ
 
 The first shippable slice must be deliberately small and end-to-end functional:
 
-1. Create/open/save one raster document with versioned native serialization.
+1. Create/open/save raster documents through a basic local project picker with versioned native serialization.
 2. Dedicated canvas surface with pan/zoom and stable document coordinates.
 3. Pencil, eraser, color selection and a real stroke controller.
 4. Atomic commands, undo/redo and a basic layer model.
-5. Import/export PNG with tested alpha behavior.
+5. Import supported still images and export transparent PNG; import/export `.pforge` copies with independent identities and tested alpha behavior.
 6. Autosave/recovery baseline and error reporting.
 7. Unit/integration tests for coordinate mapping, strokes, history, save round-trip and export immutability.
 
