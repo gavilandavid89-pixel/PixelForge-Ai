@@ -43,7 +43,7 @@
     <footer class="bottom-bar"><span><span class="bottom-dot"></span> Local-first workspace</span><span>Document pixels stay independent of the interface</span><span>PixelForge <span class="footer-version">v0.1 · early build</span></span></footer>
   </section>
   <aside class="inspector" aria-label="Tool options and layers">
-    <div class="inspector-tabs"><button class="inspector-tab active" type="button">Properties</button><button id="layers-tab" class="inspector-tab" type="button">Layers</button></div>
+    <div class="inspector-tabs"><span class="inspector-tab active">Properties</span><button id="layers-tab" class="inspector-tab" type="button">Layers</button></div>
     <section class="inspector-section">
       <div class="section-heading"><span class="section-icon">◈</span><h2>Brush settings</h2><span class="section-menu">•••</span></div>
       <div class="control-block">
@@ -74,7 +74,6 @@
     const input = document.querySelector('#color'); input.value = button.dataset.color;
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }));
-  document.querySelector('#save').addEventListener('click', () => {});
 </script>
 </div>
 </body>
