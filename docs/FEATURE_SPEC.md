@@ -488,3 +488,18 @@ This is the capability checklist, not a promise that every item already exists. 
 - Provide configurable shortcuts for switching documents, changing brush size, nudging selections and navigating frames.
 - Add focus mode that hides nonessential panels while retaining a reliable exit path.
 - Restore each document viewport without leaking selections or tool state between documents.
+
+
+## AO. Multi-project workspace and explicit AI context scope
+
+- Distinguish three concepts in both UI and data: open documents, the active editing target, and the AI context scope. Switching tabs or split-view focus must never silently redirect an in-flight AI request.
+- The default AI target is the one explicitly selected by the user. Display its document/project name and revision beside the prompt before a request starts; bind the request to stable document IDs and revision snapshots, not the currently focused tab.
+- Provide an explicit context selector with at least **Selected document** and **ALL**. Selected document gives the AI only that document plus the minimum technical metadata needed to perform the requested task. ALL lets the AI consider the user-authorized set of open documents/projects as a connected body of work, so it can reason about shared style, characters, palettes, visual consistency and the user's broader goal.
+- ALL is a context/analysis scope, not blanket write permission. By default, proposals still target the selected document only. If a task genuinely requires edits across documents, the AI must list each proposed target and changes; the user explicitly selects and approves the target set before application. No implicit batch mutation.
+- Let users include/exclude individual documents from ALL, pin references, and see a compact manifest of included names, thumbnails and revisions before sending. Excluded, closed, private or otherwise unauthorized documents are unavailable to the request.
+- Keep context scope separate from the destination. A user may ask the AI to study ALL while applying a proposal only to the selected document, or choose a specific destination document after reviewing the proposal.
+- Add **Clone project/document for experimentation** as an explicit workspace action. A clone receives new stable IDs and independent editable state, undo history, save identity and AI proposal lineage; it may record its source and creation revision for comparison. Editing, discarding, renaming or deleting the clone must not mutate the source.
+- In split view, label each pane and its document. Clicking a pane changes the visible active document but does not change an already-running AI request's captured target or context. Require a new explicit action to retarget or rerun.
+- If a document changes after the AI captured it, mark the proposal as based on an older revision and show a diff/conflict review before applying. Never silently apply stale results.
+- AI requests must be user-initiated. Explain whether context is processed locally or sent to a remote provider; obtain explicit consent before sending artwork or project content remotely. Context previews must not trigger AI work by themselves.
+- Acceptance criteria: tests cover tab-switch races, split-view focus changes, ALL include/exclude lists, stable revision snapshots, clone independence, selected-only writes under ALL, explicit multi-document approval, stale-proposal conflicts, and proof that proposal deletion never deletes a source project.
