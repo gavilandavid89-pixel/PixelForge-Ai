@@ -385,7 +385,7 @@ $('#import-file').addEventListener('change', async event => {
       const expectedImage = await preflightImageFile(file);
       const bitmap = await createImageBitmap(file);
       try {
-        if (bitmap.width !== expectedImage.width || bitmap.height !== expectedImage.height) throw new RangeError('Decoded image dimensions do not match the verified file header.');
+        if (!((bitmap.width === expectedImage.width && bitmap.height === expectedImage.height) || (bitmap.width === expectedImage.height && bitmap.height === expectedImage.width))) throw new RangeError('Decoded image dimensions do not match the verified file header.');
         validateDimensions(bitmap.width, bitmap.height);
         const name = file.name.includes('.') ? file.name.slice(0, file.name.lastIndexOf('.')) : file.name;
         importedDoc = new RasterDocument(bitmap.width, bitmap.height, name || 'Imported artwork');
