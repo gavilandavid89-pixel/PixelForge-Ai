@@ -81,6 +81,11 @@ try {
   await desktop.keyboard.press('Space');
   assert.match(await desktop.locator('#eraser-tool').getAttribute('class'), /active/, 'Space must activate a focused tool button instead of being swallowed by the pan shortcut');
   await desktop.locator('#brush-tool').click();
+  await desktop.locator('#draw-hold').focus();
+  await desktop.keyboard.down('Space');
+  assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'true', 'keyboard hold must enter the pressed state');
+  await desktop.keyboard.up('Space');
+  assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'keyboard hold must release deterministically');
 
   // Ctrl/Cmd+S during a live pointer stroke must commit it before saving.
   const saveStrokeStartX = box.x + box.width / 2 + 36, saveStrokeStartY = box.y + box.height / 2 + 20;
