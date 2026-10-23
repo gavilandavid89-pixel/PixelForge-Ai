@@ -96,12 +96,15 @@ function scheduleAutosave() {
   status('Unsaved changes', 'warning');
   autosaveTimer = setTimeout(() => {
     autosaveTimer = null;
-    const savingDoc = doc, snapshot = savingDoc.toJSON();
+    const savingDoc = doc, version = savingDoc.saveVersion, snapshot = savingDoc.toJSON();
     autosaveInFlight = (async () => {
       try {
         await saveProject(snapshot);
-        savingDoc.dirty = false;
-        if (doc === savingDoc) { status('Saved on this device', 'success'); updateTitle(); }
+        savingDoc.dirty = savingDoc.saveVersion !== version;
+        if (doc === savingDoc) {
+          status(savingDoc.dirty ? 'Unsaved changes' : 'Saved on this device', savingDoc.dirty ? 'warning' : 'success');
+          updateTitle();
+        }
       } catch (error) {
         if (doc === savingDoc) status(`Autosave unavailable: ${error.message}`, 'error');
         throw error;
@@ -110,14 +113,19 @@ function scheduleAutosave() {
   }, 800);
 }
 async function flushAutosave() {
-  if (activeStroke) endStroke({ pointerId }, false);
+  if (activeStroke) finishActiveStroke(false);
   const pending = autosaveTimer !== null;
   if (pending) { clearTimeout(autosaveTimer); autosaveTimer = null; }
   await autosaveInFlight;
-  if (!doc.dirty && !pending) return;
   const savingDoc = doc;
-  await saveProject(savingDoc.toJSON());
-  savingDoc.dirty = false;
+  if (!savingDoc.dirty && !pending) return;
+  while (doc === savingDoc) {
+    const version = savingDoc.saveVersion, snapshot = savingDoc.toJSON();
+    await saveProject(snapshot);
+    if (savingDoc.saveVersion === version) { savingDoc.dirty = false; break; }
+    savingDoc.dirty = true;
+  }
+  if (autosaveTimer !== null) { clearTimeout(autosaveTimer); autosaveTimer = null; }
   if (doc === savingDoc) updateTitle();
 }
 function changed() { render(); updateTitle(); scheduleAutosave(); }
