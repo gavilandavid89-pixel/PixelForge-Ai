@@ -56,11 +56,27 @@ The following review roles were applied independently, then reconciled against t
 - Added headless-Chromium smoke coverage for startup, mouse drawing, undo/redo, layers, PNG signature, project-copy import, saved-project switching, last-opened recovery, keyboard save and mobile virtual-cursor behavior.
 - Test documentation distinguishes verified checks from release gates that remain open.
 
-**Latest verified browser run:** [GitHub Actions run #72](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/39908071542) — both core and browser-smoke jobs passed on the tested commit.
+**Latest verified browser run:** [GitHub Actions run #117](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/40041060887) — both core and browser-smoke jobs passed on the tested commit.
 
 **Not claimed:** visual-regression approval, physical Android/stylus readiness, screen-reader conformance, stress-performance targets or completion of the full editor.
 
-## 6. Product operations reviewer — portability and release obligations
+## 6. Persistence, import and input edge-case reviewer
+
+**Risks found during follow-up testing:**
+- A database schema upgrade needed explicit regression coverage for projects saved by the older version, including records that only have `updatedAt` and no `lastOpenedAt`.
+- An image could be decoded before its advertised dimensions were checked, which is an avoidable memory-pressure path.
+- Saving while a stroke was active needed a defined commit/cancel boundary; fit-to-canvas rounding could also collapse to a bad fallback on narrow viewports.
+- The global Space shortcut could swallow the normal keyboard activation of a focused toolbar button.
+
+**Resolutions:**
+- Added a browser regression fixture that creates a genuine version-1 IndexedDB store, then verifies migration, startup recovery and visibility in the saved-project library.
+- Added bounded PNG/JPEG/WebP/GIF header inspection before decoding, a 1 MiB header scan cap, format-specific dimension parsing, decoded-dimension revalidation and fail-closed behavior for malformed or unsupported files.
+- Explicit save settles a valid active stroke before snapshotting, prevents new drawing during the flush, and keeps Escape/focus loss cancellation non-destructive. Fit zoom now retains a 0.01 minimum instead of rounding small valid scales to zero and falling back to 1×.
+- Focused native controls retain browser keyboard activation; editor shortcuts do not hijack Space while a button, link, select or editable field has focus.
+
+**Verification:** browser smoke coverage passes for the version-1-to-version-2 IndexedDB migration, image rejection before decoding, save during a live stroke, Escape cancellation, keyboard activation, project-copy identity and transparent PNG export. The latest verified run is [GitHub Actions run #117](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/40041060887).
+
+## 7. Product operations reviewer — portability and release obligations
 
 **Risks found:** format support and the repository's reuse license could be inferred from the public repository or the long-term feature list.
 
