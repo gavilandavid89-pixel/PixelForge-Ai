@@ -30,7 +30,7 @@ export class RasterDocument {
   constructor(width = 128, height = 128, name = 'Untitled artwork') {
     validateDimensions(width, height);
     this.id = crypto.randomUUID();
-    this.name = name;
+    this.name = typeof name === 'string' ? name.trim().slice(0, 180) || 'Untitled artwork' : 'Untitled artwork';
     this.width = width;
     this.height = height;
     this.layers = [makeLayer(crypto.randomUUID(), 'Layer 1', width, height)];
@@ -49,6 +49,8 @@ export class RasterDocument {
   }
   get activeLayer() { return this.layers.find(layer => layer.id === this.activeLayerId) ?? this.layers[0]; }
   addLayer(name = `Layer ${this.layers.length + 1}`) {
+    if (typeof name !== 'string' || !name.trim() || name.length > 180) throw new TypeError('Layer name must contain 1–180 characters.');
+    name = name.trim();
     if (this.layers.length >= 64) throw new RangeError('The initial editor supports up to 64 layers.');
     if ((this.layers.length + 1) * this.width * this.height * 4 > MAX_DOCUMENT_BYTES) throw new RangeError('Adding this layer would exceed the 64 MiB total pixel-memory budget for this document size. Reduce the canvas dimensions or use fewer layers.');
     const layer = makeLayer(crypto.randomUUID(), name, this.width, this.height);
@@ -62,11 +64,12 @@ export class RasterDocument {
     if (this.activeLayerId !== id) { this.activeLayerId = id; this.dirty = true; this.saveVersion++; }
   }
   setLayerVisibility(id, visible) {
+    if (typeof visible !== 'boolean') throw new TypeError('Layer visibility must be a boolean.');
     const layer = this.layers.find(item => item.id === id);
     if (!layer) throw new Error('Unknown layer ID.');
     if (layer.visible === Boolean(visible)) return;
     const before = layer.visible;
-    layer.visible = Boolean(visible);
+    layer.visible = visible;
     this.#markAllCompositeDirty();
     this.#record({ type: 'layer-visibility', layerId: id, before, after: layer.visible });
   }
