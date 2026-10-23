@@ -184,20 +184,20 @@ Do not expose controls for features that are not implemented. Animation, advance
 
 - Environment: Node.js 22.16.0, Linux container.
 - Command: `npm test`.
-- Result: **18 passed, 0 failed**.
+- Result: **22 passed, 0 failed**.
 - Command: `npm run check`.
 - Result: **passed** (JavaScript syntax checks for core, persistence and editor controller).
-- Covered: dimension and memory guards, coordinate mapping, pixel stroke, compositing, undo/redo, cancellation rollback, eraser alpha, layer visibility/addition, native project round-trip, invalid project rejection, color parsing, tile-patch history, redo invalidation, bounds and memory guards, ordered alpha compositing and dirty-tile tracking, duplicate/invalid identity rejection, layer metadata validation and active-layer save state.
-- Not covered by this run: browser rendering, pointer capture, actual touch/stylus behavior, IndexedDB persistence in a browser, file picker/download behavior, visual regression, screen-reader audit or real Android/desktop device testing.
-- Release status: the engine-core checks are verified in the stated Node environment; the browser editor is **implemented but not browser-verified**. Do not label the full first slice as release-ready.
+- Covered: dimension and memory guards, coordinate mapping, pixel stroke, compositing, undo/redo, cancellation rollback, eraser alpha, layer visibility/addition, native project round-trip, invalid project rejection, color parsing, tile-patch history, redo invalidation, bounds and memory guards, ordered alpha compositing and dirty-tile tracking, duplicate/invalid identity rejection, strict layer-command validation, active-layer save state, save-version monotonicity and independent imported-project/layer IDs.
+- Not covered by the Node core run: browser rendering, pointer capture, IndexedDB behavior, file downloads, visual regression, screen-reader audit or physical device testing. The separate browser-smoke job covers a subset of these.
+- Release status: core checks are verified in Node and browser smoke checks are verified in headless Chromium. Physical Android/stylus behavior, accessibility conformance, stress performance and the full release gates remain open. Do not label the full professional editor as release-ready.
 
-Next test milestone: add browser automation for startup, drawing, undo/redo, layer visibility, import/export, IndexedDB recovery, keyboard/pan/zoom and mobile viewport layout; then run a manual smoke test on a real Android touch device.
+Next test milestone: expand browser coverage for image import, malformed files, pointer cancellation/focus loss, responsive resizing, storage failures and accessibility; then run a manual smoke test on a physical Android touch device.
 
 
-### Browser smoke checks — GitHub Actions run #40
+### Browser smoke checks — GitHub Actions run #72
 
 - Environment: GitHub-hosted Linux runner, headless Chromium, desktop viewport 1440 × 960 and mobile-emulated viewport 390 × 844.
 - Result: **passed**.
-- Verified path: application startup; visible canvas; mouse stroke changes the rendered canvas; undo/redo state; layer addition; PNG download has a valid PNG signature; IndexedDB save/reload restores the latest document and its layers; mobile-emulated pan; touch cursor movement without the hold control creates no undo entry; simultaneous two-touch hold-and-cursor input creates an undoable stroke; releasing the hold while the cursor remains active stops drawing without creating a second history action; Ctrl/Cmd+S saves the current document; no uncaught page errors.
-- Run: https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/39906815994
+- Verified path: application startup; visible canvas; mouse stroke changes the rendered canvas; undo/redo state; layer addition; PNG download has a valid PNG signature; IndexedDB save/reload restores the last-opened document; project export/import creates a new project ID and fresh layer IDs without overwriting the source; the local project picker lists both projects and can switch between them; reopening the imported project is restored after reload; mobile-emulated pan; touch cursor movement without the hold control creates no undo entry; simultaneous two-touch hold-and-cursor input creates an undoable stroke; releasing the hold while the cursor remains active stops drawing without creating a second history action; Ctrl/Cmd+S saves the current document; no uncaught page errors.
+- Run: https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/39908071542
 - Limitation: mobile emulation is not a substitute for testing a physical Android device or stylus hardware. This is a smoke test, not a full visual, accessibility, performance or adversarial browser suite.
