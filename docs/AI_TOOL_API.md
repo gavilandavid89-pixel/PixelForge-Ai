@@ -8,7 +8,7 @@ AI agents must operate the actual editor through the same tested command system 
 
 ## Permission boundary
 
-AI agents may inspect the active project and perform normal editing actions: create/edit artwork, draw pixels, use raster brushes, select regions, transform content, manage layers and frames, edit palettes, apply effects, run generators, and change ordinary document settings.
+AI agents may inspect an authorized snapshot of the user's project and perform normal editing actions only inside the isolated AI sandbox: create/edit artwork, draw pixels, use raster brushes, select regions, transform content, manage layers and frames, edit palettes, apply effects, run generators, and change ordinary document settings. The canonical user document remains read-only to AI tools.
 
 Two operations are always denied to AI agents:
 1. **Delete the project/document itself.**
@@ -95,7 +95,7 @@ Non-destructive previews should be preferred when supported.
 - ai.generate_variations, ai.inpaint_masked_region, ai.segment_subject, ai.upscale_preview
 - ai.get_provider_status, ai.cancel_job, ai.compare_results, ai.create_proposal
 
-The interface must label outputs as **procedural** or **model-generated**. Model calls require provider capability checks, resource limits and explicit consent before artwork is sent to a remote service. Applying a result is an undoable editor command.
+The interface must label outputs as **procedural** or **model-generated**. Model calls require provider capability checks, resource limits and explicit consent before artwork is sent to a remote service. A generated result can become a sandbox proposal; only the separate human-originated **Accept proposal** action may apply a reviewed, validated proposal to the named canonical destination as one undoable transaction.
 
 ### 8. Productivity and diagnostics
 - history.undo, history.redo, history.create_checkpoint
