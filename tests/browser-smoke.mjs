@@ -102,7 +102,7 @@ try {
   await desktop.locator('#projects-button').click();
   const importedSelector = '#projects-list .saved-project-open[data-project-id="' + importedRecord.id + '"]';
   await desktop.locator(importedSelector).click();
-  await desktop.waitForFunction(() => /\\(imported\\)$/.test(document.querySelector('#document-name')?.textContent ?? ''));
+  await desktop.waitForFunction(() => /\(imported\)$/.test(document.querySelector('#document-name')?.textContent ?? ''));
 
   await desktop.waitForTimeout(1000);
   await desktop.reload({ waitUntil: 'networkidle' });
