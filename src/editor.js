@@ -34,10 +34,16 @@ function resizeCanvas() {
 }
 function fitCanvas() {
   const rect = workArea.getBoundingClientRect();
-  zoom = Math.max(.1, Math.min(12, Math.floor(Math.min((rect.width - 80) / doc.width, (rect.height - 80) / doc.height) * 2) / 2));
+  zoom = Math.max(.01, Math.min(24, Math.floor(Math.min((rect.width - 80) / doc.width, (rect.height - 80) / doc.height) * 20) / 20));
   if (!Number.isFinite(zoom) || zoom <= 0) zoom = 1;
   panX = (rect.width - doc.width * zoom) / 2;
   panY = (rect.height - doc.height * zoom) / 2;
+  render();
+}
+function zoomAt(point, targetZoom) {
+  const before = { x: (point.x - panX) / zoom, y: (point.y - panY) / zoom };
+  zoom = Math.max(.01, Math.min(24, targetZoom));
+  panX = point.x - before.x * zoom; panY = point.y - before.y * zoom;
   render();
 }
 function render() {
@@ -111,18 +117,21 @@ function scheduleAutosave() {
     });
   }, 800);
 }
-async function flushAutosave() {
+function settleActiveInput() {
+  if (activeStroke) finishActiveStroke(true);
+  drawHeld = false; drawHoldPointerId = null; updateDrawHoldUI();
+}
+async function flushAutosave({ force = false } = {}) {
   if (flushPromise) return flushPromise;
   flushPromise = (async () => {
-    if (activeStroke) finishActiveStroke(true);
-    drawHeld = false; drawHoldPointerId = null; updateDrawHoldUI();
+    settleActiveInput();
     const pending = autosaveTimer !== null;
     if (pending) { clearTimeout(autosaveTimer); autosaveTimer = null; }
     const savingDoc = doc;
     flushInProgress = true;
     try {
       await autosaveInFlight;
-      if (!savingDoc.dirty && !pending) return;
+      if (!savingDoc.dirty && !pending && !force) return;
       while (doc === savingDoc) {
         const version = savingDoc.saveVersion, snapshot = savingDoc.toJSON();
         await saveProject(snapshot);
@@ -253,9 +262,8 @@ drawHoldButton?.addEventListener('lostpointercapture', event => {
 });
 canvas.addEventListener('wheel', event => {
   event.preventDefault();
-  const p = eventPoint(event), before = { x: (p.x - panX) / zoom, y: (p.y - panY) / zoom };
-  zoom = Math.max(.25, Math.min(24, zoom * (event.deltaY < 0 ? 1.15 : 1 / 1.15)));
-  panX = p.x - before.x * zoom; panY = p.y - before.y * zoom; render();
+  const p = eventPoint(event);
+  zoomAt(p, zoom * (event.deltaY < 0 ? 1.15 : 1 / 1.15));
 }, { passive: false });
 
 $('#brush-tool').addEventListener('click', () => setTool('draw'));
@@ -283,8 +291,9 @@ $('#brush-size').addEventListener('input', event => {
 $('#undo').addEventListener('click', () => { if (doc.undo()) changed(); });
 $('#redo').addEventListener('click', () => { if (doc.redo()) changed(); });
 $('#fit').addEventListener('click', fitCanvas);
-$('#zoom-in').addEventListener('click', () => { zoom = Math.min(24, zoom * 1.25); render(); });
-$('#zoom-out').addEventListener('click', () => { zoom = Math.max(.25, zoom / 1.25); render(); });
+const viewportCenter = () => ({ x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 });
+$('#zoom-in').addEventListener('click', () => zoomAt(viewportCenter(), zoom * 1.25));
+$('#zoom-out').addEventListener('click', () => zoomAt(viewportCenter(), zoom / 1.25));
 $('#add-layer').addEventListener('click', () => {
   try { doc.addLayer(); changed(); renderLayers(); status('Layer added', 'success'); }
   catch (error) { status(error.message, 'error'); }
@@ -338,20 +347,31 @@ $('#create-new').addEventListener('click', async () => {
   } catch (error) { $('#new-error').textContent = error.message; status(`Could not switch documents: ${error.message}`, 'error'); }
 });
 $('#save').addEventListener('click', async () => {
-  try { await flushAutosave(); status('Saved on this device', 'success'); }
+  try { await flushAutosave({ force: true }); status('Saved on this device', 'success'); }
   catch (error) { status(`Save failed: ${error.message}`, 'error'); }
 });
-$('#export-project').addEventListener('click', () => downloadBlob(
-  new Blob([JSON.stringify(doc.toJSON())], { type: 'application/json' }), `${safeName(doc.name)}.pforge`
-));
+$('#export-project').addEventListener('click', () => {
+  try {
+    settleActiveInput();
+    const snapshot = doc.toJSON(), filename = `${safeName(doc.name)}.pforge`;
+    downloadBlob(new Blob([JSON.stringify(snapshot)], { type: 'application/json' }), filename);
+    status('Project exported', 'success');
+  } catch (error) { status(`Project export failed: ${error.message}`, 'error'); }
+});
 $('#export-png').addEventListener('click', () => {
-  const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = doc.width; exportCanvas.height = doc.height;
-  exportCanvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(doc.composite()), doc.width, doc.height), 0, 0);
-  exportCanvas.toBlob(blob => {
-    if (blob) downloadBlob(blob, `${safeName(doc.name)}.png`);
-    else status('PNG export failed', 'error');
-  }, 'image/png');
+  try {
+    settleActiveInput();
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = doc.width; exportCanvas.height = doc.height;
+    const exportName = `${safeName(doc.name)}.png`;
+    const exportContext = exportCanvas.getContext('2d');
+    if (!exportContext) throw new Error('Could not create the PNG export surface.');
+    exportContext.putImageData(new ImageData(new Uint8ClampedArray(doc.composite()), doc.width, doc.height), 0, 0);
+    exportCanvas.toBlob(blob => {
+      if (blob) { downloadBlob(blob, exportName); status('PNG exported', 'success'); }
+      else status('PNG export failed', 'error');
+    }, 'image/png');
+  } catch (error) { status(`PNG export failed: ${error.message}`, 'error'); }
 });
 $('#import-file').addEventListener('change', async event => {
   const file = event.target.files?.[0]; if (!file) return;
