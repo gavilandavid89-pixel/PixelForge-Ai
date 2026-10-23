@@ -126,3 +126,27 @@ This is the capability checklist, not a promise that every item already exists. 
 - Support mouse, touch and stylus input; expose equivalent toolbar/context-menu actions for users who cannot or do not want to long-press.
 - Selection is a review mask, not a destructive crop by default. The original user document remains unchanged until the user explicitly accepts the chosen proposal changes.
 - Tests: disjoint lasso regions, open-loop completion behavior, add/subtract selection modes, long-press menu without accidental deletion, delete/undo within the AI sandbox, selected-region-only application, and proof that unselected pixels and the original document remain unchanged.
+
+
+## L. Mobile-first canvas stability and touch drawing
+
+### View lock
+- Provide a clearly visible **Lock view** control that freezes the current canvas zoom and pan position without locking the document, layers, tools, or pixel edits.
+- While locked, ignore canvas-navigation gestures (pinch-to-zoom, two-finger pan, accidental drag gestures) while continuing to process valid drawing, selection, and tool gestures.
+- Provide a clear unlock action that is always reachable; do not trap the user in a locked view.
+- Persist the preferred zoom/pan per document and restore it when reopening the document where viewport/layout constraints permit.
+- Handle browser page scrolling separately from canvas gestures: prevent accidental page scroll while an active canvas gesture is in progress, but preserve normal page navigation outside the canvas and accessible controls.
+- Offer an explicit reset/fit view action and a safe recovery path if the saved viewport no longer fits after orientation or viewport-size changes.
+- Keep view lock separate from layer lock and document read-only state.
+
+### Mobile drawing ergonomics
+- Make the canvas the primary touch area, with compact collapsible panels and a reachable tool/action dock; avoid placing essential controls only in distant corners.
+- Add configurable touch input modes: draw with one finger; navigate with two fingers; optional stylus-first drawing with finger gestures reserved for navigation when supported.
+- Include a configurable touch/stylus stroke stabilizer, adjustable brush cursor/preview, and an optional offset touch indicator/magnifier so the finger does not obscure the target pixel.
+- Support pressure and tilt when provided by a stylus; gracefully fall back to touch/mouse input.
+- Add quick undo/redo buttons in the mobile drawing area, adjustable UI scale, larger hit targets, and customizable gesture shortcuts.
+- Provide quick access to eyedropper, brush/eraser toggle, color picker, brush size, zoom presets, and view lock without opening deep menus.
+- Avoid accidental browser back/forward gestures and page scrolling during active canvas interaction where the platform allows, without breaking browser navigation globally.
+- Preserve precision at high zoom with pixel-grid feedback and predictable coordinate mapping; keep the stroke aligned with the displayed canvas after zoom, pan, orientation changes, and viewport resizing.
+- Keep touch actions undoable; use a short configurable delay for long-press context menus and never make long-press alone destructive.
+- Test on narrow mobile viewports and touch input: view lock, scroll/pinch suppression, draw/navigation gesture separation, stylus/touch fallback, undo/redo reachability, orientation changes, and no coordinate drift.
