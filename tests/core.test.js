@@ -124,3 +124,15 @@ test('compositor blends layers in order and visibility updates the cached compos
   doc.setLayerVisibility(top.id, false);
   assert.deepEqual(Array.from(doc.composite().slice(0, 4)), [255, 0, 0, 255]);
 });
+
+test('composite exposes dirty tile regions until the renderer acknowledges them', () => {
+  const doc = new RasterDocument(130, 70);
+  assert.ok(doc.getCompositeDirtyTiles().length > 1);
+  doc.composite();
+  assert.ok(doc.getCompositeDirtyTiles().length > 1);
+  doc.clearCompositeDirtyTiles();
+  assert.equal(doc.getCompositeDirtyTiles().length, 0);
+  const stroke = doc.beginStroke({ color: '#fff', size: 1 });
+  doc.strokeTo(stroke, 129, 69); doc.endStroke(stroke);
+  assert.deepEqual(doc.getCompositeDirtyTiles(), [{ tileX: 2, tileY: 1, width: 2, height: 6 }]);
+});
