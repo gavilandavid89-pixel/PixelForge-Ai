@@ -266,7 +266,7 @@ try {
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'Escape must cancel an in-progress touch stroke without history');
   assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'Escape must release the draw-hold state');
   assert.deepEqual(failures, [], 'no uncaught browser JavaScript errors should occur');
-  console.log('Browser smoke checks passed: startup, drawing, undo/redo, layers, PNG export, safe project-copy import, IndexedDB recovery and mobile touch.');
+  console.log('Browser smoke checks passed: legacy IndexedDB migration; PNG/JPEG/WebP/GIF imports; drawing, undo/redo and layers; transparent PNG export; safe project-copy import; oversized-image rejection; save during stroke; keyboard controls; mobile touch/hold/cancellation.');
 } finally {
   if (browser) await browser.close();
   await new Promise(resolve => server.close(resolve));
