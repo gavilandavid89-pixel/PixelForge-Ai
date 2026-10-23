@@ -54,6 +54,34 @@ try {
   await migrationPage.locator('#close-projects').click();
   await migrationContext.close();
 
+  const imageContext = await browser.newContext();
+  const imagePage = await imageContext.newPage();
+  imagePage.on('pageerror', error => failures.push(`image import page error: ${error.message}`));
+  await imagePage.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+  await imagePage.waitForFunction(() => /Ready|Recovered latest local project|Local recovery unavailable/.test(document.querySelector('#status')?.textContent ?? ''));
+  const generatedImages = await imagePage.evaluate(async () => {
+    const canvas = document.createElement('canvas'); canvas.width = 3; canvas.height = 2;
+    const context = canvas.getContext('2d'); context.fillStyle = '#e34b68'; context.fillRect(0, 0, 1, 2);
+    const encode = async type => {
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, type));
+      if (!blob) throw new Error(`Browser cannot encode ${type}`);
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte);
+      return btoa(binary);
+    };
+    return { png: await encode('image/png'), jpeg: await encode('image/jpeg'), webp: await encode('image/webp') };
+  });
+  const importImage = async (name, mimeType, buffer, dimensions) => {
+    await imagePage.locator('#import-file').setInputFiles({ name, mimeType, buffer });
+    await imagePage.waitForFunction(() => /Import complete and saved locally/.test(document.querySelector('#status')?.textContent ?? ''));
+    assert.equal(await imagePage.locator('#document-size').textContent(), dimensions, `${name} should decode at the verified dimensions`);
+  };
+  await importImage('valid.png', 'image/png', Buffer.from(generatedImages.png, 'base64'), '3 × 2');
+  await importImage('valid.jpg', 'image/jpeg', Buffer.from(generatedImages.jpeg, 'base64'), '3 × 2');
+  await importImage('valid.webp', 'image/webp', Buffer.from(generatedImages.webp, 'base64'), '3 × 2');
+  await importImage('valid.gif', 'image/gif', Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==', 'base64'), '1 × 1');
+  await imageContext.close();
+
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 960 }, acceptDownloads: true });
   desktop.on('pageerror', error => failures.push(`desktop page error: ${error.message}`));
   await desktop.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
