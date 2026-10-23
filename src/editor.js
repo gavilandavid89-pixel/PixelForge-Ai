@@ -115,6 +115,7 @@ async function flushAutosave() {
   if (flushPromise) return flushPromise;
   flushPromise = (async () => {
     if (activeStroke) finishActiveStroke(true);
+    drawHeld = false; drawHoldPointerId = null; updateDrawHoldUI();
     const pending = autosaveTimer !== null;
     if (pending) { clearTimeout(autosaveTimer); autosaveTimer = null; }
     const savingDoc = doc;
@@ -183,6 +184,7 @@ function endStroke(event, commit = true) {
   finishActiveStroke(commit);
 }
 canvas.addEventListener('pointerdown', event => {
+  if (flushInProgress) { event.preventDefault(); return; }
   if (tool === 'pan' || event.button === 1 || spaceDown) {
     panning = true;
     const p = eventPoint(event); panStart = { x: p.x, y: p.y, panX, panY };
@@ -231,7 +233,7 @@ function updateDrawHoldUI() {
   drawHoldButton.querySelector('small').textContent = tool === 'erase' ? 'Hold to erase' : tool === 'pan' ? 'Pan selected' : 'Hold to draw';
 }
 drawHoldButton?.addEventListener('pointerdown', event => {
-  if (tool === 'pan') return;
+  if (tool === 'pan' || flushInProgress) return;
   event.preventDefault(); drawHeld = true; drawHoldPointerId = event.pointerId; updateDrawHoldUI();
   try { drawHoldButton.setPointerCapture(event.pointerId); } catch {}
   if (virtualCursorPointerId !== null && virtualCursorPoint?.inside && !activeStroke) startStrokeAt(virtualCursorPoint, virtualCursorPointerId);
