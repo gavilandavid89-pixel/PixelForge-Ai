@@ -35,8 +35,8 @@ function resizeCanvas() {
 }
 function fitCanvas() {
   const rect = workArea.getBoundingClientRect();
-  zoom = Math.max(.01, Math.min(24, Math.floor(Math.min((rect.width - 80) / doc.width, (rect.height - 80) / doc.height) * 20) / 20));
-  if (!Number.isFinite(zoom) || zoom <= 0) zoom = 1;
+  const fitScale = Math.min((rect.width - 80) / doc.width, (rect.height - 80) / doc.height);
+  zoom = Number.isFinite(fitScale) ? Math.max(.01, Math.min(24, Math.floor(fitScale * 100) / 100)) : 1;
   panX = (rect.width - doc.width * zoom) / 2;
   panY = (rect.height - doc.height * zoom) / 2;
   render();
