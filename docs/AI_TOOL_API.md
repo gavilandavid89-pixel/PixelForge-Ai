@@ -139,3 +139,26 @@ Unknown tools, unknown arguments and unsupported versions are rejected closed.
 4. Expose reversible pixel/selection/layer actions.
 5. Add animation, palettes, filters, macros and procedural generators.
 6. Add provider adapters and model-backed tools only after consent, cancellation and audit behavior pass tests.
+
+
+## Dual-editor isolation and proposal lifecycle
+
+The canonical user document and AI working document must never share mutable state. AI receives a consistent snapshot/revision of the user's document. Future user changes synchronize toward the AI workspace only; AI edits stay in its isolated branch.
+
+Every AI task produces a proposal containing its base revision, ordered editor commands, affected layers/frames/regions, a visual diff/preview, validation warnings and undo metadata. The user can:
+- open and inspect the AI editor;
+- accept the whole proposal;
+- accept selected changes or regions when operations can be safely separated;
+- reject/discard the proposal.
+
+Discarding a proposal removes only AI sandbox work. It must never delete, restore, or alter the user's canonical artwork. AI cannot apply proposals to the user document itself. Only a human-triggered apply action may do so, and applying must validate the base revision, detect conflicts with newer user edits, preview the result and commit as an undoable transaction.
+
+If the user edits the canonical document while AI is working, the proposal must be marked as based on an older revision. Rebase or regenerate it safely; never silently overwrite newer work. User-to-AI synchronization must not accidentally import AI-only changes back into the canonical document.
+
+Additional mandatory tests:
+1. Draw in user workspace; verify it appears in AI workspace after sync.
+2. Edit or delete that drawing in AI workspace; verify user artwork is byte-for-byte unchanged.
+3. Discard the AI proposal; verify only sandbox/proposal data disappears.
+4. Accept a proposal; verify only the approved diff is applied as an undoable transaction.
+5. Make new user edits after AI snapshot; verify stale proposal conflicts are surfaced.
+6. Try to invoke apply, project deletion or export from an AI tool call; all are rejected.
