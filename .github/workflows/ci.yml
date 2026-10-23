@@ -23,6 +23,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install locked package manifest
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Syntax checks
         run: npm run check
       - name: Core regression tests
