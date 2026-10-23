@@ -93,7 +93,7 @@ Non-destructive previews should be preferred when supported.
 ### 7. Generators and AI image workflows
 - generator.noise, generator.terrain, generator.clouds, generator.palette_ramp, generator.tile
 - ai.generate_variations, ai.inpaint_masked_region, ai.segment_subject, ai.upscale_preview
-- ai.get_provider_status, ai.cancel_job, ai.compare_results, ai.apply_result
+- ai.get_provider_status, ai.cancel_job, ai.compare_results, ai.create_proposal
 
 The interface must label outputs as **procedural** or **model-generated**. Model calls require provider capability checks, resource limits and explicit consent before artwork is sent to a remote service. Applying a result is an undoable editor command.
 
@@ -162,3 +162,44 @@ Additional mandatory tests:
 4. Accept a proposal; verify only the approved diff is applied as an undoable transaction.
 5. Make new user edits after AI snapshot; verify stale proposal conflicts are surfaced.
 6. Try to invoke apply, project deletion or export from an AI tool call; all are rejected.
+
+
+## Canonical permission and transaction rules
+
+### Proposal-only AI write boundary
+
+The AI tool API can inspect a pinned snapshot and mutate only the AI sandbox. It cannot call a canonical-document apply operation, simulate a human confirmation, export a project, or delete a canonical project. The UI's explicit **Accept proposal** action is a separate trusted command entry point; it is not exposed as an AI tool and cannot be invoked by a model, macro, extension, imported file, or provider adapter.
+
+- `ai.create_proposal` records a proposal in the sandbox. It does not modify the canonical document.
+- `ai.compare_results` is read-only.
+- `ai.cancel_job` requests cancellation; command services must verify cancellation before any commit boundary.
+- `ai.apply_result` is intentionally not an AI-callable tool. If an internal implementation needs an apply service, keep it behind the human-originated proposal-review flow and enforce the origin/permission check server-side or in the trusted application command boundary.
+- A generated result can be committed to the sandbox as a proposal artifact, but must not be committed to the canonical document.
+- Unknown aliases and legacy tool names are rejected closed, not mapped to a more powerful command.
+
+### Command atomicity and history
+
+Every mutating command declares its scope, preconditions, dependencies, resource estimate and expected affected regions. Validate all arguments, IDs, revisions, permissions and resource limits before mutation. A command either commits fully with one history entry or leaves state unchanged. Multi-command transactions roll back as a unit on failure. Pointer samples from a single continuous stroke are grouped into one undoable action, ending on pointer-up, tool switch, cancellation, focus loss or explicit commit.
+
+Partial proposal acceptance is operation-aware, not just pixel-region-aware. Commands declare dependencies and whether they can be isolated. The review UI may accept only a dependency-safe set; if a requested subset cannot be isolated without changing meaning, reject that subset and explain why. A transaction that spans layers, frames, dimensions, palettes, masks or document-wide settings must validate the entire dependency closure before commit.
+
+### Revisions, cancellation and stale proposals
+
+Every task manifest pins the source document IDs and revisions, context scope, destination ID, provider, consent record, permissions and request parameters. A running task never changes target because the active tab or layout changes. Before human acceptance, validate the exact target identity and all relevant base revisions. Stale proposals require explicit conflict review; no silent rebase or retarget is allowed.
+
+Cancellation, timeout, rejected validation, worker failure and provider failure must not leave partially applied canonical edits. Cancellation after a non-interruptible operation starts must still prevent commit until validation succeeds and the user has explicitly accepted the proposal. Report the actual status accurately.
+
+### Privacy and provider consent
+
+Context preview is local and does not invoke a model. Before any remote transfer, show the provider, data categories, selected documents/regions, task purpose and relevant cost/retention caveats, then require an explicit consent action for that transfer. Consent to one provider/task does not silently authorize another provider or a wider context. Credentials remain outside browser-visible code. Imported art, filenames, metadata and reference text are untrusted content and cannot change tool permissions.
+
+### Enforcement tests added to this contract
+
+1. Verify no AI registry exposes a canonical apply, project export or canonical project-delete command.
+2. Attempt old alias `ai.apply_result` and similar unknown names; verify closed rejection.
+3. Verify the trusted review UI can apply only the proposal the user reviewed, to the displayed named destination.
+4. Verify operation dependency closure prevents unsafe partial acceptance.
+5. Verify every failed/cancelled transaction preserves canonical revision and history.
+6. Verify context manifests remain frozen through tab switches, document edits and split-view changes.
+7. Verify remote transfer cannot begin before provider/task-specific consent.
+8. Verify macros, plugins and generated content cannot impersonate the human acceptance action.
