@@ -12,3 +12,16 @@
   .draw-hold.held{border-color:#69dfbb;background:#213b38;color:#aaf3dc}
   .draw-hold:disabled{opacity:.45;cursor:not-allowed}
 }
+
+.projects-button{padding:5px 8px;border:1px solid #363947;border-radius:6px;background:#20222c;color:#cbd0df;font-size:10px;font-weight:700}
+.projects-button:hover{background:#292c38;color:#fff}
+.projects-dialog{max-width:500px}
+.saved-project-list{display:flex;flex-direction:column;gap:7px;max-height:min(48vh,360px);overflow:auto;margin:15px 0}
+.saved-project{padding:4px;border:1px solid #343744;border-radius:8px;background:#20222c}
+.saved-project-open{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:0;border-radius:5px;background:transparent;color:#e0e3ed;text-align:left;font-size:11px;font-weight:700}
+.saved-project-open small{color:#9399ad;font-size:10px;font-weight:500;white-space:nowrap}
+.saved-project-open:hover:not(:disabled){background:#2c2e3a}
+.saved-project-open.current{color:#aaa0ff;cursor:default}
+.saved-project-open:disabled{opacity:.75}
+.project-empty{padding:15px;border:1px dashed #3a3d4b;border-radius:8px;color:#9298aa;font-size:11px;line-height:1.6}
+@media(max-width:760px){.projects-button{padding:4px 6px;font-size:9px}.context-right{gap:6px}}
