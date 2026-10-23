@@ -93,10 +93,13 @@ try {
   const holdX = holdBox.x + holdBox.width / 2, holdY = holdBox.y + holdBox.height / 2;
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 1, x: holdX, y: holdY }, { id: 2, x: startX, y: startY }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 1, x: holdX, y: holdY }, { id: 2, x: startX + 18, y: startY + 8 }] });
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ id: 1, x: holdX, y: holdY }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ id: 2, x: startX + 18, y: startY + 8 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 2, x: startX + 28, y: startY + 14 }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
   assert.equal(await mobile.locator('#undo').isEnabled(), true, 'holding the draw control while moving a finger must create an undoable stroke');
+  await mobile.locator('#undo').click();
+  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'releasing the hold must stop drawing and keep the gesture as one undoable action');
   assert.deepEqual(failures, [], 'no uncaught browser JavaScript errors should occur');
   console.log('Browser smoke checks passed: startup, drawing, undo/redo, layers, PNG export, IndexedDB recovery and mobile touch.');
 } finally {
