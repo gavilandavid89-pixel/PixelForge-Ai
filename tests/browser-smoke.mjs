@@ -81,18 +81,6 @@ try {
   await desktop.keyboard.press('Space');
   assert.match(await desktop.locator('#eraser-tool').getAttribute('class'), /active/, 'Space must activate a focused tool button instead of being swallowed by the pan shortcut');
   await desktop.locator('#brush-tool').click();
-  await desktop.locator('#draw-hold').focus();
-  await desktop.keyboard.down('Space');
-  assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'true', 'keyboard hold must enter the pressed state');
-  await desktop.keyboard.up('Space');
-  assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'keyboard hold must release deterministically');
-  await desktop.locator('#draw-hold').focus();
-  await desktop.keyboard.down('Space');
-  assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'true');
-  await desktop.locator('#brush-tool').focus();
-  assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'leaving the hold control must cancel a held keyboard gesture');
-  await desktop.keyboard.up('Space');
-
   // Ctrl/Cmd+S during a live pointer stroke must commit it before saving.
   const saveStrokeStartX = box.x + box.width / 2 + 36, saveStrokeStartY = box.y + box.height / 2 + 20;
   await desktop.mouse.move(saveStrokeStartX, saveStrokeStartY);
@@ -193,6 +181,16 @@ try {
   const mobileCanvas = mobile.locator('#canvas');
   const mobileBox = await mobileCanvas.boundingBox();
   assert.ok(mobileBox && mobileBox.width > 150 && mobileBox.height > 150, 'mobile canvas must remain usable');
+  await mobile.locator('#draw-hold').focus();
+  await mobile.keyboard.down('Space');
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'true', 'keyboard hold must enter the pressed state on the mobile workspace');
+  await mobile.keyboard.up('Space');
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'keyboard hold must release deterministically');
+  await mobile.keyboard.down('Space');
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'true');
+  await mobile.locator('#pan-tool').focus();
+  assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'leaving the hold control must cancel a held keyboard gesture');
+  await mobile.keyboard.up('Space');
   await mobile.locator('#pan-tool').click();
   await mobile.mouse.move(mobileBox.x + mobileBox.width / 2, mobileBox.y + mobileBox.height / 2);
   await mobile.mouse.down();
