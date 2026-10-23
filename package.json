@@ -1,0 +1,9 @@
+{
+  "name": "pixelforge-ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PixelForge AI — first functional raster editor slice",
+  "scripts": { "test": "node --test", "check": "node --check src/core.js && node --check src/persistence.js && node --check src/editor.js" },
+  "engines": { "node": ">=20" }
+}
