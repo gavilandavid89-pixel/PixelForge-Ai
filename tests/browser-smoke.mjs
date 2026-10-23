@@ -266,9 +266,9 @@ try {
   const startX = mobileBox.x + mobileBox.width / 2, startY = mobileBox.y + mobileBox.height / 2;
   await touchDrag(startX, startY, startX + 18, startY + 8);
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'touch cursor movement without the hold control must not paint');
-  const holdBox = await mobile.locator('#draw-hold').boundingBox();
-  assert.ok(holdBox && holdBox.width > 70, 'mobile draw-hold control must be reachable');
-  const holdX = holdBox.x + holdBox.width / 2, holdY = holdBox.y + holdBox.height / 2;
+  const drawHoldBounds = await mobile.locator('#draw-hold').boundingBox();
+  assert.ok(drawHoldBounds && drawHoldBounds.width > 70, 'mobile draw-hold control must be reachable');
+  const holdX = drawHoldBounds.x + drawHoldBounds.width / 2, holdY = drawHoldBounds.y + drawHoldBounds.height / 2;
 
   // Releasing the hold while the cursor finger remains down must stop drawing immediately.
   await mobile.mouse.move(holdX, holdY);
