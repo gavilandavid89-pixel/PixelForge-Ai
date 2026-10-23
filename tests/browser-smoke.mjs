@@ -86,6 +86,12 @@ try {
   assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'true', 'keyboard hold must enter the pressed state');
   await desktop.keyboard.up('Space');
   assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'keyboard hold must release deterministically');
+  await desktop.locator('#draw-hold').focus();
+  await desktop.keyboard.down('Space');
+  assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'true');
+  await desktop.locator('#brush-tool').focus();
+  assert.equal(await desktop.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'leaving the hold control must cancel a held keyboard gesture');
+  await desktop.keyboard.up('Space');
 
   // Ctrl/Cmd+S during a live pointer stroke must commit it before saving.
   const saveStrokeStartX = box.x + box.width / 2 + 36, saveStrokeStartY = box.y + box.height / 2 + 20;
