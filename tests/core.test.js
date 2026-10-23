@@ -191,3 +191,19 @@ test('layer commands validate names and boolean visibility instead of coercing i
   assert.throws(() => doc.setLayerVisibility(doc.activeLayerId, 'false'), /must be a boolean/);
   assert.equal(doc.activeLayer.visible, true);
 });
+
+test('imported project copies receive independent document and layer identities', () => {
+  const original = new RasterDocument(4, 4, 'My artwork');
+  const layer = original.addLayer('Ink');
+  const source = original.toJSON();
+  const copy = RasterDocument.fromJSON(source, { newIdentity: true });
+  assert.notEqual(copy.id, original.id);
+  assert.notEqual(copy.layers[0].id, original.layers[0].id);
+  assert.notEqual(copy.layers[1].id, layer.id);
+  assert.equal(copy.activeLayerId, copy.layers[1].id);
+  assert.equal(copy.name, 'My artwork (imported)');
+  assert.equal(copy.revision, 0);
+  assert.equal(copy.saveVersion, 0);
+  assert.deepEqual(copy.layers[1].pixels, original.layers[1].pixels);
+  assert.equal(original.id, source.id);
+});
