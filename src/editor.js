@@ -8,7 +8,7 @@ const previewCanvas = document.createElement('canvas'), previewCtx = previewCanv
 let doc = new RasterDocument(128, 128), tool = 'draw', spaceDown = false;
 let color = $('#color').value, brushSize = Number($('#brush-size').value);
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null;
-let panning = false, panStart = null, autosaveTimer = null, renderQueued = false;
+let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), renderQueued = false;
 
 function status(message, kind = 'neutral') {
   $('#status').textContent = message;
@@ -70,20 +70,31 @@ function docPoint(event) { return screenToDocument(eventPoint(event), { zoom, pa
 function scheduleAutosave() {
   clearTimeout(autosaveTimer);
   status('Unsaved changes', 'warning');
-  autosaveTimer = setTimeout(async () => {
+  autosaveTimer = setTimeout(() => {
     autosaveTimer = null;
-    try {
-      await saveProject(doc.toJSON()); doc.dirty = false;
-      status('Saved on this device', 'success'); updateTitle();
-    } catch (error) { status(`Autosave unavailable: ${error.message}`, 'error'); }
+    const savingDoc = doc, snapshot = savingDoc.toJSON();
+    autosaveInFlight = (async () => {
+      try {
+        await saveProject(snapshot);
+        savingDoc.dirty = false;
+        if (doc === savingDoc) { status('Saved on this device', 'success'); updateTitle(); }
+      } catch (error) {
+        if (doc === savingDoc) status(`Autosave unavailable: ${error.message}`, 'error');
+        throw error;
+      }
+    })().catch(() => {});
   }, 800);
 }
 async function flushAutosave() {
   if (activeStroke) endStroke({ pointerId }, false);
   const pending = autosaveTimer !== null;
   if (pending) { clearTimeout(autosaveTimer); autosaveTimer = null; }
+  await autosaveInFlight;
   if (!doc.dirty && !pending) return;
-  await saveProject(doc.toJSON()); doc.dirty = false; updateTitle();
+  const savingDoc = doc;
+  await saveProject(savingDoc.toJSON());
+  savingDoc.dirty = false;
+  if (doc === savingDoc) updateTitle();
 }
 function changed() { render(); updateTitle(); scheduleAutosave(); }
 function beginStroke(event) {
