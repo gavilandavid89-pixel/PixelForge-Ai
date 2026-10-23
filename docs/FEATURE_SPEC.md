@@ -524,3 +524,74 @@ This is the capability checklist, not a promise that every item already exists. 
 - Make the distinction legible in the UI: label User Canvas versus AI Sandbox, show the destination document for proposals, and visually distinguish proposed pixels from canonical artwork. Do not rely on color alone; use labels/icons and a reviewable diff.
 - Support a full-screen canvas mode that hides panels while retaining reliable access to tools and a clear way to reopen the UI. The canvas coordinate system remains stable when panels move, resize, open or close; only the viewport presentation may change.
 - Acceptance tests must prove that: UI elements never enter exported pixels; user and AI cursor/tool/viewport/history states do not leak into each other; AI inspection does not mutate either document; cancelling/discarding AI work leaves the user document byte-for-byte/revision-identical; and accepted proposals apply only to the explicitly named destination through one undoable transaction.
+
+
+## AQ. Normative decisions and release boundaries
+
+This section resolves cross-cutting ambiguities in earlier feature sections. If an older section can be interpreted differently, this section and the current architecture/API contracts take precedence until an explicit versioned decision supersedes them.
+
+### AQ.1 Document identity, transactions and history
+
+- The canonical document model—not the rendered canvas, UI tree, or AI prompt—is the source of truth.
+- Every mutation is validated and committed through a command/transaction boundary. A command either completes atomically with an appropriate history entry or leaves the document unchanged.
+- One continuous user stroke is one undoable action. Tool switches, pointer cancellation, focus loss, app suspension and orientation interruption end or cancel the active gesture deterministically; no half-committed stroke may remain.
+- Undo/redo affect document edits, not ordinary viewport movement, cursor travel, preview changes or panel movement.
+- Canonical documents, autosaves, recovery checkpoints, AI proposals, clones and exports have separate identities and lifecycles.
+- Autosave is atomic. If storage fails or quota is exhausted, show a clear warning and preserve the last valid save. Recovery must show available versions and must never silently overwrite a newer revision.
+
+### AQ.2 Tool and gesture arbitration
+
+- A single input controller arbitrates mouse, touch and stylus input. Tools declare interaction categories and capabilities; they do not independently interpret the same raw gesture.
+- Cursor movement, navigation and applying a tool are independent state dimensions. Moving the virtual cursor alone never changes artwork.
+- Continuous drawing starts only through the explicit draw activation when the current tool supports continuous strokes. The bucket/fill is a deliberate discrete action and never triggers because the cursor moved.
+- Two-finger gestures navigate and must not accidentally draw. If a device cannot reliably distinguish stylus drawing from touch navigation, use a conservative non-destructive fallback and visible controls.
+- Ambiguous input must not create destructive edits. Provide visible/accessibility alternatives to gestures and shortcuts for essential actions.
+
+### AQ.3 AI permissions, proposal dependencies and approval
+
+- AI inspection is read-only on a revision-pinned snapshot; AI mutations are confined to the AI sandbox. The model cannot invoke the human approval action, canonical apply operation, canonical project deletion or export.
+- A proposal records base revisions, named destination, ordered operations, dependencies, affected regions, validation output and a reviewable diff.
+- Partial acceptance is not synonymous with clipping pixels. It is allowed only for operations whose dependency closure can be safely isolated. Global palette/color-mode/canvas-size changes, layer-tree changes, linked masks/effects and frame/timing changes may require atomic group acceptance.
+- If a selected subset is unsafe or semantically incomplete, reject it with an explanation and offer a safe larger group or full proposal review.
+- Human acceptance is one explicit action against the named destination. The system rechecks permissions and revisions immediately before commit and applies the accepted subset as one undoable transaction.
+- Stale proposals are never silently rebased or retargeted. The user must inspect and resolve conflicts.
+- Context scope and write destination are separate. ALL context never grants multi-document write permission.
+- Perspective · Actual sees the current artwork viewport without editor chrome; it cannot claim to inspect content outside that viewport. Perspective · Standard starts from the full unobstructed document and can inspect bounded crops on its own view. Reference receives only explicitly included documents.
+- A context preview never starts AI processing. Remote transfer requires explicit provider/task-specific consent that names the content being sent. Consent for one task/provider does not imply consent for another.
+
+### AQ.4 Rendering, coordinate and overlay boundaries
+
+- The document coordinate system is independent of screen pixels, CSS layout, device-pixel ratio, panel positions and viewport transforms.
+- Panel resizing, fullscreen transitions, zoom, pan and view-only rotation cannot modify artwork pixels.
+- The renderer provides separate artwork-only output for AI inspection and export. Toolbars, docks, guides, grids, cursor overlays, selection handles and editor UI are excluded unless a specifically named overlay-export option is implemented and selected.
+- Grid visibility and snapping are separate settings. Guides, selection outlines, onion-skin overlays and other view aids are not document pixels by default.
+- Canvas implementation choice (Canvas 2D, WebGL/WebGPU or a platform renderer) is based on measured performance and verified output, not branding. Backend replacement must preserve document and command contracts.
+
+### AQ.5 Formats, color and honest capability reporting
+
+- The native project format is separate from flattened interchange formats.
+- Each importer/exporter declares tested capabilities for alpha, animation, layers, color depth/profile, metadata, compression and dimension limits. UI options are based on that declaration.
+- Unsupported features or lossy conversions must be identified before import/export is committed. Never silently claim to preserve layers, animation, profiles or metadata when the selected format cannot do so.
+- Validate dimensions, estimated memory and format constraints before allocation. Export works from an immutable snapshot and cannot mutate the source document or its history.
+- A format is not considered supported until fixture-based tests verify actual output can be reopened and its dimensions, alpha, frame behavior and other advertised capabilities are correct.
+
+### AQ.6 Cross-device requirements
+
+- Desktop and mobile share the same document model, editing commands, history semantics, file contracts and tool behavior wherever the feature is supported.
+- Desktop layout may favor keyboard, mouse, stylus, timelines and distributed panels; mobile layout favors a full canvas, touch-safe controls, virtual cursor/draw activation and hideable panels.
+- Essential actions cannot depend exclusively on hover, a physical keyboard or a complex gesture.
+- "Loads on Android" is not equivalent to Android support. Cross-device readiness requires real-device tests for drawing, navigation, undo/redo, save/recovery and import/export.
+
+### AQ.7 First functional release versus long-term vision
+
+The complete feature inventory is a long-term product vision, not a promise that every capability ships in the first release. The first usable release must provide a coherent, verified path:
+
+1. Create/open/save one raster document with versioned native serialization.
+2. Dedicated canvas with correct coordinate mapping, pan and zoom.
+3. Functional pencil, eraser, color selection and reliable touch/mouse stroke input.
+4. Basic layer model, atomic edit commands and correct undo/redo.
+5. PNG import/export with tested dimensions and alpha behavior.
+6. Atomic autosave/recovery baseline and clear failure handling.
+7. Automated tests for coordinates, stroke lifecycle, history, save round-trip and export immutability.
+
+Do not show nonfunctional or merely planned tools as active controls. Animation, advanced effects/masks, broad format support, provider-backed AI, macros/plugins and community features remain gated until their prerequisites and acceptance tests pass.
