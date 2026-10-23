@@ -1,5 +1,6 @@
 import { RasterDocument, screenToDocument, validateDimensions } from './core.js';
 import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
+import { preflightImageFile } from './image-import.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#canvas'), ctx = canvas.getContext('2d', { alpha: true });
@@ -381,8 +382,10 @@ $('#import-file').addEventListener('change', async event => {
     if (file.name.toLowerCase().endsWith('.pforge') || file.type === 'application/json') {
       importedDoc = RasterDocument.fromJSON(JSON.parse(await file.text()), { newIdentity: true });
     } else {
+      const expectedImage = await preflightImageFile(file);
       const bitmap = await createImageBitmap(file);
       try {
+        if (bitmap.width !== expectedImage.width || bitmap.height !== expectedImage.height) throw new RangeError('Decoded image dimensions do not match the verified file header.');
         validateDimensions(bitmap.width, bitmap.height);
         const name = file.name.includes('.') ? file.name.slice(0, file.name.lastIndexOf('.')) : file.name;
         importedDoc = new RasterDocument(bitmap.width, bitmap.height, name || 'Imported artwork');
