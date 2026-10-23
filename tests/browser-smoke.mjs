@@ -88,10 +88,11 @@ try {
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'touch cursor movement without the hold control must not paint');
   const holdBox = await mobile.locator('#draw-hold').boundingBox();
   assert.ok(holdBox && holdBox.width > 70, 'mobile draw-hold control must be reachable');
-  await mobile.mouse.move(holdBox.x + holdBox.width / 2, holdBox.y + holdBox.height / 2);
-  await mobile.mouse.down();
-  await touchDrag(startX, startY, startX + 18, startY + 8);
-  await mobile.mouse.up();
+  const holdX = holdBox.x + holdBox.width / 2, holdY = holdBox.y + holdBox.height / 2;
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 1, x: holdX, y: holdY }, { id: 2, x: startX, y: startY }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 1, x: holdX, y: holdY }, { id: 2, x: startX + 18, y: startY + 8 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ id: 1, x: holdX, y: holdY }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
   assert.equal(await mobile.locator('#undo').isEnabled(), true, 'holding the draw control while moving a finger must create an undoable stroke');
   assert.deepEqual(failures, [], 'no uncaught browser JavaScript errors should occur');
