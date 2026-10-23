@@ -159,3 +159,73 @@ Represent each editing context with its own session state, including document/sn
 - Cancellation, timeout, failure, or sandbox discard cannot mutate the user document. Enforce this in command permissions, not only in UI.
 - Tool names may overlap (e.g. brush, eraser, zoom), but user and AI tool registries, active-tool state and permissions remain distinct. A user changing tools or viewport must not affect AI jobs; AI inspection must not move the user's cursor or change their view.
 - Tests must check state isolation, renderer/export separation, no UI contamination, revision stability on cancelled jobs, and destination-scoped proposal application.
+
+
+## Normative contracts: document, commands and history
+
+These rules are implementation requirements, not suggestions:
+
+- The document model is the source of truth. UI components and render surfaces never mutate raw canonical buffers directly.
+- Every persisted entity has a stable ID scoped to its project/document; identity is never inferred from tab order, filenames or array indices.
+- Every mutation runs through a validated command/transaction boundary with expected revision, permissions, resource limits and declared dependencies.
+- A command is atomic: it either commits all intended changes and one history entry, or leaves canonical state unchanged. Multi-command transactions roll back as a unit.
+- One user gesture produces one logical history action. Freehand samples are grouped until pointer-up, tool switch, focus loss, orientation interruption, explicit cancellation or commit.
+- Undo/redo restore document state and revision lineage consistently; viewport-only actions do not enter artwork history unless the user explicitly chooses to persist a workspace layout.
+- Persistent save, recovery checkpoint, in-memory history, AI proposal and exported file are distinct records with distinct IDs and lifecycles.
+- Autosave writes atomically. A failed or interrupted write must not replace the last valid saved version. Recovery offers a choice and never silently overwrites a newer document.
+- Export and AI context capture consume immutable snapshots. Neither operation mutates canonical state.
+
+## Input state machine and gesture arbitration
+
+The input controller owns gesture arbitration and coordinate conversion. Tools declare their interaction category and supported pointer types; tools do not independently compete for raw gestures.
+
+Required states: `idle`, `cursor-positioning`, `drawing`, `drag-preview`, `discrete-action`, `selection`, `navigation`, and `cancelled`. Implementations may refine these states but must preserve the externally observable rules.
+
+- Cursor movement is not a drawing action. Drawing starts only when the explicit draw activation is active and the selected tool supports a continuous stroke.
+- Bucket/fill and similar actions are discrete; they execute once on deliberate activation, never as a side effect of cursor travel.
+- Two-finger navigation has priority as a navigation gesture and cannot create a paint stroke. Stylus input may draw while touch is reserved for navigation only if the device/input capabilities can distinguish them reliably.
+- On ambiguous input, prefer no destructive edit and provide predictable feedback.
+- Every transition caused by pointer-up, pointer-cancel, lost focus, app suspension, orientation/viewport resize or tool switch must either commit the valid operation once or cancel it without partial mutation.
+- Document-space coordinates are calculated through one tested transform pipeline covering device-pixel ratio, viewport scale, pan, view rotation and screen/layout changes.
+
+## Renderer selection and performance policy
+
+Keep the renderer behind a stable interface. Start with the simplest renderer that passes the visual and performance test suite on the supported baseline devices; do not make a GPU backend a product requirement merely for appearance.
+
+1. Establish repeatable small, medium and stress fixtures with dimensions, layer/frame counts and alpha complexity.
+2. Measure input-to-visible-pixel latency, stroke throughput, compositing time, fill/filter latency, memory, save and export on named browsers/devices.
+3. Keep Canvas 2D if it meets the published budgets. Evaluate WebGL/WebGPU or another backend only when measured regressions justify the added complexity and the target environment supports it.
+4. A backend switch must pass pixel-equivalence tests for supported operations, coordinate tests, context-loss/recovery tests and the same document/command contracts.
+5. Maintain a safe fallback for unsupported GPU features. Do not claim a performance target without publishing the device, fixture, measurement method and result.
+6. Use dirty-region rendering and workers where profiling demonstrates value; do not move mutable document ownership into an uncoordinated worker.
+
+## Desktop and mobile product contract
+
+The editor shares a document model, command layer, algorithms, tool semantics, file contracts and acceptance tests across form factors. Layout and input presentation adapt to the device.
+
+- Desktop: keyboard/mouse/stylus efficiency, resizable panels, timeline and multi-document workspace.
+- Mobile: canvas-first layout, touch-safe targets, virtual cursor/draw activation, reachable undo/redo and panel hiding/reopening.
+- Essential drawing, save, undo/redo, import and export workflows must not require a desktop-only hover or keyboard shortcut.
+- A gesture is never the only access path for an essential command; provide a visible control or accessible alternative.
+- No platform is declared supported solely because it loads. At least one real desktop browser and one real Android touch device must pass the corresponding release-gate tests.
+
+## Partial proposal application and dependency graph
+
+Every AI proposal is a version-pinned ordered command set. Each operation declares its affected entities/regions and dependencies. Review may select an operation subset only when the dependency closure is satisfied and the resulting transaction is semantically valid.
+
+Pixel-region selection is a presentation aid, not a guarantee that every operation can be clipped safely. Document-wide changes (canvas dimensions, color mode, global palette, layer-tree structure, animation timing or linked masks/effects) require explicit operation-level review and may only be accepted as whole atomic groups. If safe separation cannot be proven, disable partial acceptance for that group and explain the limitation. Every accepted subset remains one undoable transaction.
+
+## Format capability truthfulness
+
+Format adapters publish a capability declaration derived from implementation and fixture tests: alpha, animation, layers, color depth, profiles, metadata, compression and dimension limits. UI options are generated from the tested declaration, not from aspirational feature lists. Import warnings identify data that will be flattened, converted or discarded; silent loss of supported editable content is a release-blocking defect. Native project serialization remains separate from flattened interchange formats.
+
+## Implementation status vocabulary
+
+Use only these status labels in project docs and UI:
+- **Planned**: specified but not implemented.
+- **Implemented**: code exists, but acceptance evidence may be incomplete.
+- **Verified**: required tests passed in a named environment.
+- **Unsupported**: deliberately unavailable for this build/format.
+- **Blocked**: a named prerequisite prevents implementation or verification.
+
+A screenshot, mockup, static control or code review alone does not make an operation verified.
