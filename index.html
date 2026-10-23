@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101116">
+<meta name="description" content="PixelForge AI — a focused, touch-friendly raster art editor.">
+<title>PixelForge AI · Studio</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar">
+  <a class="brand" href="./" aria-label="PixelForge AI home"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span>PixelForge <b>AI</b><small>STUDIO</small></span></a>
+  <div class="document-meta"><span class="live-dot"></span><span id="document-name">Untitled artwork</span><span class="meta-separator">/</span><span id="document-size">128 × 128</span></div>
+  <div class="top-actions">
+    <button class="quiet-button" id="undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>↶</button>
+    <button class="quiet-button" id="redo" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>↷</button>
+    <span class="action-divider"></span>
+    <button class="secondary-button" id="save">Save <kbd>⌘S</kbd></button>
+    <button class="primary-button" id="export-png"><span class="export-icon">↗</span> Export PNG</button>
+    <button class="more-button" id="new-document" title="New document" aria-label="New document">＋</button>
+  </div>
+</header>
+<main class="workspace">
+  <aside class="tool-rail" aria-label="Drawing tools">
+    <div class="rail-section-label">TOOLS</div>
+    <button id="brush-tool" class="tool-button active" aria-label="Pencil tool" title="Pencil (B)"><span class="tool-glyph">✎</span><small>Pencil</small></button>
+    <button id="eraser-tool" class="tool-button" aria-label="Eraser tool" title="Eraser (E)"><span class="tool-glyph">▱</span><small>Eraser</small></button>
+    <button id="pan-tool" class="tool-button" aria-label="Pan canvas tool" title="Pan canvas"><span class="tool-glyph">✥</span><small>Pan</small></button>
+    <div class="rail-spacer"></div>
+    <button id="fit" class="tool-button" aria-label="Fit canvas" title="Fit canvas"><span class="tool-glyph">⛶</span><small>Fit</small></button>
+    <div class="rail-bottom-mark">PF</div>
+  </aside>
+  <section class="stage-column">
+    <div class="contextbar"><div class="breadcrumb"><span>Workspace</span><span class="crumb-slash">/</span><strong id="tool-label">Pencil</strong></div><div class="context-right"><span class="mode-pill"><span class="mode-dot"></span> Raster canvas</span><span class="context-divider"></span><span id="layer-count">1 layer</span></div></div>
+    <div id="work-area" class="work-area">
+      <div class="canvas-hint"><span class="hint-key">SPACE</span> + drag to pan <span class="hint-sep">·</span> Scroll to zoom</div>
+      <canvas id="canvas" aria-label="Artwork canvas" tabindex="0"></canvas>
+      <div class="stage-bottom-left"><span class="stage-indicator"></span><span id="status" data-kind="success" role="status" aria-live="polite">Starting editor…</span></div>
+      <div class="stage-bottom-right"><button id="zoom-out" aria-label="Zoom out">−</button><span id="zoom-label">300%</span><button id="zoom-in" aria-label="Zoom in">＋</button></div>
+    </div>
+    <footer class="bottom-bar"><span><span class="bottom-dot"></span> Local-first workspace</span><span>Document pixels stay independent of the interface</span><span>PixelForge <span class="footer-version">v0.1 · early build</span></span></footer>
+  </section>
+  <aside class="inspector" aria-label="Tool options and layers">
+    <div class="inspector-tabs"><button class="inspector-tab active" type="button">Properties</button><button id="layers-tab" class="inspector-tab" type="button">Layers</button></div>
+    <section class="inspector-section">
+      <div class="section-heading"><span class="section-icon">◈</span><h2>Brush settings</h2><span class="section-menu">•••</span></div>
+      <div class="control-block">
+        <div class="control-heading"><label for="color">Foreground</label><span id="color-value">#DCE2F0</span></div>
+        <div class="color-control"><input id="color" type="color" value="#DCE2F0" aria-label="Foreground color"><div class="color-presets" aria-label="Color presets">
+          <button style="--swatch:#DCE2F0" data-color="#DCE2F0" aria-label="Soft white"></button><button style="--swatch:#9B8AFB" data-color="#9B8AFB" aria-label="Violet"></button><button style="--swatch:#59D8B4" data-color="#59D8B4" aria-label="Mint"></button><button style="--swatch:#FF9C70" data-color="#FF9C70" aria-label="Coral"></button><button style="--swatch:#242632" data-color="#242632" aria-label="Ink"></button>
+        </div></div>
+      </div>
+      <div class="control-block"><div class="control-heading"><label for="brush-size">Size</label><span id="brush-size-value">1 px</span></div><input id="brush-size" class="range-input" type="range" min="1" max="32" value="1"><div class="range-labels"><span>1 px</span><span>32 px</span></div></div>
+      <div class="control-block"><div class="control-heading"><span>Stroke behavior</span><span class="tiny-tag">PIXEL</span></div><div class="setting-row"><span>Hard edge</span><span class="setting-value"><span class="toggle on"></span> On</span></div><div class="setting-row"><span>Pressure</span><span class="setting-value muted">Not in this build</span></div></div>
+    </section>
+    <section class="inspector-section layer-section">
+      <div class="section-heading"><span class="section-icon">▤</span><h2>Layers</h2><button id="add-layer" class="icon-add" aria-label="Add layer" title="Add layer">＋</button></div>
+      <div id="layers" class="layer-list"></div><div class="layer-footer"><span>Compositing</span><span>Normal · 100%</span></div>
+    </section>
+    <section class="inspector-section files-section">
+      <div class="section-heading"><span class="section-icon">⇧</span><h2>Import & project</h2></div>
+      <label class="file-button" for="import-file"><span>＋</span> Import image or project</label><input id="import-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,.pforge,.json" hidden>
+      <button class="file-button" id="export-project"><span>⇩</span> Export editable project</button>
+      <p class="small-note">Projects autosave to this browser when local storage is available. Keep a project export as a portable backup.</p>
+    </section>
+  </aside>
+</main>
+<dialog id="new-dialog" class="new-dialog"><form method="dialog" id="new-form"><div class="dialog-kicker">NEW DOCUMENT</div><h2>Start with a clean canvas.</h2><p>Choose dimensions for your artwork. This build supports up to 2048 px per side, 4 million pixels and a 64 MiB total layer-memory budget.</p><label>Document name<input id="new-name" value="Untitled artwork" maxlength="180"></label><div class="dimension-fields"><label>Width<input id="new-width" type="number" min="1" max="2048" value="128" required></label><span>×</span><label>Height<input id="new-height" type="number" min="1" max="2048" value="128" required></label></div><p id="new-error" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancel-new" class="secondary-button" type="button">Cancel</button><button id="create-new" class="primary-button" type="button">Create canvas ↗</button></div></form></dialog>
+<script type="module" src="./src/editor.js"></script>
+<script type="module">
+  document.querySelectorAll('[data-color]').forEach(button => button.addEventListener('click', () => {
+    const input = document.querySelector('#color'); input.value = button.dataset.color;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }));
+  document.querySelector('#save').addEventListener('click', () => {});
+</script>
+</div>
+</body>
+</html>
