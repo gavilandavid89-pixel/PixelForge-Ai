@@ -77,6 +77,11 @@ try {
   assert.equal(await desktop.locator('#redo').isEnabled(), true, 'undo must enable redo');
   await desktop.locator('#redo').click();
 
+  await desktop.locator('#eraser-tool').focus();
+  await desktop.keyboard.press('Space');
+  assert.match(await desktop.locator('#eraser-tool').getAttribute('class'), /active/, 'Space must activate a focused tool button instead of being swallowed by the pan shortcut');
+  await desktop.locator('#brush-tool').click();
+
   // Ctrl/Cmd+S during a live pointer stroke must commit it before saving.
   const saveStrokeStartX = box.x + box.width / 2 + 36, saveStrokeStartY = box.y + box.height / 2 + 20;
   await desktop.mouse.move(saveStrokeStartX, saveStrokeStartY);
