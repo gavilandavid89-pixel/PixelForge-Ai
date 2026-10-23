@@ -229,3 +229,26 @@ Use only these status labels in project docs and UI:
 - **Blocked**: a named prerequisite prevents implementation or verification.
 
 A screenshot, mockup, static control or code review alone does not make an operation verified.
+
+
+## Current bootstrap implementation versus target architecture
+
+The first functional slice deliberately has fewer modules than the target architecture. The current repository layout is:
+
+- `src/core.js`: raster document, pixel layers, tiled compositing cache, validated stroke coordinates, tile-based undo/redo and project serialization.
+- `src/persistence.js`: IndexedDB save and most-recent-project recovery.
+- `src/editor.js`: bootstrap UI orchestration, Canvas 2D rendering, pointer/keyboard input, layer controls and import/export flows.
+- `index.html` and `styles.css`: application shell and responsive presentation.
+- `tests/core.test.js`: deterministic engine tests run with Node's built-in test runner.
+
+The renderer and input controller are still co-located in the bootstrap controller; they are **not yet** independent production modules. Before adding complex tools, extract renderer and input-controller modules behind stable interfaces and add browser-level tests. Do not describe this early layout as the final modular architecture.
+
+## Resource guardrails in the first slice
+
+- Document dimensions: at most 2048 pixels per side and 4,194,304 pixels total.
+- Combined raw pixel buffers across all layers: at most 64 MiB.
+- Layer count: at most 64, additionally constrained by the combined pixel-memory budget.
+- Import file size: at most 100 MiB before decoding.
+- Undo history: at most 30 entries and 64 MiB estimated history payload, using 64 × 64 pixel tile snapshots for strokes.
+
+These are conservative bootstrap limits, not claims about the final editor. Any increase requires stress tests on named target devices, including composite/rendering temporaries, autosave serialization and export allocations—not just raw layer buffers.
