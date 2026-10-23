@@ -45,3 +45,8 @@ Use these labels consistently:
 - **Blocked** — a named prerequisite prevents implementation or verification.
 
 ### Current functional slice\n\n- Dedicated artwork canvas with fit, zoom, pan, pixel-aligned pencil and eraser.\n- Color selection, brush-size control, multiple layers and visibility toggles.\n- Undo/redo with tile-based pixel history and a bounded history-memory budget.\n- PNG/image import, transparent PNG export and editable `.pforge` project import/export.\n- Local IndexedDB autosave and most-recent-project recovery when browser storage is available.\n- Canvas-size, per-document pixel-memory and file-size safety limits.\n- Automated engine tests run with `npm test`; syntax checks run with `npm run check`.\n\n**Verification boundary:** engine unit tests and syntax checks can pass without proving browser rendering, IndexedDB behavior, downloads, touch input or visual quality. Those still require browser automation and real-device checks. See `docs/ENGINE_TEST_PLAN.md`. The first release remains a small end-to-end raster-editor slice; the broad feature specification is the long-term vision, not a claim that every feature is implemented.
+
+
+## Licensing status
+
+The repository does not yet declare a project-wide reuse license. Public visibility on GitHub is not a license grant. Until the owner selects a license, do not advertise this project as open-source or copy code/assets from the benchmark projects into it. The current editor slice has no third-party runtime dependencies; reference projects are research sources only.
