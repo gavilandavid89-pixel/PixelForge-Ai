@@ -252,7 +252,7 @@ function renderLayers() {
     row.className = `layer-row${layer.id === doc.activeLayerId ? ' selected' : ''}`;
     const select = document.createElement('button');
     select.className = 'layer-select'; select.textContent = layer.name; select.title = 'Select layer';
-    select.addEventListener('click', () => { doc.setActiveLayer(layer.id); renderLayers(); updateTitle(); });
+    select.addEventListener('click', () => { doc.setActiveLayer(layer.id); renderLayers(); updateTitle(); scheduleAutosave(); });
     const visibility = document.createElement('button');
     visibility.className = 'layer-visibility'; visibility.textContent = layer.visible ? '◉' : '○';
     visibility.setAttribute('aria-label', layer.visible ? 'Hide layer' : 'Show layer');
