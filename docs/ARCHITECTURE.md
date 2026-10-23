@@ -102,8 +102,10 @@ The workspace must not infer AI permissions from whichever tab happens to have f
 
 - `openDocumentIds`: documents currently open in the workspace.
 - `activeDocumentId`: the current manual editing destination.
-- `aiContextScope`: either `selected-document` or `all-authorized`.
+- `aiContextScope`: `selected-document`, `all-perspective`, or `all-reference`.
 - `aiContextDocumentIds`: a frozen, user-approved list captured when a request begins.
+- `workspaceViewSnapshot`: for `all-perspective`, an immutable capture/manifest of the composed workspace view at request time, including visible pane bounds/order, visible canvas viewport/crop/zoom, active pane, and relevant visible UI state. The actual rendered image/composition should be supplied where supported; structured metadata alone must not be described as exact visual perception.
+- `referenceDocumentIds`: for `all-reference`, the explicit authorized collection of source documents the AI may inspect independently.
 - `aiTargetDocumentIds`: the destination set for the resulting proposal; defaults to the selected document and is separate from context scope.
 - `baseRevisions`: immutable revision IDs for every document included in the request.
 
@@ -112,8 +114,10 @@ Every AI job receives an immutable request manifest containing these IDs, scope,
 ### Selected-document and ALL semantics
 
 - **Selected document**: expose only the chosen document's authorized snapshot and required metadata.
-- **ALL**: allow analysis across the explicitly included, authorized open documents/projects. The model may infer shared visual direction and relationships, but context breadth does not expand write permissions.
-- Under either scope, proposal generation is read-only with respect to canonical documents. Proposal application requires a validated, user-approved transaction.
+- **ALL · Perspective**: pass a faithful snapshot of the user's composed workspace view, including visible canvas content and spatial relationships. Do not replace this with an inventory of all open projects or a one-by-one tour of documents. Hidden tabs are not part of the visual perspective unless the user explicitly adds them. If exact view capture is not supported, label the fallback honestly.
+- **ALL · Reference**: pass the explicitly authorized collection of included documents as separate references so the AI can compare and reason across them, even when they are not visible in the workspace.
+- These modes are mutually distinct and each request freezes its context manifest at submission. A tab switch or layout change does not rewrite an in-flight request.
+- Under every scope, proposal generation is read-only with respect to canonical documents. Proposal application requires a validated, user-approved transaction.
 - A multi-document proposal must enumerate each target document, base revision and change summary. Require explicit approval of the complete target set; no implicit fan-out from ALL.
 - Exclude documents by default if access is not authorized. Do not transmit remote-provider content until the user has explicitly consented to that transfer.
 
