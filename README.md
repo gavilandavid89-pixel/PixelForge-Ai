@@ -18,7 +18,9 @@ Research and define the editing engine before building the visual interface. Use
 
 - `docs/EDITOR_RESEARCH.md` — source-code architecture, release/APK references, licensing notes, and feature analysis.
 - `docs/FEATURE_SPEC.md` — target feature inventory, including improvements beyond the references.
-- `docs/ARCHITECTURE.md` — proposed modular web-editor architecture and implementation priorities.
+- `docs/ARCHITECTURE.md` — modular editor architecture, input/document contracts, renderer policy and implementation priorities.
+- `docs/AI_TOOL_API.md` — AI tool registry, permissions, proposal lifecycle and command contract.
+- `docs/ENGINE_TEST_PLAN.md` — central acceptance matrix, release gates, adversarial scenarios and manual test record template.
 
 ## Product principles
 
@@ -29,3 +31,17 @@ Research and define the editing engine before building the visual interface. Use
 5. The editor must be useful without AI. AI is an optional assistant, not a dependency for drawing.
 6. Clearly distinguish procedural generation from neural-model inference; never label one as the other.
 7. Optimize for desktop first while keeping touch, stylus, and mobile layouts in mind.
+
+
+## Current implementation status
+
+The repository currently contains product and technical documentation. The engine, interactive editor UI, persistence, import/export, AI sandbox and automated acceptance suite must not be treated as implemented merely because they are specified here.
+
+Use these labels consistently:
+- **Planned** — described but not implemented.
+- **Implemented** — code exists; verification may still be incomplete.
+- **Verified** — required tests passed in a named environment.
+- **Unsupported** — deliberately unavailable for the current build.
+- **Blocked** — a named prerequisite prevents implementation or verification.
+
+The first release target is the small end-to-end raster-editor slice documented in `docs/ENGINE_TEST_PLAN.md`. The broader feature specification is the long-term vision, not a claim that every feature is part of the first release.
