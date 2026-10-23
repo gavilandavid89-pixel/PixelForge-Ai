@@ -249,6 +249,18 @@ drawHoldButton?.addEventListener('pointerdown', event => {
   if (virtualCursorPointerId !== null && virtualCursorPoint?.inside && !activeStroke) startStrokeAt(virtualCursorPoint, virtualCursorPointerId);
   render();
 });
+drawHoldButton?.addEventListener('keydown', event => {
+  if (!['Space', 'Enter'].includes(event.code) || event.repeat || tool === 'pan' || flushInProgress) return;
+  event.preventDefault();
+  drawHeld = true; drawHoldPointerId = 'keyboard'; updateDrawHoldUI();
+  if (virtualCursorPointerId !== null && virtualCursorPoint?.inside && !activeStroke) startStrokeAt(virtualCursorPoint, virtualCursorPointerId);
+  render();
+});
+drawHoldButton?.addEventListener('keyup', event => {
+  if (!['Space', 'Enter'].includes(event.code) || drawHoldPointerId !== 'keyboard') return;
+  event.preventDefault();
+  drawHeld = false; drawHoldPointerId = null; finishActiveStroke(true); updateDrawHoldUI(); render();
+});
 window.addEventListener('pointerup', event => {
   if (drawHoldPointerId !== event.pointerId) return;
   drawHeld = false; drawHoldPointerId = null; finishActiveStroke(true); updateDrawHoldUI(); render();
