@@ -15,7 +15,7 @@ function u32le(bytes, offset) { return (bytes[offset] | (bytes[offset + 1] << 8)
 function u32be(bytes, offset) { return ((bytes[offset] * 0x1000000) + (bytes[offset + 1] << 16) + (bytes[offset + 2] << 8) + bytes[offset + 3]) >>> 0; }
 
 function parsePng(bytes) {
-  if (bytes.length < 24 || !PNG_SIGNATURE.every((value, index) => bytes[index] === value) || ascii(bytes, 12, 4) !== 'IHDR') {
+  if (bytes.length < 24 || !PNG_SIGNATURE.every((value, index) => bytes[index] === value) || u32be(bytes, 8) !== 13 || ascii(bytes, 12, 4) !== 'IHDR') {
     throw new TypeError('The PNG header is incomplete or invalid.');
   }
   return { width: u32be(bytes, 16), height: u32be(bytes, 20), format: 'png' };
