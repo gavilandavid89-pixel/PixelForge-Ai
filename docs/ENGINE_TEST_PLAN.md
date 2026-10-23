@@ -192,3 +192,12 @@ Do not expose controls for features that are not implemented. Animation, advance
 - Release status: the engine-core checks are verified in the stated Node environment; the browser editor is **implemented but not browser-verified**. Do not label the full first slice as release-ready.
 
 Next test milestone: add browser automation for startup, drawing, undo/redo, layer visibility, import/export, IndexedDB recovery, keyboard/pan/zoom and mobile viewport layout; then run a manual smoke test on a real Android touch device.
+
+
+### Browser smoke checks — GitHub Actions run #18
+
+- Environment: GitHub-hosted Linux runner, headless Chromium, desktop viewport 1440 × 960 and mobile-emulated viewport 390 × 844.
+- Result: **passed**.
+- Verified path: application startup; visible canvas; mouse stroke changes the rendered canvas; undo/redo state; layer addition; PNG download has a valid PNG signature; IndexedDB save/reload restores the latest document and its layers; mobile-emulated pan and touch tap produce a drawing change; no uncaught page errors.
+- Run: https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/39905993111
+- Limitation: mobile emulation is not a substitute for testing a physical Android device or stylus hardware. This is a smoke test, not a full visual, accessibility, performance or adversarial browser suite.
