@@ -171,3 +171,37 @@ This is the capability checklist, not a promise that every item already exists. 
 - Make the ink control a large touch target with a clear active indicator. Support touch and stylus without requiring the user to keep a finger over the exact pixel being drawn.
 - Keep quick undo/redo and brush/eraser/color controls inside the collapsible panel; no essential editing option should permanently cover artwork.
 - Tests: open/close preserves viewport and artwork; hidden panel is not touch-blocking; pencil movement without ink creates no pixels; holding ink while moving creates one continuous stroke; release stops the stroke; cancellation leaves no stuck stroke; coordinate mapping remains correct under zoom/pan and responsive layout.
+
+
+## N. Modular workspace, distributed panels, and shared tool mechanics
+
+### Workspace layout
+- Do not force all options into a bottom toolbar. Distribute panels around the canvas using established desktop/mobile editor conventions, while keeping the canvas central and usable.
+- Every panel is independently openable/closable, movable where the device layout allows, resizable, collapsible, and configurable. Provide a one-action way to hide all panels and restore the last workspace layout.
+- Persist each workspace layout: panel visibility, position/anchor, dimensions, expanded sections, and compact/comfortable density. Provide reset-to-default and named workspace presets.
+- The edge toggle remains available to open/close the relevant interface; hiding panels must not disable canvas input or cause viewport/canvas coordinate drift.
+- Tools may expose nested option groups, flyouts, inspectors, or expandable subpanels so a large feature set does not crowd the canvas. Keep advanced controls discoverable and searchable.
+- Support responsive layouts: on narrow screens, panels may become drawers or floating sheets; on wider screens, docked side/top/bottom panels are allowed. Do not assume one fixed arrangement.
+- Provide UI scale, panel spacing, icon size, label visibility, touch-target size, and compact/comfortable density controls. Respect minimum readable sizes and prevent panels from covering critical interactions without a way to move or close them.
+
+### Free-position virtual tool cursor (no joystick)
+- The virtual pencil/tool cursor is directly controlled by dragging anywhere in the eligible canvas interaction surface; there is no joystick, fixed control pad, or required origin point.
+- The finger drag delta moves the virtual cursor continuously, independent of where the gesture began. Releasing and starting a new drag elsewhere continues from the cursor's current location rather than snapping to a fixed origin.
+- Keep navigation gestures distinct from cursor movement and drawing. The cursor input must never silently become a joystick or relative movement pad.
+- Define safe input boundaries around interactive UI controls: dragging from the canvas moves the cursor; touching a panel control activates that control. The user must be able to reposition panels and hide them so the available interaction area can be maximized.
+
+### Shared mechanics across tools
+- Separate the active tool's **behavior profile** from the selected tool identity. A persistent **Ink/Draw hold** control starts and stops the active tool's stroke; changing the active tool while this mode is enabled switches the tool identity but preserves the compatible interaction mechanics.
+- Example: with ink mode enabled, selecting the eraser makes the same cursor movement erase instead of paint. The corresponding hold control uses a tool-aware icon/label (eraser icon when erasing) while retaining the same press/hold/release semantics.
+- Example: switching from pencil to brush can preserve cursor movement, hold-to-ink behavior, stroke start/stop, stabilizer, and other compatible settings, while tool-specific properties (brush tip, texture, size, opacity, pixel-perfect behavior) remain distinct.
+- Add configurable tool profiles/variants and a compatibility matrix. Shared settings can be linked or unlinked individually; switching tools must not unexpectedly overwrite tool-specific presets.
+- Provide explicit linked-settings indicators and a quick way to choose which properties follow across tools, e.g. size, opacity, stabilizer, pressure response, spacing, texture, and symmetry. Defaults should be sensible per tool, with a clear user override.
+- When changing between destructive and non-destructive actions (e.g. paint and erase), update the hold control's visual state immediately and safely finish any active stroke before switching. Never leave an active stroke stuck.
+- The hold control is an interaction modifier, not a fixed screen joystick: press-and-hold enables inking with the currently selected tool while the cursor is dragged anywhere on the canvas. Releasing stops the stroke. An optional accessibility latch mode may be configured separately.
+- Ensure erasing is scoped to the selected layer/target and obeys lock/mask constraints; show a clear blocked-action explanation rather than silently doing nothing.
+
+### Tool and UI customization
+- Add global defaults plus per-tool overrides for size, variants, spacing, opacity, flow, hardness, angle, stabilization, cursor preview, pressure/tilt, symmetry, and pixel-perfect constraints where relevant.
+- Allow user-defined tool presets, duplicate/rename/reset, favorites, recent tools, and customizable shortcuts/gestures.
+- Use a consistent option-schema system so tools can contribute nested controls without bespoke layout code for each tool. Persist settings with versioning and migrate them safely when schemas evolve.
+- Test distributed panels, hide-all/restore, layout persistence, UI scale and density, nested option groups, cursor movement from different starting points, no joystick behavior, shared draw/erase mechanics, compatible settings linkage, and safe active-stroke termination during tool changes.
