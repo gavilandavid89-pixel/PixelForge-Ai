@@ -112,3 +112,17 @@ This is the capability checklist, not a promise that every item already exists. 
 - AI tools cannot invoke proposal application, project deletion or project export. Applying a proposal requires a direct user action in the UI.
 - User and AI workspaces have independent document state, pixel buffers and history; copy-on-write may share immutable data only.
 - Add automated isolation tests that verify deleting artwork in the AI workspace never deletes the corresponding user artwork.
+
+
+## K. Proposal selection with freehand lasso
+
+- In the AI proposal review workspace, provide a freehand lasso tool: the user drags a continuous stroke around the area they want to keep; closing the loop completes the selection.
+- Support multiple separate selected regions in one review session. Each new lasso can be configured to add to, subtract from, or replace the current selection; default to adding when the user starts a separate region.
+- Show a clear overlay for selected and unselected proposal pixels, with zoom-aware handles and a pixel-precise boundary option for pixel art.
+- Let the user preview and accept only the selected regions of the AI proposal. Pixels outside the accepted mask must not be applied to the original document.
+- Include selection actions such as accept selected, invert selection, clear selection, and refine/add/subtract regions.
+- On touch devices, a long press on a selected region or selection entry opens a compact contextual menu with **Remove from selection** and **Delete from AI proposal**. These are distinct actions: removing from selection preserves the proposal artwork; deleting removes it only from the AI sandbox/proposal.
+- Long-press must not immediately delete artwork. The contextual action must be explicitly tapped; destructive proposal edits should be undoable.
+- Support mouse, touch and stylus input; expose equivalent toolbar/context-menu actions for users who cannot or do not want to long-press.
+- Selection is a review mask, not a destructive crop by default. The original user document remains unchanged until the user explicitly accepts the chosen proposal changes.
+- Tests: disjoint lasso regions, open-loop completion behavior, add/subtract selection modes, long-press menu without accidental deletion, delete/undo within the AI sandbox, selected-region-only application, and proof that unselected pixels and the original document remain unchanged.
