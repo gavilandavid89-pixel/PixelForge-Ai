@@ -97,7 +97,7 @@ try {
   await desktop.waitForFunction(() => /Import complete and saved locally/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.match(await desktop.locator('#document-name').textContent(), /\(imported\)$/);
   const storedProjects = await desktop.evaluate(() => new Promise((resolve, reject) => {
-    const request = indexedDB.open('pixelforge-ai', 1);
+    const request = indexedDB.open('pixelforge-ai');
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       const db = request.result, tx = db.transaction('documents', 'readonly');
