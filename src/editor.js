@@ -8,7 +8,7 @@ const previewCanvas = document.createElement('canvas'), previewCtx = previewCanv
 let doc = new RasterDocument(128, 128), tool = 'draw', spaceDown = false;
 let color = $('#color').value, brushSize = Number($('#brush-size').value);
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null;
-let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), renderQueued = false;
+let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), renderQueued = false, previewReady = false;
 
 function status(message, kind = 'neutral') {
   $('#status').textContent = message;
@@ -49,9 +49,25 @@ function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#171922'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     if (previewCanvas.width !== doc.width || previewCanvas.height !== doc.height) {
-      previewCanvas.width = doc.width; previewCanvas.height = doc.height;
+      previewCanvas.width = doc.width; previewCanvas.height = doc.height; previewReady = false;
     }
-    previewCtx.putImageData(new ImageData(doc.composite(), doc.width, doc.height), 0, 0);
+    const dirtyTiles = doc.getCompositeDirtyTiles();
+    const composite = doc.composite();
+    if (!previewReady) {
+      previewCtx.putImageData(new ImageData(new Uint8ClampedArray(composite), doc.width, doc.height), 0, 0);
+      previewReady = true;
+      doc.clearCompositeDirtyTiles();
+    } else if (dirtyTiles.length) {
+      for (const tile of dirtyTiles) {
+        const tilePixels = new Uint8ClampedArray(tile.width * tile.height * 4);
+        for (let row = 0; row < tile.height; row++) {
+          const sourceStart = ((tile.tileY * 64 + row) * doc.width + tile.tileX * 64) * 4;
+          tilePixels.set(composite.subarray(sourceStart, sourceStart + tile.width * 4), row * tile.width * 4);
+        }
+        previewCtx.putImageData(new ImageData(tilePixels, tile.width, tile.height), tile.tileX * 64, tile.tileY * 64);
+      }
+      doc.clearCompositeDirtyTiles();
+    }
     ctx.imageSmoothingEnabled = false;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#20232d';
