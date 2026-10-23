@@ -19,7 +19,8 @@ export async function saveProject(project) {
   try {
     await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put({ id: project.id, name: project.name, updatedAt: Date.now(), project });
+      const updatedAt = globalThis.performance?.timeOrigin ? globalThis.performance.timeOrigin + globalThis.performance.now() : Date.now();
+      tx.objectStore(STORE).put({ id: project.id, name: project.name, updatedAt, project });
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error ?? new Error('Save failed.'));
       tx.onabort = () => reject(tx.error ?? new Error('Save was interrupted.'));
