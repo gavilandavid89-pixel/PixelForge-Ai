@@ -9,7 +9,7 @@ This file records current defaults so product, architecture, UI and tests do not
 | Product target | Responsive browser editor, shared document engine, desktop and mobile layouts | Accepted; physical Android support is not yet verified |
 | Renderer | Dedicated HTML canvas surface using Canvas 2D for the first slice | Provisional; change backend only when measured budgets justify it |
 | Desktop input | Mouse/stylus directly draw with the active pencil/eraser; Space+drag or Pan tool navigates | Implemented in the first slice |
-| Mobile input | Touch moves a view-only virtual cursor; the separate hold control applies the selected pencil/eraser; Pan tool navigates | Implemented and covered by Chromium mobile emulation; physical Android still required |
+| Mobile input | Touch moves a view-only virtual cursor; the separate hold control applies the selected pencil/eraser; Pan tool navigates; the hold control supports keyboard press/release and cancels if focus leaves it | Implemented and covered by Chromium mobile emulation; physical Android still required |
 | Document coordinates | Integer pixel coordinates in document space, independent of screen/layout coordinates | Accepted |
 | Pixel brush | Hard-edged square stamp with integer size; size 1 is one pixel | Implemented |
 | Layers | Ordered RGBA layers with visibility, active-layer selection and add-layer; default normal compositing at 100% opacity | Provisional first-slice subset; rename/reorder/delete, opacity editing, masks, groups and blend-mode controls are not shipped |
