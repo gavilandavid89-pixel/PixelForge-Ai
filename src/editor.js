@@ -320,7 +320,7 @@ $('#import-file').addEventListener('change', async event => {
     if (file.size > 100 * 1024 * 1024) throw new RangeError('This file is larger than the 100 MiB import safety limit.');
     let importedDoc;
     if (file.name.toLowerCase().endsWith('.pforge') || file.type === 'application/json') {
-      importedDoc = RasterDocument.fromJSON(JSON.parse(await file.text()));
+      importedDoc = RasterDocument.fromJSON(JSON.parse(await file.text()), { newIdentity: true });
     } else {
       const bitmap = await createImageBitmap(file);
       try {
