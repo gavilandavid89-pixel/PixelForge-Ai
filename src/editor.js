@@ -114,7 +114,7 @@ function scheduleAutosave() {
 async function flushAutosave() {
   if (flushPromise) return flushPromise;
   flushPromise = (async () => {
-    if (activeStroke) finishActiveStroke(false);
+    if (activeStroke) finishActiveStroke(true);
     const pending = autosaveTimer !== null;
     if (pending) { clearTimeout(autosaveTimer); autosaveTimer = null; }
     const savingDoc = doc;
@@ -398,7 +398,10 @@ function downloadBlob(blob, name) {
 window.addEventListener('keydown', event => {
   if (event.code === 'Space' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
     event.preventDefault(); spaceDown = true;
-    if (activeStroke) endStroke({ pointerId }, false);
+    if (activeStroke) finishActiveStroke(false);
+    drawHeld = false; drawHoldPointerId = null;
+    virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false;
+    updateDrawHoldUI(); render();
   }
   if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
@@ -409,7 +412,13 @@ window.addEventListener('keydown', event => {
     event.preventDefault(); if (doc.redo()) changed();
   } else if (event.key.toLowerCase() === 'b') setTool('draw');
   else if (event.key.toLowerCase() === 'e') setTool('erase');
-  else if (event.key === 'Escape' && activeStroke) endStroke({ pointerId }, false);
+  else if (event.key === 'Escape') {
+    if (activeStroke) finishActiveStroke(false);
+    drawHeld = false; drawHoldPointerId = null;
+    virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false;
+    if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); }
+    updateDrawHoldUI(); render();
+  }
 });
 window.addEventListener('resize', resizeCanvas);
 window.addEventListener('keyup', event => { if (event.code === 'Space') spaceDown = false; });
