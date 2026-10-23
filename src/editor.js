@@ -421,14 +421,20 @@ function downloadBlob(blob, name) {
   a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 window.addEventListener('keydown', event => {
-  if (event.code === 'Space' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+  const active = document.activeElement;
+  const tag = active?.tagName;
+  const textEntry = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) || active?.isContentEditable;
+  const nativeControl = active?.matches?.('button, select, summary, a[href], [role="button"]');
+  const modifiedShortcut = event.ctrlKey || event.metaKey;
+  if (event.code === 'Space' && !textEntry && !nativeControl) {
     event.preventDefault(); spaceDown = true;
     if (activeStroke) finishActiveStroke(false);
     drawHeld = false; drawHoldPointerId = null;
     virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false;
     updateDrawHoldUI(); render();
   }
-  if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+  if (textEntry) return;
+  if (nativeControl && !modifiedShortcut && event.key !== 'Escape') return;
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
     event.preventDefault(); $('#save').click(); return;
   } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
