@@ -8,6 +8,8 @@ const previewCanvas = document.createElement('canvas'), previewCtx = previewCanv
 let doc = new RasterDocument(128, 128), tool = 'draw', spaceDown = false;
 let color = $('#color').value, brushSize = Number($('#brush-size').value);
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null;
+let drawHeld = false, drawHoldPointerId = null;
+let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), renderQueued = false, previewReady = false;
 
 function status(message, kind = 'neutral') {
@@ -75,6 +77,12 @@ function render() {
     ctx.drawImage(previewCanvas, panX, panY, doc.width * zoom, doc.height * zoom);
     ctx.strokeStyle = '#555b6c'; ctx.lineWidth = 1;
     ctx.strokeRect(Math.round(panX) + .5, Math.round(panY) + .5, Math.round(doc.width * zoom), Math.round(doc.height * zoom));
+    if (virtualCursorVisible && virtualCursorScreen) {
+      ctx.strokeStyle = drawHeld ? '#69dfbb' : '#e8eaf2'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(virtualCursorScreen.x, virtualCursorScreen.y, 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(virtualCursorScreen.x - 12, virtualCursorScreen.y); ctx.lineTo(virtualCursorScreen.x + 12, virtualCursorScreen.y);
+      ctx.moveTo(virtualCursorScreen.x, virtualCursorScreen.y - 12); ctx.lineTo(virtualCursorScreen.x, virtualCursorScreen.y + 12); ctx.stroke();
+    }
     $('#zoom-label').textContent = `${Math.round(zoom * 100)}%`;
   });
 }
@@ -113,15 +121,21 @@ async function flushAutosave() {
   if (doc === savingDoc) updateTitle();
 }
 function changed() { render(); updateTitle(); scheduleAutosave(); }
+function startStrokeAt(point, id) {
+  if (!point?.inside || activeStroke) return;
+  try {
+    activeStroke = doc.beginStroke({ color, size: brushSize, mode: tool });
+    pointerId = id;
+    doc.strokeTo(activeStroke, point.x, point.y);
+    render();
+  } catch (error) { status(error.message, 'error'); }
+}
 function beginStroke(event) {
   if (event.button !== undefined && event.button !== 0) return;
   const point = docPoint(event);
   if (!point.inside) return;
-  try {
-    activeStroke = doc.beginStroke({ color, size: brushSize, mode: tool });
-    pointerId = event.pointerId; canvas.setPointerCapture?.(event.pointerId);
-    doc.strokeTo(activeStroke, point.x, point.y); render();
-  } catch (error) { status(error.message, 'error'); }
+  try { canvas.setPointerCapture?.(event.pointerId); } catch {}
+  startStrokeAt(point, event.pointerId);
 }
 function moveStroke(event) {
   if (panning && panStart) {
@@ -129,35 +143,85 @@ function moveStroke(event) {
     panX = panStart.panX + p.x - panStart.x; panY = panStart.panY + p.y - panStart.y;
     render(); return;
   }
+  if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
+    virtualCursorScreen = eventPoint(event); virtualCursorPoint = docPoint(event); virtualCursorVisible = true;
+    if (drawHeld) {
+      if (!activeStroke) startStrokeAt(virtualCursorPoint, event.pointerId);
+      else if (pointerId === event.pointerId && virtualCursorPoint.inside) doc.strokeTo(activeStroke, virtualCursorPoint.x, virtualCursorPoint.y);
+    }
+    render(); return;
+  }
   if (!activeStroke || event.pointerId !== pointerId) return;
   const point = docPoint(event);
   if (point.inside) doc.strokeTo(activeStroke, point.x, point.y);
   render();
 }
-function endStroke(event, commit = true) {
-  if (!activeStroke || (event?.pointerId !== undefined && event.pointerId !== pointerId)) return;
+function finishActiveStroke(commit = true) {
+  if (!activeStroke) return;
   doc.endStroke(activeStroke, { commit }); activeStroke = null; pointerId = null;
   if (commit) changed(); else render();
+}
+function endStroke(event, commit = true) {
+  if (!activeStroke || (event?.pointerId !== undefined && event.pointerId !== pointerId)) return;
+  finishActiveStroke(commit);
 }
 canvas.addEventListener('pointerdown', event => {
   if (tool === 'pan' || event.button === 1 || spaceDown) {
     panning = true;
     const p = eventPoint(event); panStart = { x: p.x, y: p.y, panX, panY };
-    canvas.setPointerCapture?.(event.pointerId); canvas.classList.add('is-panning');
-    event.preventDefault(); return;
+    try { canvas.setPointerCapture?.(event.pointerId); } catch {}
+    canvas.classList.add('is-panning'); event.preventDefault(); return;
+  }
+  if (event.pointerType === 'touch') {
+    virtualCursorPointerId = event.pointerId; virtualCursorScreen = eventPoint(event);
+    virtualCursorPoint = docPoint(event); virtualCursorVisible = true;
+    try { canvas.setPointerCapture?.(event.pointerId); } catch {}
+    if (drawHeld) startStrokeAt(virtualCursorPoint, event.pointerId);
+    render(); event.preventDefault(); return;
   }
   beginStroke(event);
 });
 canvas.addEventListener('pointermove', moveStroke);
 canvas.addEventListener('pointerup', event => {
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
+  if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
+    if (activeStroke && pointerId === event.pointerId) finishActiveStroke(true);
+    virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; render(); return;
+  }
   endStroke(event, true);
 });
 canvas.addEventListener('pointercancel', event => {
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); }
+  if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
+    if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
+    virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; render(); return;
+  }
   endStroke(event, false);
 });
 canvas.addEventListener('lostpointercapture', event => endStroke(event, false));
+const drawHoldButton = $('#draw-hold');
+function updateDrawHoldUI() {
+  if (!drawHoldButton) return;
+  drawHoldButton.classList.toggle('held', drawHeld);
+  drawHoldButton.setAttribute('aria-pressed', String(drawHeld));
+  drawHoldButton.disabled = tool === 'pan';
+  drawHoldButton.querySelector('small').textContent = tool === 'erase' ? 'Hold to erase' : tool === 'pan' ? 'Pan selected' : 'Hold to draw';
+}
+drawHoldButton?.addEventListener('pointerdown', event => {
+  if (tool === 'pan') return;
+  event.preventDefault(); drawHeld = true; drawHoldPointerId = event.pointerId; updateDrawHoldUI();
+  try { drawHoldButton.setPointerCapture(event.pointerId); } catch {}
+  if (virtualCursorPointerId !== null && virtualCursorPoint?.inside && !activeStroke) startStrokeAt(virtualCursorPoint, virtualCursorPointerId);
+  render();
+});
+window.addEventListener('pointerup', event => {
+  if (drawHoldPointerId !== event.pointerId) return;
+  drawHeld = false; drawHoldPointerId = null; finishActiveStroke(true); updateDrawHoldUI(); render();
+});
+window.addEventListener('pointercancel', event => {
+  if (drawHoldPointerId !== event.pointerId) return;
+  drawHeld = false; drawHoldPointerId = null; finishActiveStroke(false); updateDrawHoldUI(); render();
+});
 canvas.addEventListener('wheel', event => {
   event.preventDefault();
   const p = eventPoint(event), before = { x: (p.x - panX) / zoom, y: (p.y - panY) / zoom };
@@ -170,13 +234,15 @@ $('#eraser-tool').addEventListener('click', () => setTool('erase'));
 $('#pan-tool').addEventListener('click', () => setTool('pan'));
 $('#layers-tab').addEventListener('click', () => $('#layers').scrollIntoView({ behavior: 'smooth', block: 'center' }));
 function setTool(next) {
-  if (activeStroke) endStroke({ pointerId }, false);
+  if (activeStroke) finishActiveStroke(false);
+  drawHeld = false; drawHoldPointerId = null;
   tool = next;
   $('#brush-tool').classList.toggle('active', tool === 'draw');
   $('#eraser-tool').classList.toggle('active', tool === 'erase');
   $('#pan-tool').classList.toggle('active', tool === 'pan');
   $('#tool-label').textContent = tool === 'draw' ? 'Pencil' : tool === 'erase' ? 'Eraser' : 'Pan';
   canvas.dataset.tool = tool;
+  updateDrawHoldUI();
 }
 $('#color').addEventListener('input', event => {
   color = event.target.value; $('#color-value').textContent = color.toUpperCase();
@@ -282,9 +348,11 @@ window.addEventListener('keydown', event => {
 window.addEventListener('resize', resizeCanvas);
 window.addEventListener('keyup', event => { if (event.code === 'Space') spaceDown = false; });
 window.addEventListener('blur', () => {
-  spaceDown = false;
-  if (activeStroke) endStroke({ pointerId }, false);
+  spaceDown = false; drawHeld = false; drawHoldPointerId = null;
+  if (activeStroke) finishActiveStroke(false);
+  virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; updateDrawHoldUI();
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); }
+  render();
 });
 async function boot() {
   resizeCanvas();
