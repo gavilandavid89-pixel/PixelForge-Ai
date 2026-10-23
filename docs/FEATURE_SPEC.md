@@ -548,6 +548,7 @@ This section resolves cross-cutting ambiguities in earlier feature sections. If 
 - Continuous drawing starts only through the explicit draw activation when the current tool supports continuous strokes. The bucket/fill is a deliberate discrete action and never triggers because the cursor moved.
 - Two-finger gestures navigate and must not accidentally draw. If a device cannot reliably distinguish stylus drawing from touch navigation, use a conservative non-destructive fallback and visible controls.
 - Ambiguous input must not create destructive edits. Provide visible/accessibility alternatives to gestures and shortcuts for essential actions.
+- A momentary draw/erase hold has one active input owner at a time. Pointer and keyboard activations cannot overwrite each other's owner ID; releases and focus loss affect only the matching gesture and cannot leave drawing stuck or release another active gesture.
 
 ### AQ.3 AI permissions, proposal dependencies and approval
 
