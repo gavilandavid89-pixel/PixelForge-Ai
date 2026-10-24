@@ -46,6 +46,9 @@ Never label a test pass based on code inspection alone. Record commit, browser/d
 
 ### Gate 2 — canvas coordinates, rendering and input
 
+- **New, pending fresh CI:** desktop mouse drag and mobile touch drag create a rectangular marquee; the status reports pixel dimensions; Escape clears it; selection changes do not alter undo availability or document pixels. These are newly added browser-smoke assertions and must not be marked passed until a fresh run succeeds.
+
+
 - [ ] Document coordinates are independent from CSS/layout/screen coordinates.
 - [ ] Zoom, pan, view rotation, fit-to-canvas, panel movement and fullscreen transitions do not alter document pixels.
 - [ ] Input mapping round-trips known document points across zoom, pan, rotation, device-pixel ratio and resize.
