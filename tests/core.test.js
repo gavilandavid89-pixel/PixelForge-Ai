@@ -449,3 +449,20 @@ test('color replacement preserves alpha, respects selection, and is one-step und
   doc.setLayerLocked(doc.activeLayerId, true);
   assert.throws(() => doc.replaceColor('#ff0000', '#000000'), /locked/);
 });
+
+
+test('horizontal and vertical flips are clipped, selection-aware, and atomically undoable', () => {
+  const doc = new RasterDocument(3, 2);
+  for (const [x, y, color] of [[0, 0, '#ff0000'], [1, 0, '#00ff00'], [2, 0, '#0000ff'], [0, 1, '#ffff00'], [1, 1, '#ff00ff'], [2, 1, '#00ffff']]) {
+    const stroke = doc.beginStroke({ color, size: 1 }); doc.strokeTo(stroke, x, y); doc.endStroke(stroke);
+  }
+  const before = new Uint8ClampedArray(doc.activeLayer.pixels);
+  assert.equal(doc.flipRect(0, 0, 3, 2, 'horizontal'), 4);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [0, 0, 255, 255]);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(8, 12)], [255, 0, 0, 255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual(doc.activeLayer.pixels, before);
+  assert.equal(doc.flipRect(0, 0, 3, 2, 'vertical'), 6);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [255, 255, 0, 255]);
+  assert.throws(() => doc.flipRect(0, 0, 3, 2, 'diagonal'), /Flip axis/);
+});
