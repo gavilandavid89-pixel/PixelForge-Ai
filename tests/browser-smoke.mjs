@@ -90,6 +90,18 @@ try {
   await desktop.waitForFunction(() => /Ready|Recovered latest local project|Local recovery unavailable/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.equal(await desktop.title(), 'PixelForge AI · Studio');
 
+  // The isolated AI workspace renders its own pixel buffer and reports the real provider state.
+  await desktop.locator('#ai-tab').click();
+  await desktop.waitForFunction(() => {
+    const dimensions = (document.querySelector('#document-size')?.textContent ?? '').split(' × ').map(Number);
+    const preview = document.querySelector('#ai-preview-canvas');
+    return dimensions.length === 2 && preview?.width === dimensions[0] && preview?.height === dimensions[1];
+  });
+  assert.ok((await desktop.locator('#ai-connection-state').textContent()).includes('not wired into the UI yet'), 'the UI must not claim an AI model is connected');
+  await desktop.locator('#ai-sync').click();
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'AI canvas synchronized from the original');
+  await desktop.locator('#properties-tab').click();
+
   const canvas = desktop.locator('#canvas');
   const box = await canvas.boundingBox();
   assert.ok(box && box.width > 200 && box.height > 200, 'desktop canvas should have a useful drawing area');
