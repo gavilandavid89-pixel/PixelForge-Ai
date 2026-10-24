@@ -442,6 +442,62 @@ export class RasterDocument {
     }
     return this.pasteRect({ ...clipboard, pixels, mask }, { x: clipboard.x, y: clipboard.y });
   }
+  rotateRect(x, y, width, height, direction = 'clockwise') {
+    if (!['clockwise', 'counterclockwise'].includes(direction)) throw new TypeError('Rotation direction must be clockwise or counterclockwise.');
+    const layer = this.activeLayer;
+    if (layer.locked) throw new Error('The active layer is locked.');
+    const hadSelection = Boolean(this.selectionMask), clipboard = this.copyRect(x, y, width, height);
+    const rotatedWidth = clipboard.height, rotatedHeight = clipboard.width;
+    const targetX = Math.round(clipboard.x + clipboard.width / 2 - rotatedWidth / 2);
+    const targetY = Math.round(clipboard.y + clipboard.height / 2 - rotatedHeight / 2);
+    const rotatedPixels = new Uint8ClampedArray(rotatedWidth * rotatedHeight * 4);
+    const rotatedMask = new Uint8Array(rotatedWidth * rotatedHeight);
+    for (let sy = 0; sy < clipboard.height; sy++) for (let sx = 0; sx < clipboard.width; sx++) {
+      const sourcePixel = sy * clipboard.width + sx;
+      if (!clipboard.mask[sourcePixel]) continue;
+      const dx = direction === 'clockwise' ? clipboard.height - 1 - sy : sy;
+      const dy = direction === 'clockwise' ? sx : clipboard.width - 1 - sx;
+      const targetPixel = dy * rotatedWidth + dx;
+      rotatedMask[targetPixel] = 1;
+      rotatedPixels.set(clipboard.pixels.subarray(sourcePixel * 4, sourcePixel * 4 + 4), targetPixel * 4);
+    }
+    const tilesBefore = new Map();
+    let changedPixels = 0;
+    const write = (px, py, rgba) => {
+      if (px < 0 || py < 0 || px >= this.width || py >= this.height) return;
+      const pixel = py * this.width + px, offset = pixel * 4;
+      if (rgba.every((value, channel) => layer.pixels[offset + channel] === value)) return;
+      const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
+      if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
+      layer.pixels.set(rgba, offset); this.compositeDirtyTiles.add(key); changedPixels++;
+    };
+    for (let sy = 0; sy < clipboard.height; sy++) for (let sx = 0; sx < clipboard.width; sx++) {
+      const sourcePixel = sy * clipboard.width + sx;
+      if (clipboard.mask[sourcePixel]) write(clipboard.x + sx, clipboard.y + sy, [0, 0, 0, 0]);
+    }
+    for (let dy = 0; dy < rotatedHeight; dy++) for (let dx = 0; dx < rotatedWidth; dx++) {
+      const targetPixel = dy * rotatedWidth + dx;
+      if (!rotatedMask[targetPixel]) continue;
+      write(targetX + dx, targetY + dy, rotatedPixels.subarray(targetPixel * 4, targetPixel * 4 + 4));
+    }
+    if (hadSelection) {
+      const nextMask = new Uint8Array(this.width * this.height);
+      for (let dy = 0; dy < rotatedHeight; dy++) for (let dx = 0; dx < rotatedWidth; dx++) {
+        if (!rotatedMask[dy * rotatedWidth + dx]) continue;
+        const px = targetX + dx, py = targetY + dy;
+        if (px >= 0 && py >= 0 && px < this.width && py < this.height) nextMask[py * this.width + px] = 1;
+      }
+      this.selectionMask = nextMask;
+    }
+    if (changedPixels) {
+      const tiles = [...tilesBefore.entries()].map(([key, before]) => {
+        const [tileX, tileY] = key.split(':').map(Number);
+        return { tileX, tileY, before, after: this.#captureTile(layer, tileX, tileY) };
+      });
+      this.#record({ type: 'pixels', layerId: layer.id, tiles });
+    }
+    return changedPixels;
+  }
   fillGradient(x0, y0, x1, y1, { startColor = '#20202a', endColor = '#ffffff', opacity = 1 } = {}) {
     if (![x0, y0, x1, y1].every(Number.isInteger) || x0 < 0 || y0 < 0 || x1 < 0 || y1 < 0 ||
         x0 >= this.width || x1 >= this.width || y0 >= this.height || y1 >= this.height) {
