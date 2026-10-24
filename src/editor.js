@@ -12,7 +12,7 @@ let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null;
-let shapeGesture = null;
+let shapeGesture = null, symmetryMode = 0;
 let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorGestureOrigin = null, cursorGestureStartedOnControl = false, cursorGestureSuppressClick = false, cursorDrawPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
@@ -114,6 +114,7 @@ function render() {
       ctx.stroke();
       ctx.restore();
     }
+    drawSymmetryGuides();
     if (shapeGesture) {
       const points = shapePoints(shapeGesture);
       if (points.length) {
@@ -161,6 +162,43 @@ function eventPoint(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
+function symmetryPoints(point, mode = symmetryMode) {
+  const w = doc.width, h = doc.height;
+  const x = point.x / Math.max(1, w - 1), y = point.y / Math.max(1, h - 1);
+  let transforms = [[x, y]];
+  if (mode === 2) transforms = [[x, y], [1 - x, y]];
+  else if (mode === 4) transforms = [[x, y], [1 - x, y], [x, 1 - y], [1 - x, 1 - y]];
+  else if (mode === 8) transforms = [[x, y], [1 - y, x], [1 - x, 1 - y], [y, 1 - x], [1 - x, y], [1 - y, 1 - x], [x, 1 - y], [y, x]];
+  const unique = new Map();
+  for (const [tx, ty] of transforms) {
+    const px = Math.max(0, Math.min(w - 1, Math.round(tx * (w - 1))));
+    const py = Math.max(0, Math.min(h - 1, Math.round(ty * (h - 1))));
+    unique.set(px + ':' + py, { x: px, y: py });
+  }
+  return [...unique.values()];
+}
+function strokeToWithSymmetry(stroke, x, y) {
+  const mode = stroke.symmetryMode ?? symmetryMode;
+  if (!mode) { doc.strokeTo(stroke, x, y); return; }
+  const points = symmetryPoints({ x, y }, mode), previous = stroke.symmetryLastPoints ?? [], next = [];
+  for (let i = 0; i < points.length; i++) {
+    stroke.last = previous[i] ?? null;
+    doc.strokeTo(stroke, points[i].x, points[i].y);
+    next[i] = stroke.last;
+  }
+  stroke.symmetryLastPoints = next;
+  stroke.last = next[0] ?? null;
+}
+function drawSymmetryGuides() {
+  if (!symmetryMode) return;
+  const cx = panX + doc.width * zoom / 2, cy = panY + doc.height * zoom / 2;
+  ctx.save(); ctx.beginPath(); ctx.rect(panX, panY, doc.width * zoom, doc.height * zoom); ctx.clip();
+  ctx.strokeStyle = 'rgba(105, 223, 187, 0.58)'; ctx.lineWidth = 1; ctx.setLineDash([6, 5]); ctx.beginPath();
+  if (symmetryMode >= 2) { ctx.moveTo(cx, panY); ctx.lineTo(cx, panY + doc.height * zoom); }
+  if (symmetryMode >= 4) { ctx.moveTo(panX, cy); ctx.lineTo(panX + doc.width * zoom, cy); }
+  if (symmetryMode === 8) { ctx.moveTo(panX, panY); ctx.lineTo(panX + doc.width * zoom, panY + doc.height * zoom); ctx.moveTo(panX + doc.width * zoom, panY); ctx.lineTo(panX, panY + doc.height * zoom); }
+  ctx.stroke(); ctx.restore();
+}
 function docPoint(event) { return documentPointFromScreen(eventPoint(event)); }
 function shapePoints(gesture) {
   const { x1, y1, x2, y2 } = gesture;
@@ -184,7 +222,8 @@ function commitShapeGesture(gesture) {
     const points = shapePoints(gesture);
     if (!points.length) return;
     const stroke = doc.beginStroke({ color, size: brushSize, mode: 'draw' });
-    for (const point of points) doc.strokeTo(stroke, point.x, point.y);
+    stroke.symmetryMode = symmetryMode;
+    for (const point of points) strokeToWithSymmetry(stroke, point.x, point.y);
     doc.endStroke(stroke, { commit: true });
     changed();
     status((gesture.tool === 'shape-line' ? 'Line' : gesture.tool === 'shape-rect' ? 'Rectangle' : 'Ellipse') + ' drawn', 'success');
@@ -253,8 +292,9 @@ function startStrokeAt(point, id) {
   if (!point?.inside || activeStroke) return;
   try {
     activeStroke = doc.beginStroke({ color, size: brushSize, mode: tool });
+    activeStroke.symmetryMode = symmetryMode;
     pointerId = id;
-    doc.strokeTo(activeStroke, point.x, point.y);
+    strokeToWithSymmetry(activeStroke, point.x, point.y);
     render();
   } catch (error) { status(error.message, 'error'); }
 }
@@ -310,7 +350,7 @@ function moveStroke(event) {
   }
   if (!activeStroke || event.pointerId !== pointerId) return;
   const point = docPoint(event);
-  if (point.inside) doc.strokeTo(activeStroke, point.x, point.y);
+  if (point.inside) strokeToWithSymmetry(activeStroke, point.x, point.y);
   render();
 }
 function finishActiveStroke(commit = true) {
@@ -509,6 +549,12 @@ $('#select-tool').addEventListener('click', () => setTool('select'));
 $('#line-tool').addEventListener('click', () => setTool('shape-line'));
 $('#rectangle-tool').addEventListener('click', () => setTool('shape-rect'));
 $('#ellipse-tool').addEventListener('click', () => setTool('shape-ellipse'));
+$('#symmetry-mode').addEventListener('change', event => {
+  symmetryMode = Number(event.target.value) || 0;
+  $('#symmetry-mode').setAttribute('aria-label', symmetryMode ? `Symmetry: ${symmetryMode} parts` : 'Symmetry: off');
+  status(symmetryMode ? `Symmetry enabled: ${symmetryMode} parts` : 'Symmetry disabled', 'success');
+  render();
+});
 $('#sample-source').addEventListener('change', event => { sampleMerged = event.target.value === 'merged'; });
 $('#fill-tolerance').addEventListener('input', event => { fillTolerance = Number(event.target.value); $('#fill-tolerance-value').textContent = `${fillTolerance}`; });
 $('#fill-mode').addEventListener('change', event => { fillContiguous = event.target.value === 'contiguous'; });
