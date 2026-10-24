@@ -8,7 +8,7 @@ Build the editing engine and document model before polishing the interface. UI c
 - `core/commands`: command interface, transactional edits, undo/redo, coalescing for brush strokes.
 - `core/pixels`: pixel buffers, color math, line/fill/shape algorithms, selections and transforms.
 - `core/render`: compositing, dirty-region rendering, viewport transform, grid/selection/onion overlays.
-- `core/tools`: tool registry and independent implementations with shared pointer/stylus input contract.
+- `core/tools`: tool registry and independent implementations with shared pointer/stylus input contract. The first bucket-fill implementation uses bounded typed buffers, supports connected/global modes and per-channel color tolerance, respects active-layer locks, and commits changed tiles as a single undoable pixel command.
 - `core/layers`: layer graph, blend modes, masks, groups, adjustment stack and tilemaps.
 - `core/animation`: frames, cels, playback, onion skin, tags and keyframes.
 - `core/palettes`: palette data, import/export, indexed color and dithering.
