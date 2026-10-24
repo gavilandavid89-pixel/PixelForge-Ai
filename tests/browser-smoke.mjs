@@ -208,10 +208,11 @@ try {
   const backgroundBeforeSwap = await desktop.locator('#background-swatch').evaluate(element => getComputedStyle(element).backgroundColor);
   await desktop.locator('#swap-colors').click();
   assert.equal((await desktop.locator('#color').inputValue()).toUpperCase(), '#242632');
+  assert.notEqual(await desktop.locator('#background-swatch').evaluate(element => getComputedStyle(element).backgroundColor), backgroundBeforeSwap, 'background swatch should reflect the first swap');
   assert.equal(await desktop.locator('#recent-colors button').count() > 0, true, 'recent color history should expose selectable swatches');
   await desktop.locator('#swap-colors').click();
   assert.equal((await desktop.locator('#color').inputValue()).toUpperCase(), foregroundBeforeSwap, 'swapping twice should restore the original foreground');
-  assert.notEqual(await desktop.locator('#background-swatch').evaluate(element => getComputedStyle(element).backgroundColor), backgroundBeforeSwap, 'background swatch should reflect the swapped color');
+  assert.equal(await desktop.locator('#background-swatch').evaluate(element => getComputedStyle(element).backgroundColor), backgroundBeforeSwap, 'swapping twice should restore the original background');
 
   // User palettes are editable, parse GPL RGB lines, and export a valid GPL download.
   const paletteCountBefore = await desktop.locator('#user-palette .palette-item').count();
