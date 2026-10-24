@@ -11,6 +11,7 @@ let color = $('#color').value, brushSize = Number($('#brush-size').value);
 let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 'draw';
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null;
 let drawHeld = false, drawHoldPointerId = null;
+let selection = null, selectionStart = null, selectionPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
 
@@ -85,6 +86,13 @@ function render() {
     ctx.drawImage(previewCanvas, panX, panY, doc.width * zoom, doc.height * zoom);
     ctx.strokeStyle = '#555b6c'; ctx.lineWidth = 1;
     ctx.strokeRect(Math.round(panX) + .5, Math.round(panY) + .5, Math.round(doc.width * zoom), Math.round(doc.height * zoom));
+    if (selection) {
+      const sx = panX + selection.x * zoom, sy = panY + selection.y * zoom;
+      const sw = selection.width * zoom, sh = selection.height * zoom;
+      ctx.save(); ctx.strokeStyle = '#f4f0ff'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+      ctx.strokeRect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1));
+      ctx.strokeStyle = '#282532'; ctx.lineDashOffset = 5; ctx.strokeRect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1)); ctx.restore();
+    }
     if (virtualCursorVisible && virtualCursorScreen) {
       ctx.strokeStyle = drawHeld ? '#69dfbb' : '#e8eaf2'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(virtualCursorScreen.x, virtualCursorScreen.y, 8, 0, Math.PI * 2); ctx.stroke();
@@ -189,6 +197,13 @@ function beginStroke(event) {
   startStrokeAt(point, event.pointerId);
 }
 function moveStroke(event) {
+  if (selectionStart && event.pointerId === selectionPointerId) {
+    const point = docPoint(event);
+    const x = Math.max(0, Math.min(doc.width - 1, point.x)), y = Math.max(0, Math.min(doc.height - 1, point.y));
+    const left = Math.min(selectionStart.x, x), top = Math.min(selectionStart.y, y);
+    selection = { x: left, y: top, width: Math.abs(x - selectionStart.x) + 1, height: Math.abs(y - selectionStart.y) + 1 };
+    render(); return;
+  }
   if (panning && panStart) {
     const p = eventPoint(event);
     panX = panStart.panX + p.x - panStart.x; panY = panStart.panY + p.y - panStart.y;
@@ -218,6 +233,13 @@ function endStroke(event, commit = true) {
 }
 canvas.addEventListener('pointerdown', event => {
   if (flushInProgress) { event.preventDefault(); return; }
+  if (tool === 'select') {
+    const point = docPoint(event); if (!point.inside) return;
+    selectionStart = { x: point.x, y: point.y }; selectionPointerId = event.pointerId;
+    selection = { x: point.x, y: point.y, width: 1, height: 1 };
+    try { canvas.setPointerCapture?.(event.pointerId); } catch {}
+    render(); event.preventDefault(); return;
+  }
   if (tool === 'eyedropper') { if (event.button === undefined || event.button === 0) performSample(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'fill') { if (event.button === undefined || event.button === 0) performFill(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'pan' || event.button === 1 || spaceDown) {
@@ -237,6 +259,7 @@ canvas.addEventListener('pointerdown', event => {
 });
 canvas.addEventListener('pointermove', moveStroke);
 canvas.addEventListener('pointerup', event => {
+  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; render(); return; }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(true);
@@ -245,6 +268,7 @@ canvas.addEventListener('pointerup', event => {
   endStroke(event, true);
 });
 canvas.addEventListener('pointercancel', event => {
+  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; selection = null; render(); return; }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
@@ -264,8 +288,8 @@ function updateDrawHoldUI() {
   if (!drawHoldButton) return;
   drawHoldButton.classList.toggle('held', drawHeld);
   drawHoldButton.setAttribute('aria-pressed', String(drawHeld));
-  drawHoldButton.disabled = tool === 'pan';
-  drawHoldButton.querySelector('small').textContent = tool === 'erase' ? 'Hold to erase' : tool === 'pan' ? 'Pan selected' : 'Hold to draw';
+  drawHoldButton.disabled = !['draw', 'erase'].includes(tool);
+  drawHoldButton.querySelector('small').textContent = tool === 'erase' ? 'Hold to erase' : tool === 'pan' ? 'Pan selected' : tool === 'select' ? 'Select area' : tool === 'fill' ? 'Fill selected' : tool === 'eyedropper' ? 'Sample color' : 'Hold to draw';
 }
 drawHoldButton?.addEventListener('pointerdown', event => {
   if (!['draw', 'erase'].includes(tool) || flushInProgress || drawHeld) { event.preventDefault(); return; }
@@ -314,6 +338,7 @@ $('#eraser-tool').addEventListener('click', () => setTool('erase'));
 $('#pan-tool').addEventListener('click', () => setTool('pan'));
 $('#fill-tool').addEventListener('click', () => setTool('fill'));
 $('#eyedropper-tool').addEventListener('click', () => setTool('eyedropper'));
+$('#select-tool').addEventListener('click', () => setTool('select'));
 $('#sample-source').addEventListener('change', event => { sampleMerged = event.target.value === 'merged'; });
 $('#fill-tolerance').addEventListener('input', event => { fillTolerance = Number(event.target.value); $('#fill-tolerance-value').textContent = `${fillTolerance}`; });
 $('#fill-mode').addEventListener('change', event => { fillContiguous = event.target.value === 'contiguous'; });
@@ -345,9 +370,11 @@ function setTool(next) {
   $('#pan-tool').classList.toggle('active', tool === 'pan');
   $('#fill-tool').classList.toggle('active', tool === 'fill');
   $('#eyedropper-tool').classList.toggle('active', tool === 'eyedropper');
-  $('#tool-label').textContent = tool === 'draw' ? 'Pencil' : tool === 'erase' ? 'Eraser' : tool === 'fill' ? 'Bucket fill' : tool === 'eyedropper' ? 'Eyedropper' : 'Pan';
+  $('#select-tool').classList.toggle('active', tool === 'select');
+  $('#tool-label').textContent = tool === 'draw' ? 'Pencil' : tool === 'erase' ? 'Eraser' : tool === 'fill' ? 'Bucket fill' : tool === 'eyedropper' ? 'Eyedropper' : tool === 'select' ? 'Rectangular selection' : 'Pan';
   $('#fill-settings').hidden = tool !== 'fill';
   $('#sample-settings').hidden = tool !== 'eyedropper';
+  if (tool !== 'select') { selectionStart = null; selectionPointerId = null; }
   canvas.dataset.tool = tool;
   updateDrawHoldUI();
 }
@@ -541,7 +568,9 @@ window.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'e') setTool('erase');
   else if (event.key.toLowerCase() === 'g') setTool('fill');
   else if (event.key.toLowerCase() === 'i') setTool('eyedropper');
+  else if (event.key.toLowerCase() === 'm') setTool('select');
   else if (event.key === 'Escape') {
+    if (selection) { selection = null; selectionStart = null; selectionPointerId = null; status('Selection cleared', 'neutral'); }
     if (activeStroke) finishActiveStroke(false);
     drawHeld = false; drawHoldPointerId = null;
     virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false;
