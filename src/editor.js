@@ -698,6 +698,7 @@ $('#pan-tool').addEventListener('click', () => setTool('pan'));
 $('#fill-tool').addEventListener('click', () => setTool('fill'));
 $('#eyedropper-tool').addEventListener('click', () => setTool('eyedropper'));
 $('#select-tool').addEventListener('click', () => setTool('select'));
+$('#ellipse-select-tool').addEventListener('click', () => setTool('select-ellipse'));
 $('#line-tool').addEventListener('click', () => setTool('shape-line'));
 $('#rectangle-tool').addEventListener('click', () => setTool('shape-rect'));
 $('#ellipse-tool').addEventListener('click', () => setTool('shape-ellipse'));
