@@ -1647,6 +1647,8 @@ window.addEventListener('keydown', event => {
     } catch (error) { status(error.message, 'error'); }
   }
   else if (event.key === 'Escape') {
+    if (transformPreview) { clearTransformPreview(); status('Transform preview cancelled; artwork unchanged', 'neutral'); }
+    if (cropPreview) { clearCropPreview(); status('Crop preview cancelled; canvas unchanged', 'neutral'); }
     if (shapeGesture) { shapeGesture = null; status('Shape preview cancelled', 'neutral'); }
     if (gradientGesture) { gradientGesture = null; status('Gradient preview cancelled', 'neutral'); }
     if (selection) { selection = null; selectionStart = null; selectionPointerId = null; syncSelectionMask(); status('Selection cleared', 'neutral'); }
