@@ -357,3 +357,31 @@ test('imported project copies receive independent document and layer identities'
   assert.deepEqual(copy.layers[1].pixels, original.layers[1].pixels);
   assert.equal(original.id, source.id);
 });
+
+
+test('selection masks constrain pencil, eraser, fill, and clear operations and survive one-step undo', () => {
+  const doc = new RasterDocument(4, 2);
+  const mask = new Uint8Array(8); mask[1] = 1; mask[5] = 1;
+  doc.setSelectionMask(mask);
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 1 });
+  doc.strokeTo(stroke, 0, 0); doc.strokeTo(stroke, 1, 0); doc.strokeTo(stroke, 2, 0); doc.endStroke(stroke);
+  assert.equal(doc.activeLayer.pixels[(0 * 4 + 0) * 4 + 3], 0);
+  assert.equal(doc.activeLayer.pixels[(0 * 4 + 1) * 4 + 3], 255);
+  assert.equal(doc.activeLayer.pixels[(0 * 4 + 2) * 4 + 3], 0);
+  assert.equal(doc.clearRect(0, 0, 4, 2), 1);
+  assert.equal(doc.activeLayer.pixels[(0 * 4 + 1) * 4 + 3], 0);
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.activeLayer.pixels[(0 * 4 + 1) * 4 + 3], 255);
+  doc.setSelectionMask(null);
+  assert.equal(doc.fillAt(0, 0, { color: '#00ff00', contiguous: false }), 7);
+});
+
+test('selection masks reject invalid dimensions and do not persist as document pixels', () => {
+  const doc = new RasterDocument(3, 2);
+  assert.throws(() => doc.setSelectionMask(new Uint8Array(5)), /matching document dimensions/);
+  assert.throws(() => doc.setSelectionMask([1, 0, 0, 0, 0, 0]), /Uint8Array/);
+  const mask = new Uint8Array(6); mask[0] = 1;
+  doc.setSelectionMask(mask);
+  const roundTrip = RasterDocument.fromJSON(doc.toJSON());
+  assert.equal(roundTrip.selectionMask, null);
+});
