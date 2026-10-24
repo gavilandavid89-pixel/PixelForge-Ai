@@ -357,6 +357,20 @@ try {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x2, y: y2 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   };
+  // Cursor mode is a global relative touchpad: swiping over UI moves the cursor but never paints.
+  await mobile.locator('#cursor-mode').click();
+  assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'true');
+  const undoBeforeCursorSwipe = await mobile.locator('#undo').isEnabled();
+  const cursorStart = await mobile.locator('.bottom-bar').boundingBox();
+  await touchDrag(cursorStart.x + 12, cursorStart.y + 10, cursorStart.x + 42, cursorStart.y + 24);
+  assert.equal(await mobile.locator('#undo').isEnabled(), undoBeforeCursorSwipe, 'swiping anywhere in cursor mode must move the cursor without painting');
+  const scrubBoxForCursor = await mobile.locator('#brush-scrub').boundingBox();
+  await touchDrag(scrubBoxForCursor.x + scrubBoxForCursor.width / 2, scrubBoxForCursor.y + scrubBoxForCursor.height / 2, scrubBoxForCursor.x + scrubBoxForCursor.width / 2, scrubBoxForCursor.y + scrubBoxForCursor.height / 2);
+  assert.equal(await mobile.locator('#undo').isEnabled(), true, 'touching the size gesture bar in cursor mode must draw at the cursor position');
+  await mobile.locator('#undo').click();
+  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'the cursor-mode dab must be one undoable action');
+  await mobile.locator('#cursor-mode').click();
+  assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'false');
   const startX = mobileBox.x + mobileBox.width / 2, startY = mobileBox.y + mobileBox.height / 2;
   await touchDrag(startX, startY, startX + 18, startY + 8);
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
