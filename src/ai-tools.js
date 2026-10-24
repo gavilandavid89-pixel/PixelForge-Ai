@@ -161,6 +161,8 @@ export class AICommandSession {
     }
   }
 
+  isForWorkspace(workspace) { return this.#workspace === workspace; }
+
   createProposal(summary) {
     return this.#workspace.createProposal(summary);
   }
