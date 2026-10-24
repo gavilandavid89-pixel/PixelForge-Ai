@@ -96,7 +96,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [ ] Autotiling, adjacency rules, seamless-tile preview and seam checks.
 - [ ] Procedural terrain/texture/icon/palette generators, clearly labeled procedural vs neural.
 ### Export and engine integration
-- [ ] Atlas/sheet packing, padding, extrusion, trim, pivots and JSON metadata.
+- [x] Layer-to-sprite-sheet grid packing with transparent padding, centered pivots and a JSON frame manifest; dimensions/memory limits are validated.\n- [ ] Arbitrary sprite atlas packing, edge extrusion, alpha trimming, configurable pivots and atlas-boundary validation.
 - [ ] PNG sequence, sheets, GIF/APNG/WebP and ZIP only after output validation.
 - [ ] Godot preset for frame size, filtering, pivots, animation names, alpha margins and metadata.
 - [ ] Other engine presets only after format-specific tests.
