@@ -190,10 +190,15 @@ try {
   });
   await desktop.locator('#fill-tool').click();
   assert.equal(await desktop.locator('#fill-settings').isVisible(), true, 'fill settings should follow the selected tool');
+  await desktop.locator('#fill-pattern').selectOption('checker');
+  await desktop.locator('#fill-scale').evaluate(element => { element.value = '2'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  assert.equal(await desktop.locator('#fill-scale-value').textContent(), '2 px', 'dither scale should update from its slider');
   await desktop.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await desktop.waitForFunction(() => /Filled [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.equal(await desktop.locator('#undo').isEnabled(), true, 'a fill must create one undoable edit');
   await desktop.locator('#undo').click();
+  await desktop.locator('#fill-pattern').selectOption('solid');
+  await desktop.locator('#fill-scale').evaluate(element => { element.value = '1'; element.dispatchEvent(new Event('input', { bubbles: true })); });
   await desktop.locator('#eyedropper-tool').click();
   assert.equal(await desktop.locator('#sample-settings').isVisible(), true, 'eyedropper source settings should follow the selected tool');
   await desktop.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
