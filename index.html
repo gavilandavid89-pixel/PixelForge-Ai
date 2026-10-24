@@ -59,6 +59,8 @@
         <div class="color-control"><input id="color" type="color" value="#DCE2F0" aria-label="Foreground color"><div class="color-presets" aria-label="Color presets">
           <button style="--swatch:#DCE2F0" data-color="#DCE2F0" aria-label="Soft white"></button><button style="--swatch:#9B8AFB" data-color="#9B8AFB" aria-label="Violet"></button><button style="--swatch:#59D8B4" data-color="#59D8B4" aria-label="Mint"></button><button style="--swatch:#FF9C70" data-color="#FF9C70" aria-label="Coral"></button><button style="--swatch:#242632" data-color="#242632" aria-label="Ink"></button>
         </div></div>
+        <div class="color-actions"><button id="swap-colors" type="button" aria-label="Swap foreground and background colors" title="Swap foreground/background (X)">⇄ Swap</button><span>Background <i id="background-swatch" aria-label="Background color"></i></span></div>
+        <div class="recent-colors-block"><div class="control-heading"><span>Recent colors</span><span class="tiny-tag">HISTORY</span></div><div id="recent-colors" class="recent-colors" aria-label="Recent colors"></div></div>
       </div>
       <div class="control-block"><div class="control-heading"><label for="brush-size">Size</label><span id="brush-size-value">1 px</span></div><input id="brush-size" class="range-input" type="range" min="1" max="32" value="1"><div class="range-labels"><span>1 px</span><span>32 px</span></div></div>
       <div class="control-block brush-scrub-block">
