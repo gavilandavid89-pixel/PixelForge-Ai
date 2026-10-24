@@ -460,7 +460,9 @@ try {
   assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'false', 'choosing a geometric tool must leave cursor mode automatically');
   assert.equal(await mobile.locator('#rectangle-tool').evaluate(element => element.classList.contains('active')), true, 'the selected geometric tool must receive input after leaving cursor mode');
   await mobile.locator('#brush-tool').click();
-  const startX = mobileBox.x + mobileBox.width / 2, startY = mobileBox.y + mobileBox.height / 2;
+  const directTouchCanvas = await mobile.locator('#canvas').boundingBox();
+  assert.ok(directTouchCanvas);
+  const startX = directTouchCanvas.x + directTouchCanvas.width / 2, startY = directTouchCanvas.y + directTouchCanvas.height / 2;
   const beforeDirectTouch = await settledCanvasData();
   await touchDrag(startX, startY, startX + 18, startY + 8);
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
