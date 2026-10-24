@@ -463,8 +463,20 @@ function renderLayers() {
     const visibility = document.createElement('button');
     visibility.className = 'layer-visibility'; visibility.textContent = layer.visible ? '◉' : '○';
     visibility.setAttribute('aria-label', layer.visible ? 'Hide layer' : 'Show layer');
+    visibility.setAttribute('aria-pressed', String(layer.visible));
     visibility.addEventListener('click', () => { doc.setLayerVisibility(layer.id, !layer.visible); changed(); renderLayers(); });
-    row.append(visibility, select); list.append(row);
+    const lock = document.createElement('button');
+    lock.className = 'layer-visibility layer-lock'; lock.textContent = layer.locked ? '🔒' : '♧';
+    lock.setAttribute('aria-label', layer.locked ? 'Unlock layer' : 'Lock layer');
+    lock.setAttribute('aria-pressed', String(layer.locked));
+    lock.title = layer.locked ? 'Unlock layer for editing' : 'Lock layer against edits';
+    lock.addEventListener('click', () => {
+      layer.locked = !layer.locked;
+      doc.dirty = true; doc.saveVersion++;
+      scheduleAutosave(); updateTitle(); renderLayers();
+      status(layer.locked ? 'Layer locked' : 'Layer unlocked', 'success');
+    });
+    row.append(visibility, select, lock); list.append(row);
   });
 }
 function safeName(value) { return (value || 'pixelforge-artwork').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'pixelforge-artwork'; }
