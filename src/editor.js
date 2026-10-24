@@ -362,7 +362,7 @@ $('#layers-tab').addEventListener('click', () => {
 mobileInspector.addEventListener('change', () => setInspectorPanel('properties'));
 function setTool(next) {
   if (activeStroke) finishActiveStroke(false);
-  if (next === 'eyedropper' && tool !== 'eyedropper') returnTool = ['draw', 'erase', 'fill'].includes(tool) ? tool : 'draw';
+  if (next === 'eyedropper' && tool !== 'eyedropper') returnTool = ['draw', 'erase'].includes(tool) ? tool : 'draw';
   drawHeld = false; drawHoldPointerId = null;
   tool = next;
   $('#brush-tool').classList.toggle('active', tool === 'draw');
