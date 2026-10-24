@@ -113,6 +113,7 @@ export class AICommandSession {
         case 'canvas.replace_color': {
           const tolerance = action.tolerance ?? 0;
           integer(tolerance, 'tolerance');
+          if (tolerance < 0 || tolerance > 255) throw new RangeError('Tolerance must be between 0 and 255.');
           result = { changedPixels: doc.replaceColor(color(action.from, 'from'), color(action.to, 'to'), tolerance) };
           break;
         }
