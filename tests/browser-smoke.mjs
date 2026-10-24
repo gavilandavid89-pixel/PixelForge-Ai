@@ -162,6 +162,27 @@ try {
   assert.equal(await settledCanvasData(), beforeCancelledShape, 'Escape must cancel the preview without changing document pixels');
   await desktop.locator('#brush-tool').click();
 
+  // Multi-part symmetry mirrors one gesture and keeps every reflected copy in one undo transaction.
+  await desktop.locator('#symmetry-mode').selectOption('4');
+  assert.match(await desktop.locator('#status').textContent(), /Symmetry enabled: 4 parts/);
+  const symmetryBefore = await settledCanvasData();
+  await desktop.locator('#brush-tool').click();
+  const symBox = await desktop.locator('#canvas').boundingBox();
+  const symX = symBox.x + symBox.width * 0.34, symY = symBox.y + symBox.height * 0.42;
+  await desktop.mouse.move(symX, symY);
+  await desktop.mouse.down();
+  await desktop.mouse.move(symX + 28, symY + 16, { steps: 4 });
+  await desktop.mouse.up();
+  const symmetryAfter = await settledCanvasData();
+  assert.notEqual(symmetryAfter, symmetryBefore, 'symmetry drawing should change the artwork');
+  assert.equal(await desktop.locator('#undo').isEnabled(), true, 'a symmetric gesture should be undoable');
+  await desktop.locator('#undo').click();
+  assert.equal(await settledCanvasData(), symmetryBefore, 'all reflected copies must be reverted by one undo');
+  await desktop.locator('#symmetry-mode').selectOption('8');
+  assert.match(await desktop.locator('#status').textContent(), /Symmetry enabled: 8 parts/);
+  await desktop.locator('#symmetry-mode').selectOption('0');
+  assert.match(await desktop.locator('#status').textContent(), /Symmetry disabled/);
+
   // Bucket fill is wired to the same document/history pipeline as brush strokes.
   await desktop.locator('#color').evaluate(element => {
     element.value = '#ff0000';
