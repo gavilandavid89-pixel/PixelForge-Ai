@@ -897,6 +897,15 @@ window.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'l') setTool('shape-line');
   else if (event.key.toLowerCase() === 'u') setTool('shape-rect');
   else if (event.key.toLowerCase() === 'o') setTool('shape-ellipse');
+  else if ((event.key === 'Delete' || event.key === 'Backspace') && selection) {
+    event.preventDefault();
+    try {
+      const cleared = doc.clearRect(selection.x, selection.y, selection.width, selection.height);
+      selection = null; selectionStart = null; selectionPointerId = null;
+      if (cleared) { changed(); status(`Cleared ${cleared.toLocaleString()} pixels from selection`, 'success'); }
+      else { render(); status('Selection was already transparent', 'neutral'); }
+    } catch (error) { status(error.message, 'error'); }
+  }
   else if (event.key === 'Escape') {
     if (shapeGesture) { shapeGesture = null; status('Shape preview cancelled', 'neutral'); }
     if (selection) { selection = null; selectionStart = null; selectionPointerId = null; status('Selection cleared', 'neutral'); }
