@@ -308,7 +308,9 @@ function setTool(next) {
   $('#brush-tool').classList.toggle('active', tool === 'draw');
   $('#eraser-tool').classList.toggle('active', tool === 'erase');
   $('#pan-tool').classList.toggle('active', tool === 'pan');
-  $('#tool-label').textContent = tool === 'draw' ? 'Pencil' : tool === 'erase' ? 'Eraser' : 'Pan';
+  $('#fill-tool').classList.toggle('active', tool === 'fill');
+  $('#tool-label').textContent = tool === 'draw' ? 'Pencil' : tool === 'erase' ? 'Eraser' : tool === 'fill' ? 'Bucket fill' : 'Pan';
+  $('#fill-settings').hidden = tool !== 'fill';
   canvas.dataset.tool = tool;
   updateDrawHoldUI();
 }
