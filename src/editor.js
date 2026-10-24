@@ -259,7 +259,7 @@ canvas.addEventListener('pointerdown', event => {
 });
 canvas.addEventListener('pointermove', moveStroke);
 canvas.addEventListener('pointerup', event => {
-  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; render(); return; }
+  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return; }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(true);
