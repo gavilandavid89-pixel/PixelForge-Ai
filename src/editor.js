@@ -509,6 +509,7 @@ function renderLayers() {
     order.append(raise, lower);
     row.append(visibility, select, lock, order); list.append(row);
   });
+  updateDrawHoldUI();
 }
 function safeName(value) { return (value || 'pixelforge-artwork').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'pixelforge-artwork'; }
 function downloadBlob(blob, name) {
