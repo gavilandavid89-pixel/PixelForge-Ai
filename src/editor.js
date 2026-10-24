@@ -1014,7 +1014,6 @@ $('#ai-generate-proposal').addEventListener('click', async () => {
     });
     if (result.status === 'proposal') {
       $('#ai-preview-mode').value = 'changes';
-      renderAIWorkspacePreview();
       status('AI proposal ready for review. The original drawing has not been changed.', 'success');
     } else if (result.status === 'cancelled') {
       status('AI request cancelled. The original drawing is unchanged.', 'neutral');
@@ -1023,8 +1022,9 @@ $('#ai-generate-proposal').addEventListener('click', async () => {
     } else if (result.status === 'rejected' && result.reason === 'empty-plan') {
       status(result.summary || 'The model did not return an applicable edit.', 'warning');
     } else {
-      status(result.message || result.error?.message || result.error?.message || result.reason || 'The AI request could not be completed.', 'error');
+      status(result.message || result.error?.message || result.reason || 'The AI request could not be completed.', 'error');
     }
+    renderAIWorkspacePreview();
     updateAIWorkspaceUI();
   } catch (error) {
     status(error instanceof Error ? error.message : 'The AI request failed.', 'error');
