@@ -293,6 +293,39 @@ export class RasterDocument {
     }
     return changedPixels;
   }
+  createOutline(color = '#20202a', { diagonals = true } = {}) {
+    if (typeof diagonals !== 'boolean') throw new TypeError('Outline diagonal mode must be a boolean.');
+    const layer = this.activeLayer;
+    if (layer.locked) throw new Error('The active layer is locked.');
+    const rgb = parseHexColor(color), source = new Uint8ClampedArray(layer.pixels);
+    const neighbors = diagonals ? [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]] : [[0,-1],[-1,0],[1,0],[0,1]];
+    const tilesBefore = new Map();
+    let changedPixels = 0;
+    for (let y = 0; y < this.height; y++) for (let x = 0; x < this.width; x++) {
+      const sourceIndex = (y * this.width + x) * 4;
+      if (source[sourceIndex + 3] === 0) continue;
+      for (const [dx, dy] of neighbors) {
+        const px = x + dx, py = y + dy;
+        if (px < 0 || py < 0 || px >= this.width || py >= this.height) continue;
+        const pixel = py * this.width + px;
+        if (this.selectionMask && !this.selectionMask[pixel]) continue;
+        const index = pixel * 4;
+        if (source[index + 3] !== 0 || layer.pixels[index + 3] !== 0) continue;
+        const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
+        if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
+        layer.pixels[index] = rgb[0]; layer.pixels[index + 1] = rgb[1]; layer.pixels[index + 2] = rgb[2]; layer.pixels[index + 3] = 255;
+        this.compositeDirtyTiles.add(key); changedPixels++;
+      }
+    }
+    if (changedPixels) {
+      const tiles = [...tilesBefore.entries()].map(([key, before]) => {
+        const [tileX, tileY] = key.split(':').map(Number);
+        return { tileX, tileY, before, after: this.#captureTile(layer, tileX, tileY) };
+      });
+      this.#record({ type: 'pixels', layerId: layer.id, tiles });
+    }
+    return changedPixels;
+  }
   flipRect(x, y, width, height, axis = 'horizontal') {
     if (!['horizontal', 'vertical'].includes(axis)) throw new TypeError('Flip axis must be horizontal or vertical.');
     const clipboard = this.copyRect(x, y, width, height);
