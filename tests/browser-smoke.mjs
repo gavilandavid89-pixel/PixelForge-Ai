@@ -98,6 +98,10 @@ try {
     return dimensions.length === 2 && preview?.width === dimensions[0] && preview?.height === dimensions[1];
   });
   assert.ok((await desktop.locator('#ai-connection-state').textContent()).includes('not wired into the UI yet'), 'the UI must not claim an AI model is connected');
+  await desktop.locator('#ai-preview-mode').selectOption('changes');
+  await desktop.waitForFunction(() => document.querySelector('#ai-diff-count')?.textContent === '0 changed pixels');
+  await desktop.locator('#ai-preview-mode').selectOption('original');
+  await desktop.locator('#ai-preview-mode').selectOption('ai');
   await desktop.locator('#ai-sync').click();
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'AI canvas synchronized from the original');
   await desktop.locator('#properties-tab').click();
