@@ -1,4 +1,4 @@
-import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints, createSelectionMask, createColorSelectionMask } from './core.js';
+import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints, createSelectionMask, createColorSelectionMask, modifySelectionMask } from './core.js';
 import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
 import { preflightImageFile } from './image-import.js';
 import { createSpriteSheetLayout } from './asset-export.js';
@@ -278,6 +278,8 @@ function eventPoint(event) {
 }
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
 function syncSelectionMask() {
+  const controls = $('#selection-settings');
+  if (controls) controls.hidden = !selection;
   if (selection?.customMask) { doc.setSelectionMask(selection.customMask); return; }
   if (selection?.shape === 'polygon' && selection.points.length < 3) { doc.setSelectionMask(null); return; }
   doc.setSelectionMask(createSelectionMask(doc.width, doc.height, selection));
@@ -750,6 +752,20 @@ $('#ellipse-select-tool').addEventListener('click', () => setTool('select-ellips
 $('#lasso-select-tool').addEventListener('click', () => setTool('select-lasso'));
 $('#magic-select-tool').addEventListener('click', () => setTool('select-color'));
 $('#magic-tolerance').addEventListener('input', event => { $('#magic-tolerance-value').textContent = event.target.value; });
+$('#selection-radius').addEventListener('input', event => { $('#selection-radius-value').textContent = `${event.target.value} px`; });
+function modifyCurrentSelection(operation) {
+  if (!selection || !doc.selectionMask) { status('Create a selection first', 'neutral'); return; }
+  try {
+    const mask = modifySelectionMask(doc.width, doc.height, doc.selectionMask, operation, Number($('#selection-radius').value));
+    const bounds = selectionBounds(mask);
+    selection = bounds ? { ...bounds, shape: 'mask', customMask: mask } : null;
+    selectionStart = null; selectionPointerId = null; syncSelectionMask();
+    status(selection ? `Selection ${operation}d` : 'Selection is empty', 'success'); render();
+  } catch (error) { status(error.message, 'error'); }
+}
+$('#selection-invert').addEventListener('click', () => modifyCurrentSelection('invert'));
+$('#selection-expand').addEventListener('click', () => modifyCurrentSelection('expand'));
+$('#selection-contract').addEventListener('click', () => modifyCurrentSelection('contract'));
 $('#line-tool').addEventListener('click', () => setTool('shape-line'));
 $('#rectangle-tool').addEventListener('click', () => setTool('shape-rect'));
 $('#ellipse-tool').addEventListener('click', () => setTool('shape-ellipse'));
@@ -1152,6 +1168,9 @@ window.addEventListener('keydown', event => {
   }
   if (textEntry) return;
   if (nativeControl && !modifiedShortcut && event.key !== 'Escape' && !((event.key === 'Delete' || event.key === 'Backspace') && selection)) return;
+  if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'i' && selection) {
+    event.preventDefault(); modifyCurrentSelection('invert'); return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
     event.preventDefault();
     selection = { x: 0, y: 0, width: doc.width, height: doc.height };
