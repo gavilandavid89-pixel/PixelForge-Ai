@@ -513,7 +513,7 @@ export class RasterDocument {
       const layer = this.layers.find(candidate => candidate.id === item.layerId);
       if (!layer) throw new Error('Unknown layer ID.');
       if (layer.locked) throw new Error(`Layer "${layer.name}" is locked.`);
-      if (!(item.pixels instanceof Uint8Array) || item.pixels.length !== this.width * this.height * 4) {
+      if (!(item.pixels instanceof Uint8Array || item.pixels instanceof Uint8ClampedArray) || item.pixels.length !== this.width * this.height * 4) {
         throw new TypeError('Replacement pixels must be a byte array matching the document dimensions.');
       }
       return { layer, pixels: item.pixels };
