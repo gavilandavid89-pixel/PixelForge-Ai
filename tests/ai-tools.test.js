@@ -27,6 +27,8 @@ test('AI tools validate coordinates, color, sizes, and rectangles before mutatio
   assert.equal(session.execute({ name: 'canvas.draw_line', x0: 0, y0: 0, x1: 2, y1: 2, color: 'red' }).error.code, 'invalid_arguments');
   assert.equal(session.execute({ name: 'canvas.clear_region', x: 0, y: 0, width: 9, height: 2 }).ok, false);
   assert.equal(session.execute({ name: 'canvas.fill', x: 0, y: 0, color: '#000000', tolerance: 999 }).ok, false);
+  assert.equal(session.execute({ name: 'canvas.replace_color', from: '#000000', to: '#ffffff', tolerance: 999 }).error.code, 'out_of_bounds_or_limit');
+  assert.equal(session.execute({ name: 'canvas.replace_color', from: '#000000', to: '#ffffff', tolerance: -1 }).ok, false);
   assert.equal(user.revision, 0);
 });
 
