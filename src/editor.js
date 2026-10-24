@@ -896,6 +896,22 @@ function flipPixels(axis) {
 }
 $('#flip-horizontal').addEventListener('click', () => flipPixels('horizontal'));
 $('#flip-vertical').addEventListener('click', () => flipPixels('vertical'));
+function rotatePixels(direction) {
+  try {
+    const rect = selection ?? { x: 0, y: 0, width: doc.width, height: doc.height };
+    const count = doc.rotateRect(rect.x, rect.y, rect.width, rect.height, direction);
+    if (selection && doc.selectionMask) {
+      const bounds = selectionBounds(doc.selectionMask);
+      selection = bounds ? { ...bounds, shape: 'mask', customMask: new Uint8Array(doc.selectionMask) } : null;
+      syncSelectionMask();
+    }
+    if (count) { changed(); status(`Rotated ${count.toLocaleString()} pixels ${direction === 'clockwise' ? 'clockwise' : 'counterclockwise'}`, 'success'); }
+    else status('Rotation made no pixel changes', 'neutral');
+    render();
+  } catch (error) { status(error.message, 'error'); }
+}
+$('#rotate-clockwise').addEventListener('click', () => rotatePixels('clockwise'));
+$('#rotate-counterclockwise').addEventListener('click', () => rotatePixels('counterclockwise'));
 $('#replace-color').addEventListener('click', () => {
   try {
     const count = doc.replaceColor($('#replace-source').value, color, 0);
