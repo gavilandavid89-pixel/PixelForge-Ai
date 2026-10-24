@@ -243,6 +243,32 @@ export class RasterDocument {
     }
     return changedPixels;
   }
+  clearRect(x, y, width, height) {
+    if (![x, y, width, height].every(Number.isInteger) || width < 1 || height < 1) throw new RangeError('Clear rectangle coordinates and dimensions must be positive integers.');
+    const left = Math.max(0, x), top = Math.max(0, y);
+    const right = Math.min(this.width, x + width), bottom = Math.min(this.height, y + height);
+    if (left >= right || top >= bottom) return 0;
+    const layer = this.activeLayer;
+    if (layer.locked) throw new Error('The active layer is locked.');
+    const tilesBefore = new Map();
+    let changedPixels = 0;
+    for (let py = top; py < bottom; py++) for (let px = left; px < right; px++) {
+      const index = (py * this.width + px) * 4;
+      if (layer.pixels[index + 3] === 0 && layer.pixels[index] === 0 && layer.pixels[index + 1] === 0 && layer.pixels[index + 2] === 0) continue;
+      const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
+      if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
+      layer.pixels[index] = 0; layer.pixels[index + 1] = 0; layer.pixels[index + 2] = 0; layer.pixels[index + 3] = 0;
+      this.compositeDirtyTiles.add(key); changedPixels++;
+    }
+    if (changedPixels) {
+      const tiles = [...tilesBefore.entries()].map(([key, before]) => {
+        const [tileX, tileY] = key.split(':').map(Number);
+        return { tileX, tileY, before, after: this.#captureTile(layer, tileX, tileY) };
+      });
+      this.#record({ type: 'pixels', layerId: layer.id, tiles });
+    }
+    return changedPixels;
+  }
   sampleColorAt(x, y, { merged = true } = {}) {
     if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= this.width || y >= this.height) {
       throw new RangeError('Sample coordinates are outside the document bounds.');
