@@ -349,7 +349,7 @@ function commitShapeGesture(gesture) {
   try {
     const points = shapePoints(gesture);
     if (!points.length) return;
-    const stroke = doc.beginStroke({ color, size: brushSize, mode: 'draw', opacity: Number($('#brush-opacity').value) / 100 });
+    const stroke = doc.beginStroke({ color, size: brushSize, mode: 'draw', opacity: Number($('#brush-opacity').value) / 100, shape: $('#brush-shape').value, hardness: Number($('#brush-hardness').value) / 100 });
     stroke.symmetryMode = symmetryMode;
     for (const point of points) strokeToWithSymmetry(stroke, point.x, point.y);
     doc.endStroke(stroke, { commit: true });
@@ -419,7 +419,7 @@ function changed() { render(); updateTitle(); scheduleAutosave(); }
 function startStrokeAt(point, id) {
   if (!point?.inside || activeStroke) return;
   try {
-    activeStroke = doc.beginStroke({ color, size: brushSize, mode: tool, opacity: Number($('#brush-opacity').value) / 100 });
+    activeStroke = doc.beginStroke({ color, size: brushSize, mode: tool, opacity: Number($('#brush-opacity').value) / 100, shape: $('#brush-shape').value, hardness: Number($('#brush-hardness').value) / 100 });
     activeStroke.symmetryMode = symmetryMode;
     pointerId = id;
     strokeToWithSymmetry(activeStroke, point.x, point.y);
@@ -780,6 +780,7 @@ $('#replace-color').addEventListener('click', () => {
 });
 $('#fill-scale').addEventListener('input', event => { $('#fill-scale-value').textContent = `${event.target.value} px`; });
 $('#brush-opacity').addEventListener('input', event => { $('#brush-opacity-value').textContent = `${event.target.value}%`; });
+$('#brush-hardness').addEventListener('input', event => { $('#brush-hardness-value').textContent = `${event.target.value}%`; });
 $('#brush-size').addEventListener('input', event => {
   brushSize = Number(event.target.value); $('#brush-size-value').textContent = `${brushSize} px`;
 });
