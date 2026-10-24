@@ -23,6 +23,7 @@ const TILE_SIZE = 64;
 function entryBytes(entry) {
   if (entry.type === 'pixels') return entry.tiles.reduce((sum, tile) => sum + tile.before.byteLength + tile.after.byteLength, 64);
   if (entry.type === 'layer-add') return (entry.addedLayer?.pixels.byteLength ?? 0) + 128;
+  if (entry.type === 'layer-delete') return (entry.removedLayer?.pixels.byteLength ?? 0) + 128;
   return 128;
 }
 
@@ -73,6 +74,56 @@ export class RasterDocument {
     this.#markAllCompositeDirty();
     this.#record({ type: 'layer-move', layerId: id, beforeIndex, afterIndex: targetIndex });
     return true;
+  }
+  renameLayer(id, name) {
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 180) throw new TypeError('Layer name must contain 1–180 characters.');
+    const layer = this.layers.find(item => item.id === id);
+    if (!layer) throw new Error('Unknown layer ID.');
+    const after = name.trim();
+    if (layer.name === after) return false;
+    const before = layer.name;
+    layer.name = after;
+    this.#record({ type: 'layer-rename', layerId: id, before, after });
+    return true;
+  }
+  setLayerOpacity(id, opacity) {
+    if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new RangeError('Layer opacity must be between 0 and 1.');
+    const layer = this.layers.find(item => item.id === id);
+    if (!layer) throw new Error('Unknown layer ID.');
+    if (layer.opacity === opacity) return false;
+    const before = layer.opacity;
+    layer.opacity = opacity;
+    this.#markAllCompositeDirty();
+    this.#record({ type: 'layer-opacity', layerId: id, before, after: opacity });
+    return true;
+  }
+  duplicateLayer(id, name) {
+    const sourceIndex = this.layers.findIndex(item => item.id === id);
+    if (sourceIndex < 0) throw new Error('Unknown layer ID.');
+    if (this.layers.length >= 64) throw new RangeError('The initial editor supports up to 64 layers.');
+    if ((this.layers.length + 1) * this.width * this.height * 4 > MAX_DOCUMENT_BYTES) throw new RangeError('Duplicating this layer would exceed the 64 MiB total pixel-memory budget.');
+    const source = this.layers[sourceIndex];
+    const duplicate = cloneLayer(source);
+    duplicate.id = crypto.randomUUID();
+    duplicate.name = typeof name === 'string' && name.trim() ? name.trim().slice(0, 180) : `${source.name} copy`.slice(0, 180);
+    this.layers.splice(sourceIndex + 1, 0, duplicate);
+    const beforeActive = this.activeLayerId;
+    this.activeLayerId = duplicate.id;
+    this.#markAllCompositeDirty();
+    this.#record({ type: 'layer-add', index: sourceIndex + 1, beforeActive, addedLayer: cloneLayer(duplicate) });
+    return duplicate;
+  }
+  deleteLayer(id) {
+    if (this.layers.length <= 1) throw new RangeError('A document must keep at least one layer.');
+    const index = this.layers.findIndex(item => item.id === id);
+    if (index < 0) throw new Error('Unknown layer ID.');
+    const beforeActive = this.activeLayerId;
+    const [removedLayer] = this.layers.splice(index, 1);
+    if (this.activeLayerId === id) this.activeLayerId = this.layers[Math.min(index, this.layers.length - 1)].id;
+    const afterActive = this.activeLayerId;
+    this.#markAllCompositeDirty();
+    this.#record({ type: 'layer-delete', index, beforeActive, afterActive, removedLayer: cloneLayer(removedLayer) });
+    return removedLayer;
   }
   setLayerLocked(id, locked) {
     if (typeof locked !== 'boolean') throw new TypeError('Layer lock must be a boolean.');
@@ -364,6 +415,23 @@ export class RasterDocument {
         this.layers.splice(Math.min(targetIndex, this.layers.length), 0, layer);
         this.#markAllCompositeDirty();
       }
+    } else if (entry.type === 'layer-rename') {
+      const layer = this.layers.find(item => item.id === entry.layerId);
+      if (layer) layer.name = forward ? entry.after : entry.before;
+    } else if (entry.type === 'layer-opacity') {
+      const layer = this.layers.find(item => item.id === entry.layerId);
+      if (layer) layer.opacity = forward ? entry.after : entry.before;
+      this.#markAllCompositeDirty();
+    } else if (entry.type === 'layer-delete') {
+      if (forward) {
+        this.layers = this.layers.filter(layer => layer.id !== entry.removedLayer?.id);
+        this.activeLayerId = entry.afterActive ?? this.layers[0]?.id;
+      } else {
+        const existing = this.layers.find(layer => layer.id === entry.removedLayer?.id);
+        if (!existing && entry.removedLayer) this.layers.splice(Math.min(entry.index, this.layers.length), 0, cloneLayer(entry.removedLayer));
+        this.activeLayerId = entry.beforeActive ?? this.layers[0]?.id;
+      }
+      this.#markAllCompositeDirty();
     } else if (entry.type === 'layer-lock') {
       const layer = this.layers.find(item => item.id === entry.layerId);
       if (layer) layer.locked = forward ? entry.after : entry.before;
