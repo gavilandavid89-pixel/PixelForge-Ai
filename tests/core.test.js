@@ -501,3 +501,23 @@ test('checker dither fill alternates foreground/background, respects scale and u
   assert.deepEqual(pixel(2, 0), [0, 0, 255, 255]);
   assert.throws(() => doc.fillAt(0, 0, { pattern: 'noise' }), /pattern/);
 });
+
+
+test('brush opacity alpha-composites draw strokes and partially erases with atomic undo', () => {
+  const doc = new RasterDocument(1, 1);
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 1, opacity: 0.5 });
+  doc.strokeTo(stroke, 0, 0); assert.equal(doc.endStroke(stroke), true);
+  assert.deepEqual([...doc.activeLayer.pixels], [255, 0, 0, 128]);
+  stroke = doc.beginStroke({ color: '#0000ff', size: 1, opacity: 0.5 });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  assert.deepEqual([...doc.activeLayer.pixels], [85, 0, 170, 192]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual([...doc.activeLayer.pixels], [255, 0, 0, 128]);
+  stroke = doc.beginStroke({ size: 1, mode: 'erase', opacity: 0.5 });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  assert.deepEqual([...doc.activeLayer.pixels], [255, 0, 0, 64]);
+  assert.throws(() => doc.beginStroke({ opacity: 1.1 }), /opacity/);
+  stroke = doc.beginStroke({ opacity: 0 });
+  doc.strokeTo(stroke, 0, 0);
+  assert.equal(doc.endStroke(stroke), false, 'zero-opacity stroke should not create a history entry');
+});
