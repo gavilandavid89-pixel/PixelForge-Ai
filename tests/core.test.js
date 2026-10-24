@@ -2,6 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES } from '../src/core.js';
 
+test('layer lock changes are undoable, redoable, persisted, and enforced by drawing and fill', () => {
+  const doc = new RasterDocument(4, 4);
+  const id = doc.activeLayer.id;
+  doc.setLayerLocked(id, true);
+  assert.equal(doc.activeLayer.locked, true);
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.activeLayer.locked, false);
+  assert.equal(doc.redo(), true);
+  assert.equal(doc.activeLayer.locked, true);
+  assert.throws(() => doc.beginStroke({ color: '#ff0000' }), /locked/);
+  assert.throws(() => doc.fillAt(0, 0, { color: '#00ff00' }), /locked/);
+  const restored = RasterDocument.fromJSON(doc.toJSON());
+  assert.equal(restored.activeLayer.locked, true);
+});
+
 test('eyedropper samples visible merged color or active-layer pixels without editing', () => {
   const doc = new RasterDocument(2, 1);
   let stroke = doc.beginStroke({ color: '#ff0000', size: 1 });
