@@ -101,6 +101,24 @@ try {
   await canvas.evaluate(element => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const after = await canvas.evaluate(element => element.toDataURL());
   assert.notEqual(after, before, 'drawing must change rendered artwork');
+  // The centered scrub gesture is relative to the starting size and recenters without resetting the chosen size.
+  await desktop.locator('#brush-size').evaluate(element => { element.value = '10'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  const scrub = desktop.locator('#brush-scrub');
+  const scrubBox = await scrub.boundingBox();
+  assert.ok(scrubBox && scrubBox.width > 100, 'brush size scrubber should have a usable drag target');
+  await desktop.mouse.move(scrubBox.x + scrubBox.width / 2, scrubBox.y + scrubBox.height / 2);
+  await desktop.mouse.down();
+  await desktop.mouse.move(scrubBox.x + scrubBox.width / 2 - scrubBox.width * 0.22, scrubBox.y + scrubBox.height / 2, { steps: 5 });
+  await desktop.mouse.up();
+  const thickerSize = Number(await desktop.locator('#brush-size').inputValue());
+  assert.ok(thickerSize > 10, 'dragging left from the scrub center must increase brush size');
+  assert.equal(await scrub.evaluate(element => element.classList.contains('is-dragging')), false, 'scrub gesture should recenter on release');
+  await desktop.mouse.move(scrubBox.x + scrubBox.width / 2, scrubBox.y + scrubBox.height / 2);
+  await desktop.mouse.down();
+  await desktop.mouse.move(scrubBox.x + scrubBox.width / 2 + scrubBox.width * 0.22, scrubBox.y + scrubBox.height / 2, { steps: 5 });
+  await desktop.mouse.up();
+  assert.ok(Number(await desktop.locator('#brush-size').inputValue()) < thickerSize, 'dragging right must thin the brush');
+  await desktop.locator('#brush-size').evaluate(element => { element.value = '1'; element.dispatchEvent(new Event('input', { bubbles: true })); });
   const historyBeforeGrid = await desktop.locator('#undo').isEnabled();
   await desktop.locator('#grid-toggle').click();
   assert.equal(await desktop.locator('#grid-toggle').getAttribute('aria-pressed'), 'true', 'pixel grid toggle must expose its enabled state');
