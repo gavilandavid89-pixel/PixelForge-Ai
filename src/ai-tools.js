@@ -44,8 +44,6 @@ export class AICommandSession {
     this.#workspace = workspace;
   }
 
-  get workspace() { return this.#workspace; }
-
   execute(action) {
     if (!action || typeof action !== 'object' || Array.isArray(action) ||
         typeof action.name !== 'string' || !action.name.trim()) {
