@@ -189,3 +189,26 @@ test('user edits sync into the same sandbox buffers without allocating a new ful
   assert.equal(workspace.sandbox.sampleColorAt(5, 6, { merged: false }), '#123456');
   assert.equal(workspace.sandbox.history.length, 0, 'mirror sync must not create AI undo history');
 });
+
+
+test('sync does not silently overwrite an unsubmitted AI sandbox draft', () => {
+  const user = new RasterDocument(8, 8);
+  const workspace = new AIWorkspace(user);
+  paint(workspace.sandbox, 1, 1, '#ff0000');
+  paint(user, 7, 7, '#00ff00');
+  assert.deepEqual(workspace.syncFromUser(), { status: 'sandbox-pending', stale: true });
+  assert.equal(workspace.sandbox.sampleColorAt(1, 1, { merged: false }), '#FF0000');
+  assert.equal(workspace.discardSandboxChanges(), true);
+  assert.equal(workspace.sandbox.sampleColorAt(1, 1, { merged: false }), null);
+  assert.equal(workspace.sandbox.sampleColorAt(7, 7, { merged: false }), '#00FF00');
+});
+
+test('explicit discard flag can synchronize over an unsubmitted sandbox draft', () => {
+  const user = new RasterDocument(8, 8);
+  const workspace = new AIWorkspace(user);
+  paint(workspace.sandbox, 1, 1, '#ff0000');
+  paint(user, 7, 7, '#00ff00');
+  assert.equal(workspace.syncFromUser({ discardSandboxChanges: true }).status, 'synced');
+  assert.equal(workspace.sandbox.sampleColorAt(1, 1, { merged: false }), null);
+  assert.equal(workspace.sandbox.sampleColorAt(7, 7, { merged: false }), '#00FF00');
+});
