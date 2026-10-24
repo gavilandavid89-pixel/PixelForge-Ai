@@ -211,6 +211,11 @@ try {
   await desktop.locator('#brush-opacity').evaluate(element => { element.value = '50'; element.dispatchEvent(new Event('input', { bubbles: true })); });
   assert.equal(await desktop.locator('#brush-opacity-value').textContent(), '50%', 'brush opacity slider should update its displayed value');
   await desktop.locator('#brush-opacity').evaluate(element => { element.value = '100'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  await desktop.locator('#brush-shape').selectOption('circle');
+  await desktop.locator('#brush-hardness').evaluate(element => { element.value = '25'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  assert.equal(await desktop.locator('#brush-hardness-value').textContent(), '25%', 'brush hardness slider should update its value');
+  await desktop.locator('#brush-shape').selectOption('square');
+  await desktop.locator('#brush-hardness').evaluate(element => { element.value = '100'; element.dispatchEvent(new Event('input', { bubbles: true })); });
   // Foreground/background swap and recent colors are real controls, not decorative UI.
   const foregroundBeforeSwap = (await desktop.locator('#color').inputValue()).toUpperCase();
   const backgroundBeforeSwap = await desktop.locator('#background-swatch').evaluate(element => getComputedStyle(element).backgroundColor);
