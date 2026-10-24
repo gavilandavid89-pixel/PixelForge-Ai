@@ -464,9 +464,14 @@ try {
   assert.ok(directTouchCanvas);
   const startX = directTouchCanvas.x + directTouchCanvas.width / 2, startY = directTouchCanvas.y + directTouchCanvas.height / 2;
   const beforeDirectTouch = await settledCanvasData();
-  await touchDrag(startX, startY, startX + 18, startY + 8);
+  await mobile.locator('#canvas').evaluate((element, point) => {
+    const make = type => new PointerEvent(type, { ...point, pointerId: 88, pointerType: 'touch', button: 0, isPrimary: true, bubbles: true, cancelable: true });
+    element.dispatchEvent(make('pointerdown'));
+    element.dispatchEvent(make('pointermove'));
+    element.dispatchEvent(make('pointerup'));
+  }, { clientX: startX, clientY: startY });
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
-  assert.notEqual(await settledCanvasData(), beforeDirectTouch, 'dragging on the canvas with the pencil must draw immediately without a separate hold button');
+  assert.notEqual(await settledCanvasData(), beforeDirectTouch, 'touch pointer events on the canvas must draw immediately without a separate hold button');
   await mobile.locator('#undo').click();
   assert.equal(await settledCanvasData(), beforeDirectTouch, 'the direct touch stroke should undo as one action');
   const drawHoldBounds = await mobile.locator('#draw-hold').boundingBox();
