@@ -31,7 +31,7 @@ test('layer rename, opacity, duplicate and delete are undoable and preserve pixe
   assert.equal(duplicate.name, 'Layer 1 copy');
   assert.deepEqual([...doc.composite().slice(0, 4)], [255, 0, 0, 255]);
   doc.setLayerOpacity(duplicate.id, 0.5);
-  assert.deepEqual([...doc.composite().slice(0, 4)], [255, 0, 0, 191]);
+  assert.deepEqual([...doc.composite().slice(0, 4)], [255, 0, 0, 255]);
   doc.renameLayer(duplicate.id, 'Highlights');
   assert.equal(doc.activeLayer.name, 'Highlights');
   assert.equal(doc.undo(), true);
