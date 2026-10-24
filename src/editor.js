@@ -7,7 +7,8 @@ const canvas = $('#canvas'), ctx = canvas.getContext('2d', { alpha: true });
 const workArea = $('#work-area');
 const previewCanvas = document.createElement('canvas'), previewCtx = previewCanvas.getContext('2d', { alpha: true });
 let doc = new RasterDocument(128, 128), tool = 'draw', spaceDown = false;
-let color = $('#color').value, brushSize = Number($('#brush-size').value);\nlet fillTolerance = 0, fillContiguous = true;
+let color = $('#color').value, brushSize = Number($('#brush-size').value);
+let fillTolerance = 0, fillContiguous = true;
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null;
 let drawHeld = false, drawHoldPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false;
@@ -158,7 +159,15 @@ function startStrokeAt(point, id) {
     render();
   } catch (error) { status(error.message, 'error'); }
 }
-function performFill(point) {\n  if (!point?.inside || flushInProgress) return;\n  try {\n    const count = doc.fillAt(point.x, point.y, { color, tolerance: fillTolerance, contiguous: fillContiguous });\n    if (count) { changed(); status(`Filled ${count.toLocaleString()} pixels`, 'success'); }\n    else status('Fill made no changes', 'neutral');\n  } catch (error) { status(error.message, 'error'); }\n}\nfunction beginStroke(event) {
+function performFill(point) {
+  if (!point?.inside || flushInProgress) return;
+  try {
+    const count = doc.fillAt(point.x, point.y, { color, tolerance: fillTolerance, contiguous: fillContiguous });
+    if (count) { changed(); status(`Filled ${count.toLocaleString()} pixels`, 'success'); }
+    else status('Fill made no changes', 'neutral');
+  } catch (error) { status(error.message, 'error'); }
+}
+function beginStroke(event) {
   if (event.button !== undefined && event.button !== 0) return;
   const point = docPoint(event);
   if (!point.inside) return;
@@ -195,7 +204,8 @@ function endStroke(event, commit = true) {
 }
 canvas.addEventListener('pointerdown', event => {
   if (flushInProgress) { event.preventDefault(); return; }
-  if (tool === 'fill') { if (event.button === undefined || event.button === 0) performFill(docPoint(event)); event.preventDefault(); return; }\n  if (tool === 'pan' || event.button === 1 || spaceDown) {
+  if (tool === 'fill') { if (event.button === undefined || event.button === 0) performFill(docPoint(event)); event.preventDefault(); return; }
+  if (tool === 'pan' || event.button === 1 || spaceDown) {
     panning = true;
     const p = eventPoint(event); panStart = { x: p.x, y: p.y, panX, panY };
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
@@ -286,7 +296,10 @@ canvas.addEventListener('wheel', event => {
 
 $('#brush-tool').addEventListener('click', () => setTool('draw'));
 $('#eraser-tool').addEventListener('click', () => setTool('erase'));
-$('#pan-tool').addEventListener('click', () => setTool('pan'));\n$('#fill-tool').addEventListener('click', () => setTool('fill'));\n$('#fill-tolerance').addEventListener('input', event => { fillTolerance = Number(event.target.value); $('#fill-tolerance-value').textContent = `${fillTolerance}`; });\n$('#fill-mode').addEventListener('change', event => { fillContiguous = event.target.value === 'contiguous'; });
+$('#pan-tool').addEventListener('click', () => setTool('pan'));
+$('#fill-tool').addEventListener('click', () => setTool('fill'));
+$('#fill-tolerance').addEventListener('input', event => { fillTolerance = Number(event.target.value); $('#fill-tolerance-value').textContent = `${fillTolerance}`; });
+$('#fill-mode').addEventListener('change', event => { fillContiguous = event.target.value === 'contiguous'; });
 $('#layers-tab').addEventListener('click', () => $('#layers').scrollIntoView({ behavior: 'smooth', block: 'center' }));
 function setTool(next) {
   if (activeStroke) finishActiveStroke(false);
@@ -459,7 +472,8 @@ window.addEventListener('keydown', event => {
   } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
     event.preventDefault(); if (doc.redo()) changed();
   } else if (event.key.toLowerCase() === 'b') setTool('draw');
-  else if (event.key.toLowerCase() === 'e') setTool('erase');\n  else if (event.key.toLowerCase() === 'g') setTool('fill');
+  else if (event.key.toLowerCase() === 'e') setTool('erase');
+  else if (event.key.toLowerCase() === 'g') setTool('fill');
   else if (event.key === 'Escape') {
     if (activeStroke) finishActiveStroke(false);
     drawHeld = false; drawHoldPointerId = null;
