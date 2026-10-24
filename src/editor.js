@@ -809,6 +809,7 @@ window.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'u') setTool('shape-rect');
   else if (event.key.toLowerCase() === 'o') setTool('shape-ellipse');
   else if (event.key === 'Escape') {
+    if (shapeGesture) { shapeGesture = null; status('Shape preview cancelled', 'neutral'); }
     if (selection) { selection = null; selectionStart = null; selectionPointerId = null; status('Selection cleared', 'neutral'); }
     if (activeStroke) finishActiveStroke(false);
     drawHeld = false; drawHoldPointerId = null;
