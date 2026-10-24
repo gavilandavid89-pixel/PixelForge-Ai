@@ -71,6 +71,26 @@ test('layer lock changes are undoable, redoable, persisted, and enforced by draw
   assert.equal(restored.activeLayer.locked, true);
 });
 
+test('rectangular clear is clipped, respects locks and is one undoable pixel action', () => {
+  const doc = new RasterDocument(4, 3);
+  const stroke = doc.beginStroke({ color: '#33aaee', size: 1 });
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 4; x++) doc.strokeTo(stroke, x, y);
+  doc.endStroke(stroke);
+  const before = new Uint8ClampedArray(doc.activeLayer.pixels);
+  const historyBefore = doc.history.length;
+  assert.equal(doc.clearRect(1, 1, 2, 1), 2);
+  assert.equal(doc.history.length, historyBefore + 1);
+  assert.equal(doc.sampleColorAt(1, 1, { merged: false }), null);
+  assert.equal(doc.sampleColorAt(0, 1, { merged: false }), '#33AAEE');
+  assert.equal(doc.undo(), true);
+  assert.deepEqual([...doc.activeLayer.pixels], [...before]);
+  assert.equal(doc.redo(), true);
+  assert.equal(doc.clearRect(-2, -2, 2, 2), 0);
+  doc.setLayerLocked(doc.activeLayer.id, true);
+  assert.throws(() => doc.clearRect(0, 0, 1, 1), /locked/);
+  assert.throws(() => doc.clearRect(0, 0, 0, 1), /positive integers/);
+});
+
 test('eyedropper samples visible merged color or active-layer pixels without editing', () => {
   const doc = new RasterDocument(2, 1);
   let stroke = doc.beginStroke({ color: '#ff0000', size: 1 });
