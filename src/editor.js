@@ -823,8 +823,46 @@ function renderLayers() {
     order.append(raise, lower);
     row.append(visibility, select, lock, order); list.append(row);
   });
+  const opacityInput = $('#layer-opacity');
+  if (opacityInput) {
+    opacityInput.value = String(Math.round((doc.activeLayer?.opacity ?? 1) * 100));
+    $('#layer-opacity-value').textContent = `${opacityInput.value}%`;
+    opacityInput.disabled = !doc.activeLayer;
+    $('#rename-layer').disabled = !doc.activeLayer;
+    $('#duplicate-layer').disabled = !doc.activeLayer || doc.layers.length >= 64;
+    $('#delete-layer').disabled = !doc.activeLayer || doc.layers.length <= 1;
+  }
   updateDrawHoldUI();
 }
+$('#layer-opacity')?.addEventListener('input', event => {
+  $('#layer-opacity-value').textContent = `${event.target.value}%`;
+});
+$('#layer-opacity')?.addEventListener('change', event => {
+  try {
+    if (doc.setLayerOpacity(doc.activeLayer.id, Number(event.target.value) / 100)) {
+      changed(); renderLayers(); status('Layer opacity updated', 'success');
+    }
+  } catch (error) { status(error.message, 'error'); renderLayers(); }
+});
+$('#rename-layer')?.addEventListener('click', () => {
+  const layer = doc.activeLayer;
+  if (!layer) return;
+  const name = window.prompt('Layer name', layer.name);
+  if (name === null) return;
+  try {
+    if (doc.renameLayer(layer.id, name)) { changed(); renderLayers(); status('Layer renamed', 'success'); }
+  } catch (error) { status(error.message, 'error'); }
+});
+$('#duplicate-layer')?.addEventListener('click', () => {
+  try { doc.duplicateLayer(doc.activeLayer.id); changed(); renderLayers(); status('Layer duplicated', 'success'); }
+  catch (error) { status(error.message, 'error'); }
+});
+$('#delete-layer')?.addEventListener('click', () => {
+  const layer = doc.activeLayer;
+  if (!layer || doc.layers.length <= 1 || !window.confirm(`Delete layer "${layer.name}"? This can be undone.`)) return;
+  try { doc.deleteLayer(layer.id); changed(); renderLayers(); status('Layer deleted', 'success'); }
+  catch (error) { status(error.message, 'error'); }
+});
 function safeName(value) { return (value || 'pixelforge-artwork').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'pixelforge-artwork'; }
 function downloadBlob(blob, name) {
   const url = URL.createObjectURL(blob), a = document.createElement('a');
