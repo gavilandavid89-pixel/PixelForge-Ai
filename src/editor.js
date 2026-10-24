@@ -7,7 +7,7 @@ const canvas = $('#canvas'), ctx = canvas.getContext('2d', { alpha: true });
 const workArea = $('#work-area');
 const previewCanvas = document.createElement('canvas'), previewCtx = previewCanvas.getContext('2d', { alpha: true });
 let doc = new RasterDocument(128, 128), tool = 'draw', spaceDown = false;
-let color = $('#color').value, brushSize = Number($('#brush-size').value);
+let color = $('#color').value, backgroundColor = '#242632', recentColors = [], brushSize = Number($('#brush-size').value);
 let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 'draw';
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
 let drawHeld = false, drawHoldPointerId = null;
@@ -17,6 +17,30 @@ let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null,
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
 
+function rememberColor(value) {
+  const normalized = String(value).toUpperCase();
+  recentColors = [normalized, ...recentColors.filter(item => item !== normalized)].slice(0, 8);
+  const host = $('#recent-colors');
+  if (host) {
+    host.replaceChildren();
+    for (const recent of recentColors) {
+      const button = document.createElement('button');
+      button.type = 'button'; button.style.setProperty('--swatch', recent); button.dataset.recentColor = recent;
+      button.setAttribute('aria-label', `Use recent color ${recent}`); button.title = recent;
+      button.addEventListener('click', () => applyForegroundColor(recent));
+      host.append(button);
+    }
+  }
+}
+function applyForegroundColor(value) {
+  color = value.toUpperCase(); $('#color').value = color; $('#color-value').textContent = color;
+  rememberColor(color);
+  if (tool === 'erase') setTool('draw');
+}
+function syncBackgroundColor() {
+  const swatch = $('#background-swatch');
+  if (swatch) { swatch.style.background = backgroundColor; swatch.title = backgroundColor; }
+}
 function status(message, kind = 'neutral') {
   $('#status').textContent = message;
   $('#status').dataset.kind = kind;
@@ -319,8 +343,7 @@ function performSample(point) {
     if (!sampled) status('No visible color at this pixel', 'neutral');
     else {
       color = sampled;
-      $('#color').value = sampled;
-      $('#color-value').textContent = sampled;
+      applyForegroundColor(sampled);
       status(`Sampled ${sampled}`, 'success');
     }
     setTool(returnTool);
@@ -627,9 +650,19 @@ function setTool(next) {
   updateDrawHoldUI();
   render();
 }
-$('#color').addEventListener('input', event => {
-  color = event.target.value; $('#color-value').textContent = color.toUpperCase();
+$('#color').addEventListener('input', event => applyForegroundColor(event.target.value));
+$('#swap-colors').addEventListener('click', () => {
+  const foreground = color; color = backgroundColor; backgroundColor = foreground;
+  $('#color').value = color; $('#color-value').textContent = color.toUpperCase();
+  syncBackgroundColor(); rememberColor(color);
   if (tool === 'erase') setTool('draw');
+});
+syncBackgroundColor();
+rememberColor(color);
+document.addEventListener('keydown', event => {
+  if (event.key.toLowerCase() === 'x' && !event.ctrlKey && !event.metaKey && !event.altKey && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+    event.preventDefault(); $('#swap-colors').click();
+  }
 });
 $('#brush-size').addEventListener('input', event => {
   brushSize = Number(event.target.value); $('#brush-size-value').textContent = `${brushSize} px`;
