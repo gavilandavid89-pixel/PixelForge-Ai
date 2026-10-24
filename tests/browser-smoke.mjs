@@ -132,6 +132,15 @@ try {
 
   // Geometric tools show a temporary preview, then commit as exactly one undoable pixel action.
   const settledCanvasData = async () => await canvas.evaluate(element => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(element.toDataURL())))));
+
+  // Rotating a full active layer is a single reversible pixel operation.
+  const beforeRotation = await settledCanvasData();
+  await desktop.locator('#rotate-clockwise').click();
+  await desktop.waitForFunction(() => /Rotated [0-9,]+ pixels clockwise/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.notEqual(await settledCanvasData(), beforeRotation, 'rotation should visibly transform asymmetric artwork');
+  await desktop.locator('#undo').click();
+  assert.equal(await settledCanvasData(), beforeRotation, 'rotation should undo as one action');
+
   for (const shape of [
     { id: '#line-tool', name: 'line', dx: 52, dy: 31 },
     { id: '#rectangle-tool', name: 'rectangle', dx: 58, dy: 42 },
