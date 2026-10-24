@@ -1,4 +1,4 @@
-import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints, createSelectionMask } from './core.js';
+import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints, createSelectionMask, createColorSelectionMask } from './core.js';
 import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
 import { preflightImageFile } from './image-import.js';
 import { createSpriteSheetLayout } from './asset-export.js';
@@ -264,6 +264,7 @@ function eventPoint(event) {
 }
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
 function syncSelectionMask() {
+  if (selection?.customMask) { doc.setSelectionMask(selection.customMask); return; }
   if (selection?.shape === 'polygon' && selection.points.length < 3) { doc.setSelectionMask(null); return; }
   doc.setSelectionMask(createSelectionMask(doc.width, doc.height, selection));
 }
@@ -445,6 +446,27 @@ function performSample(point) {
     setTool(returnTool);
   } catch (error) { status(error.message, 'error'); }
 }
+function selectionBounds(mask) {
+  let left = doc.width, top = doc.height, right = -1, bottom = -1;
+  for (let y = 0; y < doc.height; y++) for (let x = 0; x < doc.width; x++) {
+    if (!mask[y * doc.width + x]) continue;
+    left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y);
+  }
+  return right < left ? null : { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+}
+function performColorSelection(point) {
+  if (!point?.inside || flushInProgress) return;
+  try {
+    const mask = createColorSelectionMask(doc.width, doc.height, doc.activeLayer.pixels, point.x, point.y, {
+      tolerance: Number($('#magic-tolerance').value), contiguous: $('#magic-mode').value === 'contiguous'
+    });
+    const bounds = selectionBounds(mask);
+    if (!bounds) { selection = null; syncSelectionMask(); status('No matching colors selected', 'neutral'); render(); return; }
+    selection = { ...bounds, shape: 'mask', customMask: mask };
+    selectionStart = null; selectionPointerId = null; syncSelectionMask();
+    status(`Color selection: ${mask.reduce((sum, value) => sum + value, 0).toLocaleString()} pixels`, 'success'); render();
+  } catch (error) { status(error.message, 'error'); }
+}
 function performFill(point) {
   if (!point?.inside || flushInProgress) return;
   try {
@@ -525,6 +547,7 @@ canvas.addEventListener('pointerdown', event => {
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     render(); event.preventDefault(); return;
   }
+  if (tool === 'select-color') { if (event.button === undefined || event.button === 0) performColorSelection(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'eyedropper') { if (event.button === undefined || event.button === 0) performSample(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'fill') { if (event.button === undefined || event.button === 0) performFill(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'pan' || event.button === 1 || spaceDown) {
@@ -711,6 +734,8 @@ $('#eyedropper-tool').addEventListener('click', () => setTool('eyedropper'));
 $('#select-tool').addEventListener('click', () => setTool('select'));
 $('#ellipse-select-tool').addEventListener('click', () => setTool('select-ellipse'));
 $('#lasso-select-tool').addEventListener('click', () => setTool('select-lasso'));
+$('#magic-select-tool').addEventListener('click', () => setTool('select-color'));
+$('#magic-tolerance').addEventListener('input', event => { $('#magic-tolerance-value').textContent = event.target.value; });
 $('#line-tool').addEventListener('click', () => setTool('shape-line'));
 $('#rectangle-tool').addEventListener('click', () => setTool('shape-rect'));
 $('#ellipse-tool').addEventListener('click', () => setTool('shape-ellipse'));
@@ -758,12 +783,14 @@ function setTool(next) {
   $('#select-tool').classList.toggle('active', tool === 'select');
   $('#ellipse-select-tool').classList.toggle('active', tool === 'select-ellipse');
   $('#lasso-select-tool').classList.toggle('active', tool === 'select-lasso');
+  $('#magic-select-tool').classList.toggle('active', tool === 'select-color');
   $('#line-tool').classList.toggle('active', tool === 'shape-line');
   $('#rectangle-tool').classList.toggle('active', tool === 'shape-rect');
   $('#ellipse-tool').classList.toggle('active', tool === 'shape-ellipse');
-  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', 'select-ellipse': 'Elliptical selection', 'select-lasso': 'Lasso selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse' })[tool] ?? 'Pencil';
+  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', 'select-ellipse': 'Elliptical selection', 'select-lasso': 'Lasso selection', 'select-color': 'Magic wand selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse' })[tool] ?? 'Pencil';
   $('#fill-settings').hidden = tool !== 'fill';
   $('#sample-settings').hidden = tool !== 'eyedropper';
+  $('#magic-settings').hidden = tool !== 'select-color';
   if (!['select', 'select-ellipse', 'select-lasso'].includes(tool)) { selectionStart = null; selectionPointerId = null; }
   canvas.dataset.tool = tool;
   updateDrawHoldUI();
