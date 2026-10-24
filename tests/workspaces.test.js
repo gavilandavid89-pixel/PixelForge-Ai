@@ -159,3 +159,19 @@ test('unchanged locked layers do not block an accepted pixel edit on another lay
   assert.deepEqual(result, { status: 'applied', changedPixels: 1, changedLayers: 1 });
   assert.equal(user.sampleColorAt(3, 3, { merged: false }), '#ABCDEF');
 });
+
+
+test('visual diff reports visible pixel changes without exposing or mutating the source document', () => {
+  const user = new RasterDocument(6, 5);
+  const workspace = new AIWorkspace(user);
+  paint(workspace.sandbox, 2, 3, '#ff0000');
+  const before = new Uint8ClampedArray(user.layers[0].pixels);
+  const diff = workspace.getVisualDiff();
+  assert.equal(diff.width, 6);
+  assert.equal(diff.height, 5);
+  assert.equal(diff.changedPixels, 1);
+  assert.deepEqual(diff.bounds, { x: 2, y: 3, width: 1, height: 1 });
+  assert.deepEqual([...diff.pixels.slice((3 * 6 + 2) * 4, (3 * 6 + 2) * 4 + 4)], [255,72,186,230]);
+  assert.deepEqual(user.layers[0].pixels, before);
+  assert.equal(user.revision, 0);
+});
