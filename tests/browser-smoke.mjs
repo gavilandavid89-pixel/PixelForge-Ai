@@ -101,6 +101,12 @@ try {
   await canvas.evaluate(element => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const after = await canvas.evaluate(element => element.toDataURL());
   assert.notEqual(after, before, 'drawing must change rendered artwork');
+  const historyBeforeGrid = await desktop.locator('#undo').isEnabled();
+  await desktop.locator('#grid-toggle').click();
+  assert.equal(await desktop.locator('#grid-toggle').getAttribute('aria-pressed'), 'true', 'pixel grid toggle must expose its enabled state');
+  assert.equal(await desktop.locator('#undo').isEnabled(), historyBeforeGrid, 'view-only grid must not alter artwork history');
+  await desktop.locator('#grid-toggle').click();
+  assert.equal(await desktop.locator('#grid-toggle').getAttribute('aria-pressed'), 'false', 'pixel grid must be independently hideable');
   assert.equal(await desktop.locator('#undo').isEnabled(), true, 'a committed stroke must enable undo');
   await desktop.locator('#undo').click();
   assert.equal(await desktop.locator('#redo').isEnabled(), true, 'undo must enable redo');
