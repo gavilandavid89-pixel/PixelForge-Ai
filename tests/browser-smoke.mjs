@@ -532,6 +532,7 @@ try {
 
   // Transform previews are view-only until Apply; Cancel must preserve both pixels and history.
   await desktop.locator('#brush-tool').click();
+  await desktop.locator('#color').evaluate(element => { element.value = '#12abef'; element.dispatchEvent(new Event('input', { bubbles: true })); });
   const transformCanvas = await desktop.locator('#canvas').boundingBox();
   assert.ok(transformCanvas);
   const transformPoint = { x: transformCanvas.x + transformCanvas.width / 2, y: transformCanvas.y + transformCanvas.height / 2 };
