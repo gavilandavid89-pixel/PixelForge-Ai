@@ -169,13 +169,10 @@ function symmetryPoints(point, mode = symmetryMode) {
   if (mode === 2) transforms = [[x, y], [1 - x, y]];
   else if (mode === 4) transforms = [[x, y], [1 - x, y], [x, 1 - y], [1 - x, 1 - y]];
   else if (mode === 8) transforms = [[x, y], [1 - y, x], [1 - x, 1 - y], [y, 1 - x], [1 - x, y], [1 - y, 1 - x], [x, 1 - y], [y, x]];
-  const unique = new Map();
-  for (const [tx, ty] of transforms) {
-    const px = Math.max(0, Math.min(w - 1, Math.round(tx * (w - 1))));
-    const py = Math.max(0, Math.min(h - 1, Math.round(ty * (h - 1))));
-    unique.set(px + ':' + py, { x: px, y: py });
-  }
-  return [...unique.values()];
+  return transforms.map(([tx, ty]) => ({
+    x: Math.max(0, Math.min(w - 1, Math.round(tx * (w - 1)))),
+    y: Math.max(0, Math.min(h - 1, Math.round(ty * (h - 1))))
+  }));
 }
 function strokeToWithSymmetry(stroke, x, y) {
   const mode = stroke.symmetryMode ?? symmetryMode;
@@ -344,7 +341,7 @@ function moveStroke(event) {
     virtualCursorScreen = eventPoint(event); virtualCursorPoint = docPoint(event); virtualCursorVisible = true;
     if (['draw', 'erase'].includes(tool)) {
       if (!activeStroke && virtualCursorCanDraw) startStrokeAt(virtualCursorPoint, event.pointerId);
-      else if (activeStroke && pointerId === event.pointerId && virtualCursorPoint.inside) doc.strokeTo(activeStroke, virtualCursorPoint.x, virtualCursorPoint.y);
+      else if (activeStroke && pointerId === event.pointerId && virtualCursorPoint.inside) strokeToWithSymmetry(activeStroke, virtualCursorPoint.x, virtualCursorPoint.y);
     }
     render(); return;
   }
