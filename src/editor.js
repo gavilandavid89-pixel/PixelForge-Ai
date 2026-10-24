@@ -935,7 +935,7 @@ function readTransformOptions() {
   if (![scaleX, scaleY, skewX, skewY].every(Number.isFinite) || scaleX < .1 || scaleX > 8 || scaleY < .1 || scaleY > 8 || Math.abs(skewX) > 4 || Math.abs(skewY) > 4) {
     throw new RangeError('Scale must be 10–800%; skew must be -400–400%.');
   }
-  return { scaleX, scaleY, skewX, skewY, interpolation: $('#transform-interpolation').value };
+  return { scaleX, scaleY, skewX, skewY, rotate: Number($('#transform-rotation').value), interpolation: $('#transform-interpolation').value };
 }
 function requireSelection() {
   if (!selection || !doc.selectionMask) throw new Error('Create a selection first.');
@@ -973,7 +973,7 @@ $('#transform-apply').addEventListener('click', () => {
   } catch (error) { status(error.message, 'error'); }
 });
 $('#transform-cancel').addEventListener('click', () => { clearTransformPreview(); render(); status('Transform preview cancelled; artwork unchanged', 'neutral'); });
-for (const id of ['transform-scale-x','transform-scale-y','transform-skew-x','transform-skew-y','transform-interpolation']) {
+for (const id of ['transform-scale-x','transform-scale-y','transform-skew-x','transform-skew-y','transform-rotation','transform-interpolation']) {
   $(`#${id}`).addEventListener('input', () => {
     if (transformPreview) { clearTransformPreview(); render(); status('Transform settings changed; preview again to review them', 'neutral'); }
   });
