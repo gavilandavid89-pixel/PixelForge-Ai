@@ -513,20 +513,23 @@ export class RasterDocument {
     if (![x, y, width, height].every(Number.isInteger) || width < 1 || height < 1) throw new RangeError('Copy rectangle coordinates and dimensions must be positive integers.');
     const left = Math.max(0, x), top = Math.max(0, y), right = Math.min(this.width, x + width), bottom = Math.min(this.height, y + height);
     if (left >= right || top >= bottom) throw new RangeError('Copy rectangle is outside document bounds.');
-    const layer = this.activeLayer, pixels = new Uint8ClampedArray((right - left) * (bottom - top) * 4);
-    for (let row = 0; row < bottom - top; row++) {
-      for (let col = 0; col < right - left; col++) {
-        const sourcePixel = (top + row) * this.width + left + col;
+    const layer = this.activeLayer, width = right - left, height = bottom - top;
+    const pixels = new Uint8ClampedArray(width * height * 4), mask = new Uint8Array(width * height);
+    for (let row = 0; row < height; row++) {
+      for (let col = 0; col < width; col++) {
+        const sourcePixel = (top + row) * this.width + left + col, targetPixel = row * width + col;
         if (this.selectionMask && !this.selectionMask[sourcePixel]) continue;
-        const sourceOffset = sourcePixel * 4, targetOffset = (row * (right - left) + col) * 4;
+        mask[targetPixel] = 1;
+        const sourceOffset = sourcePixel * 4, targetOffset = targetPixel * 4;
         pixels.set(layer.pixels.subarray(sourceOffset, sourceOffset + 4), targetOffset);
       }
     }
-    return { x: left, y: top, width: right - left, height: bottom - top, pixels };
+    return { x: left, y: top, width, height, pixels, mask };
   }
   pasteRect(clipboard, { x = clipboard?.x, y = clipboard?.y } = {}) {
     if (!clipboard || !Number.isInteger(clipboard.width) || !Number.isInteger(clipboard.height) || clipboard.width < 1 || clipboard.height < 1 ||
         !(clipboard.pixels instanceof Uint8ClampedArray) || clipboard.pixels.length !== clipboard.width * clipboard.height * 4 ||
+        (clipboard.mask !== undefined && (!(clipboard.mask instanceof Uint8Array) || clipboard.mask.length !== clipboard.width * clipboard.height)) ||
         !Number.isInteger(x) || !Number.isInteger(y)) throw new TypeError('Invalid internal pixel clipboard.');
     const layer = this.activeLayer;
     if (layer.locked) throw new Error('The active layer is locked.');
@@ -537,7 +540,9 @@ export class RasterDocument {
     for (let py = top; py < bottom; py++) for (let px = left; px < right; px++) {
       const docPixel = py * this.width + px;
       if (this.selectionMask && !this.selectionMask[docPixel]) continue;
-      const srcX = px - x, srcY = py - y, srcOffset = (srcY * clipboard.width + srcX) * 4, dstOffset = docPixel * 4;
+      const srcX = px - x, srcY = py - y, sourcePixel = srcY * clipboard.width + srcX;
+      if (clipboard.mask && !clipboard.mask[sourcePixel]) continue;
+      const srcOffset = sourcePixel * 4, dstOffset = docPixel * 4;
       let differs = false;
       for (let channel = 0; channel < 4; channel++) if (layer.pixels[dstOffset + channel] !== clipboard.pixels[srcOffset + channel]) { differs = true; break; }
       if (!differs) continue;
