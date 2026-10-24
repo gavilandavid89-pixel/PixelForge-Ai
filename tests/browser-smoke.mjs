@@ -327,7 +327,7 @@ try {
   await mobile.mouse.move(mobileBox.x + mobileBox.width / 2 + 18, mobileBox.y + mobileBox.height / 2 + 8);
   await mobile.mouse.up();
   await mobile.locator('#brush-tool').click();
-  const cdp = await mobile.context().newCDPSession(mobile);
+  const cdp = selectionCdp;
   const touchDrag = async (x1, y1, x2, y2) => {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x1, y: y1 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x2, y: y2 }] });
