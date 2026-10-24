@@ -514,18 +514,18 @@ export class RasterDocument {
     if (![x, y, width, height].every(Number.isInteger) || width < 1 || height < 1) throw new RangeError('Copy rectangle coordinates and dimensions must be positive integers.');
     const left = Math.max(0, x), top = Math.max(0, y), right = Math.min(this.width, x + width), bottom = Math.min(this.height, y + height);
     if (left >= right || top >= bottom) throw new RangeError('Copy rectangle is outside document bounds.');
-    const layer = this.activeLayer, width = right - left, height = bottom - top;
-    const pixels = new Uint8ClampedArray(width * height * 4), mask = new Uint8Array(width * height);
-    for (let row = 0; row < height; row++) {
-      for (let col = 0; col < width; col++) {
-        const sourcePixel = (top + row) * this.width + left + col, targetPixel = row * width + col;
+    const layer = this.activeLayer, clipboardWidth = right - left, clipboardHeight = bottom - top;
+    const pixels = new Uint8ClampedArray(clipboardWidth * clipboardHeight * 4), mask = new Uint8Array(clipboardWidth * clipboardHeight);
+    for (let row = 0; row < clipboardHeight; row++) {
+      for (let col = 0; col < clipboardWidth; col++) {
+        const sourcePixel = (top + row) * this.width + left + col, targetPixel = row * clipboardWidth + col;
         if (this.selectionMask && !this.selectionMask[sourcePixel]) continue;
         mask[targetPixel] = 1;
         const sourceOffset = sourcePixel * 4, targetOffset = targetPixel * 4;
         pixels.set(layer.pixels.subarray(sourceOffset, sourceOffset + 4), targetOffset);
       }
     }
-    return { x: left, y: top, width, height, pixels, mask };
+    return { x: left, y: top, width: clipboardWidth, height: clipboardHeight, pixels, mask };
   }
   pasteRect(clipboard, { x = clipboard?.x, y = clipboard?.y } = {}) {
     if (!clipboard || !Number.isInteger(clipboard.width) || !Number.isInteger(clipboard.height) || clipboard.width < 1 || clipboard.height < 1 ||
