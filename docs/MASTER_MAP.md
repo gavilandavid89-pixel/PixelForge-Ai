@@ -50,7 +50,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 ### Selections and transforms
 - [x] Rectangular marquee visual overlay plus Ctrl/Cmd+A select-all; Escape clears without altering artwork history.
 - [x] Delete/Backspace clears selected active-layer pixels as one undoable operation; locked layers reject the edit.
-- [ ] Persistent mask, ellipse/lasso/polygon/magic-wand/color-range selections.
+- [x] Rectangular, elliptical and freehand lasso selections generate masks shared by pencil, eraser, fill, clear, color replacement, clipboard, outline and flip operations.\n- [x] Magic-wand selection by connected or global matching colors, with RGBA-aware transparency and tolerance.\n- [x] Invert, expand and contract selection masks with bounded Manhattan-distance radius and visible pixel contours for custom masks.\n- [ ] Click-to-place polygon selection, feathering, add/subtract/intersect selection modes and saved selection sets.
 - [ ] Add/subtract/intersect/invert/feather/expand/contract and saved selections.
 - [x] Internal active-layer pixel copy/cut/paste with clipped bounds, selection-aware paste, and atomic undo for cut/paste.\n- [ ] Move/duplicate pasted pixels independently, system clipboard interoperability, and copy merged composite.
 - [x] Horizontal/vertical flip of the selected rectangle or whole active layer, selection-aware and one-step undoable.\n- [ ] Move pixels vs move selection; rotate, scale, skew, crop and transform previews.
@@ -132,3 +132,8 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 7. Close mobile, performance, accessibility and release gates.
 
 Parallel work is allowed only when tasks do not conflict in files or shared APIs. Update this map alongside each implementation. Never check a box based on documentation alone.
+
+
+## Selection verification gate
+Selection-only operations must not enter artwork undo history. Every selection-mask change must update the visible contour and constrain all applicable pixel-mutating tools. Browser tests must exercise selections on both transparent and opaque regions so the magic wand cannot accidentally assume the selected area is smaller than the canvas.
+
