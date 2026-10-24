@@ -28,7 +28,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [ ] Worker-friendly large operations and cancellable exports.
 - [ ] Multiple open documents/tabs and unsaved-change guards.
 ### Navigation, QA, usability
-- [x] Zoom, pan, fit, pixel-grid overlay, line/rectangle/ellipse preview and symmetry overlay.
+- [x] Zoom, pan, fit, and view-only pixel/rectangular/isometric/hexagonal grid overlays with adjustable cell size, clipped to the canvas and excluded from artwork/history/export; line/rectangle/ellipse preview and symmetry overlay.
 - [x] Mobile pointer input, brush-size gesture, cursor mode and hold-to-draw.
 - [ ] 100% and pixel-step zoom, rotate view, minimap, rulers, snapping and editable guides.
 - [ ] Touch gesture arbitration tested on real devices, including multi-touch cancellation.

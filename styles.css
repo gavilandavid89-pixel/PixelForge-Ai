@@ -121,3 +121,6 @@
 @media(max-width:760px){.wide-tool-action{min-height:27px;font-size:8px;padding:4px 6px}}
 
 @media(max-width:760px){.inspector{max-height:40vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}.inspector-section{min-width:0}.inspector-section .control-block{min-width:0}.inspector-tabs{position:sticky;top:0;z-index:2;background:#181a22}}
+
+.grid-control{display:flex;align-items:center;gap:6px;color:#8e94a7;font-size:9px;white-space:nowrap}.grid-control select{max-width:105px;min-height:28px;padding:4px 22px 4px 7px;border:1px solid #303341;border-radius:7px;background:#1c1e27;color:#c6cad7;font:inherit;outline:none}.grid-control select:focus-visible{border-color:#8b7ce1;box-shadow:0 0 0 2px #8b7ce133}.grid-size-control select{max-width:68px}
+@media(max-width:760px){.grid-control{gap:3px;font-size:8px}.grid-control select{max-width:86px;min-height:25px;padding:3px 16px 3px 5px;font-size:8px}.grid-size-control select{max-width:57px}.context-right{gap:5px}}
