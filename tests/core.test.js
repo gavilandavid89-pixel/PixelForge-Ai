@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES } from '../src/core.js';
+import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints } from '../src/core.js';
 
 test('layer reordering changes composite stacking and supports undo/redo', () => {
   const doc = new RasterDocument(2, 2);
@@ -414,4 +414,20 @@ test('pixel clipboard paste clips to canvas bounds and respects selection mask',
   assert.equal(doc.pasteRect(clip), 1);
   assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [0, 255, 0, 255]);
   assert.deepEqual([...doc.activeLayer.pixels.slice(4, 8)], [0, 0, 0, 0]);
+});
+
+
+test('Bresenham raster lines are integer, connected, reversible in direction, and include both endpoints', () => {
+  for (const [x0, y0, x1, y1] of [[0, 0, 7, 3], [5, 9, 1, 2], [3, 4, 3, 4], [2, 1, 2, 8], [9, 2, 1, 2]]) {
+    const points = rasterLinePoints(x0, y0, x1, y1);
+    assert.deepEqual(points[0], { x: x0, y: y0 });
+    assert.deepEqual(points.at(-1), { x: x1, y: y1 });
+    assert.equal(new Set(points.map(point => `${point.x},${point.y}`)).size, points.length);
+    for (let i = 1; i < points.length; i++) {
+      assert.ok(Math.abs(points[i].x - points[i - 1].x) <= 1);
+      assert.ok(Math.abs(points[i].y - points[i - 1].y) <= 1);
+    }
+    assert.deepEqual(points, rasterLinePoints(x1, y1, x0, y0).reverse());
+  }
+  assert.throws(() => rasterLinePoints(0, 0, 1.5, 2), /must be integers/);
 });
