@@ -306,7 +306,8 @@ try {
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'mobile selection must not alter document history');
 
 
-  assert.equal(await mobile.locator('#draw-hold').isDisabled(), false, 'mobile hold-input tests require an editable active layer');
+  await mobile.locator('#brush-tool').click();
+  assert.equal(await mobile.locator('#draw-hold').isDisabled(), false, 'mobile hold-input tests require the drawing tool on an editable active layer');
 
   await mobile.locator('#draw-hold').focus();
   await mobile.keyboard.down('Space');
