@@ -564,8 +564,17 @@ try {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   assert.equal(await settledCanvasData(), beforeEscapeCancel, 'Escape must cancel an in-progress touch stroke without changing artwork');
   assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'Escape must release the draw-hold state');
+  // Game-asset templates create the expected dimensions and useful editable layer stacks.
+  await desktop.locator('#new-document').click();
+  await desktop.locator('#new-template').selectOption('character');
+  assert.equal(await desktop.locator('#new-width').inputValue(), '64');
+  assert.equal(await desktop.locator('#new-height').inputValue(), '64');
+  await desktop.locator('#create-new').click();
+  await desktop.waitForFunction(() => document.querySelector('#document-size')?.textContent === '64 × 64' && document.querySelector('#layer-count')?.textContent === '4 layers');
+  assert.equal(await desktop.locator('#undo').isEnabled(), false, 'template starter layers should be the initial document state, not user undo history');
   // Eight-way symmetry must stay geometrically valid on a rectangular document.
   await desktop.locator('#new-document').click();
+  await desktop.locator('#new-template').selectOption('custom');
   await desktop.locator('#new-name').fill('Rectangular symmetry check');
   await desktop.locator('#new-width').fill('96');
   await desktop.locator('#new-height').fill('64');

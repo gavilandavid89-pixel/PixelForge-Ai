@@ -89,7 +89,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 ## Area 3 — Video games and game assets
 ### Asset creation
 - [ ] Reusable asset browser with tags, favorites, variants and project organization.
-- [ ] Templates for character sprites, UI icons, props, backgrounds, tiles and effects.
+- [x] Starter templates for character sprites, game icons, environment tiles, UI elements, backgrounds and VFX, with useful layer stacks and editable dimensions.\n- [ ] Templates for props, animation-ready character sheets, multi-state UI components and engine-specific asset specs.
 - [ ] Named animation cycles (idle/run/jump/attack/hurt) using the same timeline engine.
 - [ ] Sprite pivots/origins, collision/attachment markers and per-frame metadata.
 - [ ] Rectangular/isometric/hex tilesets and tilemaps.
