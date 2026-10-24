@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints, createSelectionMask, createColorSelectionMask } from '../src/core.js';
+import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints, createSelectionMask, createColorSelectionMask, modifySelectionMask } from '../src/core.js';
 
 test('layer reordering changes composite stacking and supports undo/redo', () => {
   const doc = new RasterDocument(2, 2);
@@ -585,4 +585,18 @@ test('magic-wand masks select connected or global colors with tolerance and alph
   transparent.set([20, 30, 40, 0], 0); transparent.set([0, 0, 0, 0], 4); transparent.set([255, 0, 0, 255], 8);
   assert.equal(createColorSelectionMask(3, 1, transparent, 0, 0).reduce((sum, value) => sum + value, 0), 2);
   assert.throws(() => createColorSelectionMask(width, height, pixels, 9, 0), /outside document bounds/);
+});
+
+
+test('selection mask invert, expand and contract are deterministic and radius-bounded', () => {
+  const mask = new Uint8Array(25); mask[12] = 1;
+  const inverted = modifySelectionMask(5, 5, mask, 'invert');
+  assert.equal(inverted.reduce((sum, value) => sum + value, 0), 24);
+  const expanded = modifySelectionMask(5, 5, mask, 'expand', 1);
+  assert.equal(expanded.reduce((sum, value) => sum + value, 0), 5);
+  assert.equal(expanded[7], 1); assert.equal(expanded[11], 1); assert.equal(expanded[12], 1); assert.equal(expanded[13], 1); assert.equal(expanded[17], 1);
+  const contracted = modifySelectionMask(5, 5, expanded, 'contract', 1);
+  assert.deepEqual(contracted, mask);
+  assert.throws(() => modifySelectionMask(5, 5, mask, 'feather'), /Unsupported selection-mask operation/);
+  assert.throws(() => modifySelectionMask(5, 5, mask, 'expand', 17), /radius/);
 });
