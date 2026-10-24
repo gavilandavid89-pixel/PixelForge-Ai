@@ -530,7 +530,14 @@ try {
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
 
-  // Transform previews are view-only until Apply; Cancel must preserve both pixels and history.
+  // Transform previews are view-only until Apply; use a fresh unlocked document to isolate this regression.
+  await desktop.locator('#new-document').click();
+  await desktop.locator('#new-template').selectOption('custom');
+  await desktop.locator('#new-name').fill('Transform preview regression');
+  await desktop.locator('#new-width').fill('128');
+  await desktop.locator('#new-height').fill('128');
+  await desktop.locator('#create-new').click();
+  await desktop.waitForFunction(() => document.querySelector('#document-size')?.textContent === '128 × 128');
   await desktop.locator('#brush-tool').click();
   await desktop.locator('#color').evaluate(element => { element.value = '#12abef'; element.dispatchEvent(new Event('input', { bubbles: true })); });
   const transformCanvas = await desktop.locator('#canvas').boundingBox();
