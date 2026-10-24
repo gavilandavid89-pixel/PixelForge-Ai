@@ -817,11 +817,12 @@ selectionTransformActions.addEventListener('click', event => {
     action === 'rotate-left' ? { rotate: 270 } : { rotate: 90 };
   try {
     const result = doc.transformRect(selection.x, selection.y, selection.width, selection.height, options);
-    if (!result.selectedPixels || !result.bounds) { status('No selected pixels to transform', 'neutral'); return; }
-    selection = { ...result.bounds, shape: 'rect', customMask: result.selectionMask };
+    if (!result.selectedPixels) { status('No selected pixels to transform', 'neutral'); return; }
+    selection = result.bounds ? { ...result.bounds, shape: 'rect', customMask: result.selectionMask } : null;
     syncSelectionMask();
     changed();
-    status(result.changedPixels ? `Transformed selection · ${result.changedPixels.toLocaleString()} pixels changed` : 'Selection moved without changing visible pixels', 'success');
+    status(!result.bounds ? 'Selection moved beyond the canvas; off-canvas pixels were clipped' :
+      result.changedPixels ? `Transformed selection · ${result.changedPixels.toLocaleString()} pixels changed` : 'Selection moved without changing visible pixels', 'success');
   } catch (error) { status(error.message, 'error'); }
 });
 $('#line-tool').addEventListener('click', () => setTool('shape-line'));
