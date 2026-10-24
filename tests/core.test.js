@@ -521,3 +521,19 @@ test('brush opacity alpha-composites draw strokes and partially erases with atom
   doc.strokeTo(stroke, 0, 0);
   assert.equal(doc.endStroke(stroke), false, 'zero-opacity stroke should not create a history entry');
 });
+
+
+test('unchanged stroke pixels do not create empty undo entries', () => {
+  const doc = new RasterDocument(1, 1);
+  let stroke = doc.beginStroke({ mode: 'erase' });
+  doc.strokeTo(stroke, 0, 0);
+  assert.equal(doc.endStroke(stroke), false);
+  assert.equal(doc.history.length, 0);
+  stroke = doc.beginStroke({ color: '#ff0000' });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  assert.equal(doc.history.length, 1);
+  stroke = doc.beginStroke({ color: '#ff0000' });
+  doc.strokeTo(stroke, 0, 0);
+  assert.equal(doc.endStroke(stroke), false);
+  assert.equal(doc.history.length, 1);
+});
