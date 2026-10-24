@@ -1,4 +1,4 @@
-import { RasterDocument, screenToDocument, validateDimensions } from './core.js';
+import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints } from './core.js';
 import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
 import { preflightImageFile } from './image-import.js';
 
@@ -240,19 +240,38 @@ function drawSymmetryGuides() {
 function docPoint(event) { return documentPointFromScreen(eventPoint(event)); }
 function shapePoints(gesture) {
   const { x1, y1, x2, y2 } = gesture;
-  if (gesture.tool === 'shape-line') return [{ x: x1, y: y1 }, { x: x2, y: y2 }];
+  if (gesture.tool === 'shape-line') return rasterLinePoints(x1, y1, x2, y2);
   const left = Math.min(x1, x2), right = Math.max(x1, x2);
   const top = Math.min(y1, y2), bottom = Math.max(y1, y2);
   if (gesture.tool === 'shape-rect') {
-    if (left === right || top === bottom) return [{ x: left, y: top }, { x: right, y: bottom }];
-    return [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }, { x: left, y: top }];
+    if (left === right || top === bottom) return rasterLinePoints(left, top, right, bottom);
+    const path = [];
+    const edges = [
+      rasterLinePoints(left, top, right, top),
+      rasterLinePoints(right, top, right, bottom).slice(1),
+      rasterLinePoints(right, bottom, left, bottom).slice(1),
+      rasterLinePoints(left, bottom, left, top).slice(1)
+    ];
+    for (const edge of edges) path.push(...edge);
+    return path;
   }
   const cx = (left + right) / 2, cy = (top + bottom) / 2;
-  const rx = Math.max(.5, (right - left) / 2), ry = Math.max(.5, (bottom - top) / 2);
-  return Array.from({ length: 65 }, (_, i) => {
-    const angle = i / 64 * Math.PI * 2;
-    return { x: Math.max(0, Math.min(doc.width - 1, Math.round(cx + Math.cos(angle) * rx))), y: Math.max(0, Math.min(doc.height - 1, Math.round(cy + Math.sin(angle) * ry))) };
-  });
+  const rx = (right - left) / 2, ry = (bottom - top) / 2;
+  if (rx === 0) return rasterLinePoints(left, top, left, bottom);
+  if (ry === 0) return rasterLinePoints(left, top, right, top);
+  const steps = Math.max(24, Math.ceil(Math.PI * 2 * Math.max(rx, ry) * 2));
+  const path = []; let previous = null;
+  for (let i = 0; i <= steps; i++) {
+    const angle = i / steps * Math.PI * 2;
+    const point = { x: Math.round(cx + Math.cos(angle) * rx), y: Math.round(cy + Math.sin(angle) * ry) };
+    if (!previous) path.push(point);
+    else {
+      const segment = rasterLinePoints(previous.x, previous.y, point.x, point.y);
+      path.push(...segment.slice(1));
+    }
+    previous = point;
+  }
+  return path.filter((point, index, points) => index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y);
 }
 function commitShapeGesture(gesture) {
   if (!gesture) return;
