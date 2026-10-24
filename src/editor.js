@@ -17,6 +17,73 @@ let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null,
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
 
+function loadUserPalette() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('pixelforge.palette.v1') || '[]');
+    return Array.isArray(parsed) ? [...new Set(parsed.filter(value => typeof value === 'string' && /^#[0-9A-F]{6}$/i.test(value)).map(value => value.toUpperCase()))].slice(0, 64) : [];
+  } catch { return []; }
+}
+let userPalette = loadUserPalette();
+function saveUserPalette() {
+  try { localStorage.setItem('pixelforge.palette.v1', JSON.stringify(userPalette)); }
+  catch { status('Palette could not be saved in this browser storage', 'warning'); }
+}
+function renderUserPalette() {
+  const host = $('#user-palette'); if (!host) return;
+  host.replaceChildren();
+  userPalette.forEach((value, index) => {
+    const item = document.createElement('div'); item.className = 'palette-item';
+    const swatch = document.createElement('button'); swatch.type = 'button'; swatch.className = 'palette-swatch';
+    swatch.style.setProperty('--swatch', value); swatch.title = value; swatch.setAttribute('aria-label', `Use palette color ${value}`);
+    swatch.addEventListener('click', () => applyForegroundColor(value));
+    const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'palette-remove'; remove.textContent = '×';
+    remove.setAttribute('aria-label', `Remove palette color ${value}`); remove.addEventListener('click', () => {
+      userPalette = userPalette.filter((_, i) => i !== index); saveUserPalette(); renderUserPalette();
+    });
+    item.append(swatch, remove); host.append(item);
+  });
+}
+function parsePaletteText(text) {
+  const colors = [];
+  for (const line of text.split(/\\r?\\n/)) {
+    const hex = line.match(/#([0-9a-f]{6})\\b/i);
+    if (hex) { colors.push(`#${hex[1].toUpperCase()}`); continue; }
+    const rgb = line.trim().match(/^(\\d{1,3})\\s+(\\d{1,3})\\s+(\\d{1,3})(?:\\s|$)/);
+    if (rgb) {
+      const values = rgb.slice(1, 4).map(Number);
+      if (values.every(value => value >= 0 && value <= 255)) colors.push('#' + values.map(value => value.toString(16).padStart(2, '0')).join('').toUpperCase());
+    }
+  }
+  return [...new Set(colors)].slice(0, 64);
+}
+$('#palette-add').addEventListener('click', () => {
+  if (userPalette.includes(color.toUpperCase())) { status('That color is already in the palette', 'neutral'); return; }
+  if (userPalette.length >= 64) { status('Palette limit reached (64 colors)', 'warning'); return; }
+  userPalette.push(color.toUpperCase()); saveUserPalette(); renderUserPalette(); status('Color added to local palette', 'success');
+});
+$('#palette-import').addEventListener('click', () => $('#palette-file').click());
+$('#palette-file').addEventListener('change', async event => {
+  const file = event.target.files?.[0]; if (!file) return;
+  try {
+    const imported = parsePaletteText(await file.text());
+    if (!imported.length) throw new Error('No valid RGB or six-digit hex colors found.');
+    userPalette = [...new Set([...userPalette, ...imported])].slice(0, 64);
+    saveUserPalette(); renderUserPalette(); status(`Imported ${imported.length} palette colors`, 'success');
+  } catch (error) { status(`Palette import failed: ${error.message}`, 'error'); }
+  finally { event.target.value = ''; }
+});
+$('#palette-export').addEventListener('click', () => {
+  const lines = ['GIMP Palette', 'Name: PixelForge Local Palette', 'Columns: 8', '#'];
+  for (const value of userPalette) {
+    const rgb = value.slice(1).match(/../g).map(part => parseInt(part, 16));
+    lines.push(`${rgb[0]} ${rgb[1]} ${rgb[2]} ${value}`);
+  }
+  const url = URL.createObjectURL(new Blob([lines.join('\\n') + '\\n'], { type: 'text/plain;charset=utf-8' }));
+  const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'pixelforge-palette.gpl'; anchor.click();
+  URL.revokeObjectURL(url); status('Palette exported as GPL', 'success');
+});
+renderUserPalette();
+
 function rememberColor(value) {
   const normalized = String(value).toUpperCase();
   recentColors = [normalized, ...recentColors.filter(item => item !== normalized)].slice(0, 8);
