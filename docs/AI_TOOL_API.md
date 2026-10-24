@@ -1,6 +1,6 @@
 # PixelForge AI — AI tool-control contract
 
-Status: design specification; not yet implemented.
+Status: partial implementation; structured sandbox commands and pixel-only proposal acceptance exist, but no model/provider adapter or visual proposal UI is connected.
 
 ## Goal
 
@@ -31,6 +31,8 @@ AI may make normal edits—including removing pixels or deleting an individual l
 - **Truthful status:** AI must distinguish a proposed edit from an applied edit and a completed operation from a failed/cancelled one.
 
 ## Implementation status
+
+`src/ai-tools.js` implements a provider-independent allowlist for document summaries, pixel sampling, line drawing, fill, clear, color replacement, region transforms, rectangular selection, and sandbox undo/redo. Inputs are validated before commands run. Project deletion/export/upload/publish and arbitrary code execution are denied. These tools currently operate only when called by application code; a model adapter and user-facing proposal review panel are still pending.
 
 The first proposal-acceptance path is implemented in `AIWorkspace.acceptProposal()`: it checks the source revision, rejects layer-structure edits that cannot yet be merged safely, applies changed layer pixel buffers as one undoable transaction, and refreshes the sandbox after acceptance. Stale proposals, locked target layers, invalid buffers, and unsupported structural edits are rejected without silently overwriting the user's work. Provider/model tool execution, preview diff UI, and the full structured tool registry remain unimplemented.
 
