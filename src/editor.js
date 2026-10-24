@@ -13,7 +13,7 @@ let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEna
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null;
 let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorDrawPointerId = null;
-let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false;
+let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
 
 function status(message, kind = 'neutral') {
@@ -253,8 +253,8 @@ function moveStroke(event) {
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     virtualCursorScreen = eventPoint(event); virtualCursorPoint = docPoint(event); virtualCursorVisible = true;
     if (['draw', 'erase'].includes(tool)) {
-      if (!activeStroke) startStrokeAt(virtualCursorPoint, event.pointerId);
-      else if (pointerId === event.pointerId && virtualCursorPoint.inside) doc.strokeTo(activeStroke, virtualCursorPoint.x, virtualCursorPoint.y);
+      if (!activeStroke && virtualCursorCanDraw) startStrokeAt(virtualCursorPoint, event.pointerId);
+      else if (activeStroke && pointerId === event.pointerId && virtualCursorPoint.inside) doc.strokeTo(activeStroke, virtualCursorPoint.x, virtualCursorPoint.y);
     }
     render(); return;
   }
@@ -295,6 +295,7 @@ canvas.addEventListener('pointerdown', event => {
     if (virtualCursorPointerId !== null && virtualCursorPointerId !== event.pointerId) { event.preventDefault(); return; }
     virtualCursorPointerId = event.pointerId; virtualCursorScreen = eventPoint(event);
     virtualCursorPoint = docPoint(event); virtualCursorVisible = true;
+    virtualCursorCanDraw = !activeStroke && ['draw', 'erase'].includes(tool);
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     if (['draw', 'erase'].includes(tool)) startStrokeAt(virtualCursorPoint, event.pointerId);
     render(); event.preventDefault(); return;
@@ -321,7 +322,7 @@ canvas.addEventListener('pointerup', event => {
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(true);
-    virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; render(); return;
+    virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; virtualCursorCanDraw = false; render(); return;
   }
   endStroke(event, true);
 });
@@ -330,7 +331,7 @@ canvas.addEventListener('pointercancel', event => {
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
-    virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; render(); return;
+    virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; virtualCursorCanDraw = false; render(); return;
   }
   endStroke(event, false);
 });
@@ -731,7 +732,7 @@ window.addEventListener('keyup', event => { if (event.code === 'Space') spaceDow
 window.addEventListener('blur', () => {
   spaceDown = false; drawHeld = false; drawHoldPointerId = null;
   if (activeStroke) finishActiveStroke(false);
-  virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; updateDrawHoldUI();
+  virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; virtualCursorCanDraw = false; updateDrawHoldUI();
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); }
   render();
 });
