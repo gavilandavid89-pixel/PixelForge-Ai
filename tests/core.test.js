@@ -385,3 +385,33 @@ test('selection masks reject invalid dimensions and do not persist as document p
   const roundTrip = RasterDocument.fromJSON(doc.toJSON());
   assert.equal(roundTrip.selectionMask, null);
 });
+
+
+test('pixel clipboard copies and pastes bounded active-layer pixels as one reversible edit', () => {
+  const doc = new RasterDocument(4, 3);
+  let stroke = doc.beginStroke({ color: '#ff00aa', size: 1 });
+  doc.strokeTo(stroke, 1, 1); doc.strokeTo(stroke, 2, 1); doc.endStroke(stroke);
+  const clip = doc.copyRect(1, 1, 2, 1);
+  assert.deepEqual([clip.x, clip.y, clip.width, clip.height], [1, 1, 2, 1]);
+  assert.deepEqual([...clip.pixels], [255, 0, 170, 255, 255, 0, 170, 255]);
+  assert.equal(doc.clearRect(1, 1, 2, 1), 2);
+  assert.equal(doc.pasteRect(clip), 2);
+  assert.equal(doc.activeLayer.pixels[(1 * 4 + 1) * 4 + 3], 255);
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.activeLayer.pixels[(1 * 4 + 1) * 4 + 3], 0);
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.activeLayer.pixels[(1 * 4 + 1) * 4 + 3], 0);
+  assert.throws(() => doc.pasteRect({ ...clip, pixels: new Uint8ClampedArray(1) }), /Invalid internal pixel clipboard/);
+});
+
+test('pixel clipboard paste clips to canvas bounds and respects selection mask', () => {
+  const doc = new RasterDocument(3, 2);
+  const clip = { x: -1, y: 0, width: 3, height: 1, pixels: new Uint8ClampedArray([
+    255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255
+  ]) };
+  const mask = new Uint8Array(6); mask[0] = 1; mask[1] = 0;
+  doc.setSelectionMask(mask);
+  assert.equal(doc.pasteRect(clip), 1);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [0, 255, 0, 255]);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(4, 8)], [0, 0, 0, 0]);
+});
