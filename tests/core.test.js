@@ -658,3 +658,33 @@ test('masked pixel clipboard preserves unselected destination pixels when pasted
   assert.deepEqual(pixel(4, 1), [0, 0, 255, 255], 'paste should undo as one action');
   assert.throws(() => doc.pasteRect({ ...clip, mask: new Uint8Array(1) }), /Invalid internal pixel clipboard/);
 });
+
+
+test('90-degree pixel rotations preserve orientation, selection masks, and one-step undo', () => {
+  const doc = new RasterDocument(3, 3);
+  const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff', '#808080', '#000000'];
+  for (let index = 0; index < colors.length; index++) {
+    const rgba = colors[index].slice(1).match(/../g).map(value => parseInt(value, 16));
+    doc.activeLayer.pixels.set([...rgba, 255], index * 4);
+  }
+  const before = new Uint8ClampedArray(doc.activeLayer.pixels);
+  assert.ok(doc.rotateRect(0, 0, 3, 3, 'clockwise') > 0);
+  const colorAt = (x, y) => [...doc.activeLayer.pixels.slice((y * 3 + x) * 4, (y * 3 + x) * 4 + 3)];
+  assert.deepEqual(colorAt(0, 0), [255, 255, 255]);
+  assert.deepEqual(colorAt(1, 0), [255, 255, 0]);
+  assert.deepEqual(colorAt(2, 0), [255, 0, 0]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual(doc.activeLayer.pixels, before);
+  assert.ok(doc.rotateRect(0, 0, 3, 3, 'counterclockwise') > 0);
+  assert.deepEqual(colorAt(0, 0), [0, 0, 255]);
+  assert.throws(() => doc.rotateRect(0, 0, 3, 3, 'diagonal'), /Rotation direction/);
+
+  doc.activeLayer.pixels.set(before);
+  const selection = new Uint8Array(9); selection[0] = 1; selection[1] = 1;
+  doc.setSelectionMask(selection);
+  doc.rotateRect(0, 0, 3, 3, 'clockwise');
+  assert.equal(doc.selectionMask[2], 1);
+  assert.equal(doc.selectionMask[5], 1);
+  assert.equal(doc.selectionMask[0], 0);
+  assert.equal(doc.activeLayer.pixels[3], 0, 'source pixels should be cleared as part of the rotation');
+});
