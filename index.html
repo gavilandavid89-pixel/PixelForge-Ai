@@ -55,7 +55,7 @@
     <footer class="bottom-bar"><span><span class="bottom-dot"></span> Local-first workspace</span><span>Document pixels stay independent of the interface</span><span>PixelForge <span class="footer-version">v0.1 · early build</span></span></footer>
   </section>
   <aside class="inspector" aria-label="Tool options and layers">
-    <div class="inspector-tabs"><button id="properties-tab" class="inspector-tab active" type="button" aria-selected="true">Properties</button><button id="layers-tab" class="inspector-tab" type="button" aria-selected="false">Layers</button></div>
+    <div class="inspector-tabs"><button id="properties-tab" class="inspector-tab active" type="button" aria-selected="true">Properties</button><button id="layers-tab" class="inspector-tab" type="button" aria-selected="false">Layers</button><button id="ai-tab" class="inspector-tab" type="button" aria-selected="false">AI space</button></div>
     <section class="inspector-section">
       <div class="section-heading"><span class="section-icon">◈</span><h2>Tool settings</h2><span class="section-menu">•••</span></div>
       <div class="control-block">
@@ -96,6 +96,24 @@
         <div class="active-layer-actions"><button id="rename-layer" type="button">Rename</button><button id="duplicate-layer" type="button">Duplicate</button><button id="delete-layer" type="button">Delete</button></div>
       </div>
       <div class="layer-footer"><span>Compositing</span><span>Normal · 100%</span></div>
+    </section>
+
+    <section class="inspector-section ai-workspace-section" id="ai-workspace-panel" hidden>
+      <div class="section-heading"><span class="section-icon">✦</span><h2>AI workspace</h2><span class="tiny-tag">ISOLATED</span></div>
+      <div class="ai-workspace-state"><span class="ai-state-dot"></span><span id="ai-workspace-state">Mirroring your canvas</span></div>
+      <div class="ai-preview-frame"><canvas id="ai-preview-canvas" aria-label="Isolated AI canvas preview"></canvas></div>
+      <div class="ai-preview-meta"><span id="ai-preview-size">128 × 128 px</span><span>Separate pixel buffer</span></div>
+      <p class="small-note">Your drawing is mirrored into this workspace. Changes made here cannot reach the original unless you review and accept a proposal.</p>
+      <div class="ai-workspace-actions">
+        <button class="file-button" id="ai-sync" type="button">↻ Sync from user canvas</button>
+        <button class="file-button" id="ai-refresh-preview" type="button">◉ Refresh AI preview</button>
+      </div>
+      <div class="ai-connection-note"><strong>AI command engine</strong><span id="ai-connection-state">Sandbox tools are ready; model/provider connection is not wired into the UI yet.</span></div>
+      <div class="ai-proposal-card">
+        <div class="control-heading"><span>Suggestion review</span><span class="tiny-tag">HUMAN APPROVAL</span></div>
+        <p id="ai-proposal-summary" class="small-note">No proposal to review yet.</p>
+        <div class="ai-workspace-actions"><button class="file-button" id="ai-accept-proposal" type="button" disabled>✓ Accept proposal</button><button class="file-button" id="ai-discard-proposal" type="button" disabled>× Discard proposal</button></div>
+      </div>
     </section>
     <section class="inspector-section files-section">
       <div class="section-heading"><span class="section-icon">⇧</span><h2>Import & project</h2></div>
