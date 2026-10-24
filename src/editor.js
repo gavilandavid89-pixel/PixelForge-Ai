@@ -10,7 +10,7 @@ const previewCanvas = document.createElement('canvas'), previewCtx = previewCanv
 let doc = new RasterDocument(128, 128), tool = 'draw', spaceDown = false;
 let color = $('#color').value, backgroundColor = '#242632', recentColors = [], brushSize = Number($('#brush-size').value);
 let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 'draw';
-let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
+let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridMode = 'off', gridCellSize = 16;
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null, pixelClipboard = null;
 let shapeGesture = null, gradientGesture = null, symmetryMode = 0;
@@ -179,31 +179,42 @@ function render() {
     ctx.drawImage(previewCanvas, panX, panY, doc.width * zoom, doc.height * zoom);
     ctx.strokeStyle = '#555b6c'; ctx.lineWidth = 1;
     ctx.strokeRect(Math.round(panX) + .5, Math.round(panY) + .5, Math.round(doc.width * zoom), Math.round(doc.height * zoom));
-    // View-only pixel grid: clipped to the visible canvas region and never part of document pixels/exports.
-    if (gridEnabled && zoom >= 4) {
-      const left = Math.max(1, Math.ceil(-panX / zoom));
-      const right = Math.min(doc.width - 1, Math.floor((canvas.clientWidth - panX) / zoom));
-      const top = Math.max(1, Math.ceil(-panY / zoom));
-      const bottom = Math.min(doc.height - 1, Math.floor((canvas.clientHeight - panY) / zoom));
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(panX, panY, doc.width * zoom, doc.height * zoom);
-      ctx.clip();
-      ctx.strokeStyle = 'rgba(20, 22, 31, 0.42)';
-      ctx.lineWidth = 1 / dpr;
-      ctx.beginPath();
-      for (let x = left; x <= right; x++) {
-        const screenX = Math.round(panX + x * zoom) + .5 / dpr;
-        ctx.moveTo(screenX, Math.max(0, panY));
-        ctx.lineTo(screenX, Math.min(canvas.clientHeight, panY + doc.height * zoom));
+    // View-only construction grids never enter document pixels, history or exports.
+    if (gridMode !== 'off' && (gridMode !== 'pixel' || zoom >= 4) && (gridMode === 'pixel' || gridCellSize * zoom >= 8)) {
+      const left = Math.max(0, panX), top = Math.max(0, panY);
+      const right = Math.min(canvas.clientWidth, panX + doc.width * zoom), bottom = Math.min(canvas.clientHeight, panY + doc.height * zoom);
+      const clipLeft = Math.max(0, panX), clipTop = Math.max(0, panY);
+      ctx.save(); ctx.beginPath(); ctx.rect(panX, panY, doc.width * zoom, doc.height * zoom); ctx.clip();
+      ctx.strokeStyle = gridMode === 'pixel' ? 'rgba(20, 22, 31, 0.42)' : 'rgba(125, 135, 162, 0.58)';
+      ctx.lineWidth = 1 / dpr; ctx.beginPath();
+      if (gridMode === 'pixel') {
+        const x0 = Math.max(1, Math.ceil(-panX / zoom)), x1 = Math.min(doc.width - 1, Math.floor((canvas.clientWidth - panX) / zoom));
+        const y0 = Math.max(1, Math.ceil(-panY / zoom)), y1 = Math.min(doc.height - 1, Math.floor((canvas.clientHeight - panY) / zoom));
+        for (let x = x0; x <= x1; x++) { const sx = Math.round(panX + x * zoom) + .5 / dpr; ctx.moveTo(sx, Math.max(0, panY)); ctx.lineTo(sx, Math.min(canvas.clientHeight, panY + doc.height * zoom)); }
+        for (let y = y0; y <= y1; y++) { const sy = Math.round(panY + y * zoom) + .5 / dpr; ctx.moveTo(Math.max(0, panX), sy); ctx.lineTo(Math.min(canvas.clientWidth, panX + doc.width * zoom), sy); }
+      } else if (gridMode === 'rect') {
+        const step = gridCellSize * zoom;
+        for (let sx = panX + Math.ceil(-panX / step) * step; sx < canvas.clientWidth && sx <= panX + doc.width * zoom; sx += step) { ctx.moveTo(sx, clipTop); ctx.lineTo(sx, bottom); }
+        for (let sy = panY + Math.ceil(-panY / step) * step; sy < canvas.clientHeight && sy <= panY + doc.height * zoom; sy += step) { ctx.moveTo(clipLeft, sy); ctx.lineTo(right, sy); }
+      } else if (gridMode === 'isometric') {
+        const step = gridCellSize * zoom / 2, span = right - left, maxOffset = canvas.clientHeight + span / 2;
+        for (let offset = -maxOffset; offset <= maxOffset; offset += step) {
+          const y = panY + offset;
+          ctx.moveTo(left, y); ctx.lineTo(right, y + span / 2);
+          ctx.moveTo(left, y); ctx.lineTo(right, y - span / 2);
+        }
+      } else if (gridMode === 'hex') {
+        const diameter = gridCellSize * zoom, hexHeight = diameter * Math.sqrt(3) / 2, colStep = diameter * .75;
+        const firstRow = Math.floor((top - panY) / hexHeight) - 1, lastRow = Math.ceil((bottom - panY) / hexHeight) + 1;
+        const firstCol = Math.floor((left - panX) / colStep) - 2, lastCol = Math.ceil((right - panX) / colStep) + 2;
+        for (let row = firstRow; row <= lastRow; row++) for (let col = firstCol; col <= lastCol; col++) {
+          const cx = panX + col * colStep + (row % 2 ? colStep / 2 : 0), cy = panY + row * hexHeight;
+          ctx.moveTo(cx + diameter / 2, cy);
+          for (let vertex = 1; vertex < 6; vertex++) { const angle = vertex * Math.PI / 3; ctx.lineTo(cx + Math.cos(angle) * diameter / 2, cy + Math.sin(angle) * diameter / 2); }
+          ctx.closePath();
+        }
       }
-      for (let y = top; y <= bottom; y++) {
-        const screenY = Math.round(panY + y * zoom) + .5 / dpr;
-        ctx.moveTo(Math.max(0, panX), screenY);
-        ctx.lineTo(Math.min(canvas.clientWidth, panX + doc.width * zoom), screenY);
-      }
-      ctx.stroke();
-      ctx.restore();
+      ctx.stroke(); ctx.restore();
     }
     drawSymmetryGuides();
     if (gradientGesture) {
@@ -885,15 +896,13 @@ brushScrub.addEventListener('keydown', event => {
 $('#undo').addEventListener('click', () => { if (doc.undo()) { changed(); renderLayers(); } });
 $('#redo').addEventListener('click', () => { if (doc.redo()) { changed(); renderLayers(); } });
 $('#fit').addEventListener('click', fitCanvas);
-$('#grid-toggle').addEventListener('click', () => {
-  gridEnabled = !gridEnabled;
-  const button = $('#grid-toggle');
-  button.textContent = `Pixel grid: ${gridEnabled ? 'On' : 'Off'}`;
-  button.setAttribute('aria-pressed', String(gridEnabled));
-  if (gridEnabled && zoom < 4) status('Pixel grid enabled; zoom to 400% or more to see individual cells', 'neutral');
-  else status(gridEnabled ? 'Pixel grid overlay enabled' : 'Pixel grid overlay hidden', 'success');
+$('#grid-mode').addEventListener('change', event => {
+  gridMode = event.target.value;
+  if (gridMode === 'pixel' && zoom < 4) status('Pixel grid needs 400% zoom to show individual pixels', 'neutral');
+  else status(gridMode === 'off' ? 'Grid hidden' : `${event.target.selectedOptions[0].textContent} grid enabled`, 'success');
   render();
 });
+$('#grid-size').addEventListener('change', event => { gridCellSize = Number(event.target.value); render(); });
 const viewportCenter = () => ({ x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 });
 $('#zoom-in').addEventListener('click', () => zoomAt(viewportCenter(), zoom * 1.25));
 $('#zoom-out').addEventListener('click', () => zoomAt(viewportCenter(), zoom / 1.25));
