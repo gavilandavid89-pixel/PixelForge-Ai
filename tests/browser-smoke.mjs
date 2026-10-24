@@ -377,6 +377,21 @@ try {
   assert.equal(await desktop.locator('#layer-count').textContent(), '2 layers', 'IndexedDB recovery must preserve document layers');
   assert.ok(await desktop.locator('#user-palette .palette-item').count() >= 3, 'local palette colors should persist across page reloads');
 
+  // Elliptical marquee selection is a view-only selection operation and clears without touching pixels.
+  const undoBeforeEllipseSelection = await desktop.locator('#undo').isEnabled();
+  await desktop.locator('#ellipse-select-tool').click();
+  assert.equal(await desktop.locator('#ellipse-select-tool').evaluate(element => element.classList.contains('active')), true);
+  const ellipseCanvasBox = await desktop.locator('#canvas').boundingBox();
+  assert.ok(ellipseCanvasBox);
+  await desktop.mouse.move(ellipseCanvasBox.x + ellipseCanvasBox.width / 2 - 24, ellipseCanvasBox.y + ellipseCanvasBox.height / 2 - 18);
+  await desktop.mouse.down();
+  await desktop.mouse.move(ellipseCanvasBox.x + ellipseCanvasBox.width / 2 + 24, ellipseCanvasBox.y + ellipseCanvasBox.height / 2 + 18);
+  await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeEllipseSelection, 'ellipse selection must not add artwork history');
+
   // Rectangular marquee selection must work with a mouse and clear cleanly on Escape.
   const undoBeforeSelection = await desktop.locator('#undo').isEnabled();
   await desktop.locator('#select-tool').click();
