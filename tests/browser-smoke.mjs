@@ -382,6 +382,70 @@ try {
   assert.equal(await desktop.locator('#layer-count').textContent(), '2 layers', 'IndexedDB recovery must preserve document layers');
   assert.ok(await desktop.locator('#user-palette .palette-item').count() >= 3, 'local palette colors should persist across page reloads');
 
+  // Freehand lasso selection records a polygon mask without changing artwork history.
+  const undoBeforeLassoSelection = await desktop.locator('#undo').isEnabled();
+  await desktop.locator('#lasso-select-tool').click();
+  assert.equal(await desktop.locator('#lasso-select-tool').evaluate(element => element.classList.contains('active')), true);
+  const lassoCanvasBox = await desktop.locator('#canvas').boundingBox();
+  assert.ok(lassoCanvasBox);
+  const lassoX = lassoCanvasBox.x + lassoCanvasBox.width / 2, lassoY = lassoCanvasBox.y + lassoCanvasBox.height / 2;
+  await desktop.mouse.move(lassoX - 24, lassoY - 18);
+  await desktop.mouse.down();
+  await desktop.mouse.move(lassoX + 24, lassoY - 18, { steps: 3 });
+  await desktop.mouse.move(lassoX + 10, lassoY + 22, { steps: 3 });
+  await desktop.mouse.move(lassoX - 24, lassoY - 18, { steps: 3 });
+  await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeLassoSelection, 'lasso selection must not add artwork history');
+
+  // Magic-wand color selection creates a real mask without adding artwork history.
+  const undoBeforeMagicSelection = await desktop.locator('#undo').isEnabled();
+  await desktop.locator('#magic-select-tool').click();
+  assert.equal(await desktop.locator('#magic-settings').isVisible(), true, 'magic-wand settings should follow the selected tool');
+  await desktop.locator('#magic-tolerance').evaluate(element => { element.value = '12'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  assert.equal(await desktop.locator('#magic-tolerance-value').textContent(), '12');
+  const magicBox = await desktop.locator('#canvas').boundingBox();
+  await desktop.mouse.click(magicBox.x + magicBox.width / 2, magicBox.y + magicBox.height / 2);
+  await desktop.waitForFunction(() => /Color selection: [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeMagicSelection, 'magic-wand selection must not mutate artwork history');
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+  await desktop.locator('#magic-tolerance').evaluate(element => { element.value = '0'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+
+  // Use a bounded rectangular selection to test invert/expand/contract independently of whether the magic-wand target is transparent.
+  await desktop.locator('#select-tool').click();
+  const maskBox = await desktop.locator('#canvas').boundingBox();
+  const mx = maskBox.x + maskBox.width / 2, my = maskBox.y + maskBox.height / 2;
+  await desktop.mouse.move(mx - 18, my - 14); await desktop.mouse.down();
+  await desktop.mouse.move(mx + 18, my + 14); await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.equal(await desktop.locator('#selection-settings').isVisible(), true, 'selection mask operations should be visible for an active selection');
+  await desktop.locator('#selection-invert').click();
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection inverted');
+  await desktop.locator('#selection-expand').click();
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection expanded');
+  await desktop.locator('#selection-contract').click();
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection contracted');
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+
+  // Elliptical marquee selection is a view-only selection operation and clears without touching pixels.
+  const undoBeforeEllipseSelection = await desktop.locator('#undo').isEnabled();
+  await desktop.locator('#ellipse-select-tool').click();
+  assert.equal(await desktop.locator('#ellipse-select-tool').evaluate(element => element.classList.contains('active')), true);
+  const ellipseCanvasBox = await desktop.locator('#canvas').boundingBox();
+  assert.ok(ellipseCanvasBox);
+  await desktop.mouse.move(ellipseCanvasBox.x + ellipseCanvasBox.width / 2 - 24, ellipseCanvasBox.y + ellipseCanvasBox.height / 2 - 18);
+  await desktop.mouse.down();
+  await desktop.mouse.move(ellipseCanvasBox.x + ellipseCanvasBox.width / 2 + 24, ellipseCanvasBox.y + ellipseCanvasBox.height / 2 + 18);
+  await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeEllipseSelection, 'ellipse selection must not add artwork history');
+
   // Rectangular marquee selection must work with a mouse and clear cleanly on Escape.
   const undoBeforeSelection = await desktop.locator('#undo').isEnabled();
   await desktop.locator('#select-tool').click();
@@ -550,6 +614,7 @@ try {
   assert.equal(await settledCanvasData(), beforeReleaseHold, 'release must stop drawing without leaving a second history action');
 
   // Also exercise the real two-touch pattern: one touch holds the control, the other moves the cursor.
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 3, x: holdX, y: holdY }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 3, x: holdX, y: holdY }, { id: 4, x: startX, y: startY }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 3, x: holdX, y: holdY }, { id: 4, x: startX + 18, y: startY + 8 }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });

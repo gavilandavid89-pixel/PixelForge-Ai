@@ -22,6 +22,102 @@ export function rasterLinePoints(x0, y0, x1, y1) {
   return points;
 }
 
+export function modifySelectionMask(width, height, mask, operation, radius = 1) {
+  validateDimensions(width, height);
+  if (!(mask instanceof Uint8Array) || mask.length !== width * height) throw new TypeError('Selection mask must match document dimensions.');
+  if (!['invert', 'expand', 'contract'].includes(operation)) throw new TypeError('Unsupported selection-mask operation.');
+  if (!Number.isInteger(radius) || radius < 1 || radius > 16) throw new RangeError('Selection radius must be an integer from 1 to 16.');
+  if (operation === 'invert') return Uint8Array.from(mask, value => value ? 0 : 1);
+  const output = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    let selected = operation === 'contract';
+    for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+      if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+      const px = x + dx, py = y + dy;
+      const neighbor = px >= 0 && py >= 0 && px < width && py < height ? mask[py * width + px] === 1 : false;
+      if (operation === 'expand' && neighbor) selected = true;
+      if (operation === 'contract' && !neighbor) selected = false;
+    }
+    output[y * width + x] = selected ? 1 : 0;
+  }
+  return output;
+}
+
+export function createColorSelectionMask(width, height, pixels, x, y, { tolerance = 0, contiguous = true } = {}) {
+  validateDimensions(width, height);
+  if (!(pixels instanceof Uint8ClampedArray) || pixels.length !== width * height * 4) throw new TypeError('Color selection pixels must match document dimensions.');
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) throw new RangeError('Color selection point is outside document bounds.');
+  if (!Number.isInteger(tolerance) || tolerance < 0 || tolerance > 255 || typeof contiguous !== 'boolean') throw new RangeError('Color selection tolerance/mode is invalid.');
+  const offset = (y * width + x) * 4, seed = [...pixels.subarray(offset, offset + 4)];
+  const matches = index => {
+    if (seed[3] === 0 && pixels[index + 3] === 0) return true;
+    for (let channel = 0; channel < 4; channel++) if (Math.abs(pixels[index + channel] - seed[channel]) > tolerance) return false;
+    return true;
+  };
+  const mask = new Uint8Array(width * height);
+  if (!contiguous) {
+    for (let pixel = 0; pixel < mask.length; pixel++) if (matches(pixel * 4)) mask[pixel] = 1;
+    return mask;
+  }
+  const queue = new Int32Array(width * height); let head = 0, tail = 0;
+  const start = y * width + x; queue[tail++] = start; mask[start] = 1;
+  while (head < tail) {
+    const pixel = queue[head++], px = pixel % width, py = Math.floor(pixel / width);
+    const add = next => {
+      if (next < 0 || next >= mask.length || mask[next] || !matches(next * 4)) return;
+      mask[next] = 1; queue[tail++] = next;
+    };
+    if (px > 0) add(pixel - 1);
+    if (px + 1 < width) add(pixel + 1);
+    if (py > 0) add(pixel - width);
+    if (py + 1 < height) add(pixel + width);
+  }
+  return mask;
+}
+
+export function createSelectionMask(width, height, selection) {
+  validateDimensions(width, height);
+  if (selection === null) return null;
+  if (!selection || ![selection.x, selection.y, selection.width, selection.height].every(Number.isInteger) ||
+      selection.width < 1 || selection.height < 1 || !['rect', 'ellipse', 'polygon'].includes(selection.shape ?? 'rect')) {
+    throw new TypeError('Selection must have integer bounds and a supported rect/ellipse/polygon shape.');
+  }
+  if (selection.shape === 'polygon' && (!Array.isArray(selection.points) || selection.points.length < 3 || selection.points.length > 4096 ||
+      selection.points.some(point => !point || !Number.isInteger(point.x) || !Number.isInteger(point.y)))) {
+    throw new TypeError('Polygon selection requires 3–4096 integer points.');
+  }
+  const mask = new Uint8Array(width * height);
+  const left = Math.max(0, selection.x), top = Math.max(0, selection.y);
+  const right = Math.min(width, selection.x + selection.width), bottom = Math.min(height, selection.y + selection.height);
+  if ((selection.shape ?? 'rect') === 'rect') {
+    for (let y = top; y < bottom; y++) mask.fill(1, y * width + left, y * width + right);
+  } else if (selection.shape === 'ellipse') {
+    const cx = selection.x + (selection.width - 1) / 2, cy = selection.y + (selection.height - 1) / 2;
+    const rx = Math.max(.5, (selection.width - 1) / 2), ry = Math.max(.5, (selection.height - 1) / 2);
+    for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
+      const dx = (x - cx) / rx, dy = (y - cy) / ry;
+      if (dx * dx + dy * dy <= 1) mask[y * width + x] = 1;
+    }
+  } else {
+    const points = selection.points;
+    const onSegment = (x, y, a, b) => {
+      const cross = (x - a.x) * (b.y - a.y) - (y - a.y) * (b.x - a.x);
+      if (Math.abs(cross) > .5) return false;
+      return x >= Math.min(a.x, b.x) - .5 && x <= Math.max(a.x, b.x) + .5 && y >= Math.min(a.y, b.y) - .5 && y <= Math.max(a.y, b.y) + .5;
+    };
+    for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
+      let inside = false;
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const a = points[i], b = points[j];
+        if (onSegment(x, y, a, b)) { inside = true; break; }
+        if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+      }
+      if (inside) mask[y * width + x] = 1;
+    }
+  }
+  return mask;
+}
+
 export function screenToDocument(point, viewport, dimensions) {
   const x = Math.floor((point.x - viewport.panX) / viewport.zoom);
   const y = Math.floor((point.y - viewport.panY) / viewport.zoom);
@@ -419,8 +515,12 @@ export class RasterDocument {
     if (left >= right || top >= bottom) throw new RangeError('Copy rectangle is outside document bounds.');
     const layer = this.activeLayer, pixels = new Uint8ClampedArray((right - left) * (bottom - top) * 4);
     for (let row = 0; row < bottom - top; row++) {
-      const start = ((top + row) * this.width + left) * 4;
-      pixels.set(layer.pixels.subarray(start, start + (right - left) * 4), row * (right - left) * 4);
+      for (let col = 0; col < right - left; col++) {
+        const sourcePixel = (top + row) * this.width + left + col;
+        if (this.selectionMask && !this.selectionMask[sourcePixel]) continue;
+        const sourceOffset = sourcePixel * 4, targetOffset = (row * (right - left) + col) * 4;
+        pixels.set(layer.pixels.subarray(sourceOffset, sourceOffset + 4), targetOffset);
+      }
     }
     return { x: left, y: top, width: right - left, height: bottom - top, pixels };
   }

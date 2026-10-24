@@ -1,4 +1,4 @@
-import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints } from './core.js';
+import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints, createSelectionMask, createColorSelectionMask, modifySelectionMask } from './core.js';
 import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
 import { preflightImageFile } from './image-import.js';
 import { createSpriteSheetLayout } from './asset-export.js';
@@ -240,9 +240,33 @@ function render() {
     if (selection) {
       const sx = panX + selection.x * zoom, sy = panY + selection.y * zoom;
       const sw = selection.width * zoom, sh = selection.height * zoom;
-      ctx.save(); ctx.strokeStyle = '#f4f0ff'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
-      ctx.strokeRect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1));
-      ctx.strokeStyle = '#282532'; ctx.lineDashOffset = 5; ctx.strokeRect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1)); ctx.restore();
+      const traceSelection = () => {
+        ctx.beginPath();
+        if (selection.customMask && zoom >= 2) {
+          const left = Math.max(selection.x, Math.floor(-panX / zoom)), top = Math.max(selection.y, Math.floor(-panY / zoom));
+          const right = Math.min(selection.x + selection.width, Math.ceil((canvas.clientWidth - panX) / zoom));
+          const bottom = Math.min(selection.y + selection.height, Math.ceil((canvas.clientHeight - panY) / zoom));
+          const mask = selection.customMask;
+          const selected = (x, y) => x >= 0 && y >= 0 && x < doc.width && y < doc.height && Boolean(mask[y * doc.width + x]);
+          for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
+            if (!selected(x, y)) continue;
+            const x0 = panX + x * zoom, y0 = panY + y * zoom, x1 = x0 + zoom, y1 = y0 + zoom;
+            if (!selected(x, y - 1)) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); }
+            if (!selected(x + 1, y)) { ctx.moveTo(x1, y0); ctx.lineTo(x1, y1); }
+            if (!selected(x, y + 1)) { ctx.moveTo(x1, y1); ctx.lineTo(x0, y1); }
+            if (!selected(x - 1, y)) { ctx.moveTo(x0, y1); ctx.lineTo(x0, y0); }
+          }
+        } else if (selection.shape === 'ellipse') ctx.ellipse(sx + sw / 2, sy + sh / 2, Math.max(.5, sw / 2), Math.max(.5, sh / 2), 0, 0, Math.PI * 2);
+        else if (selection.shape === 'polygon' && selection.points?.length) {
+          selection.points.forEach((point, index) => {
+            const px = panX + (point.x + .5) * zoom, py = panY + (point.y + .5) * zoom;
+            if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          });
+          if (selection.points.length >= 3) ctx.closePath();
+        } else ctx.rect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1));
+      };
+      ctx.save(); ctx.strokeStyle = '#f4f0ff'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]); traceSelection(); ctx.stroke();
+      ctx.strokeStyle = '#282532'; ctx.lineDashOffset = 5; traceSelection(); ctx.stroke(); ctx.restore();
     }
     if (virtualCursorVisible && virtualCursorScreen && (cursorMode || virtualCursorPointerId !== null)) {
       const radius = Math.max(2, Math.min(48, brushSize * zoom / 2));
@@ -264,16 +288,15 @@ function eventPoint(event) {
 }
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
 function syncSelectionMask() {
-  if (!selection) { doc.setSelectionMask(null); return; }
-  const mask = new Uint8Array(doc.width * doc.height);
-  const left = Math.max(0, selection.x), top = Math.max(0, selection.y);
-  const right = Math.min(doc.width, selection.x + selection.width), bottom = Math.min(doc.height, selection.y + selection.height);
-  for (let y = top; y < bottom; y++) mask.fill(1, y * doc.width + left, y * doc.width + right);
-  doc.setSelectionMask(mask);
+  const controls = $('#selection-settings');
+  if (controls) controls.hidden = !selection;
+  if (selection?.customMask) { doc.setSelectionMask(selection.customMask); return; }
+  if (selection?.shape === 'polygon' && selection.points.length < 3) { doc.setSelectionMask(null); return; }
+  doc.setSelectionMask(createSelectionMask(doc.width, doc.height, selection));
 }
 function clearSelectionState() {
   selection = null; selectionStart = null; selectionPointerId = null;
-  doc.setSelectionMask(null);
+  syncSelectionMask();
 }
 function symmetryPoints(point, mode = symmetryMode) {
   const w = doc.width, h = doc.height;
@@ -449,6 +472,27 @@ function performSample(point) {
     setTool(returnTool);
   } catch (error) { status(error.message, 'error'); }
 }
+function selectionBounds(mask) {
+  let left = doc.width, top = doc.height, right = -1, bottom = -1;
+  for (let y = 0; y < doc.height; y++) for (let x = 0; x < doc.width; x++) {
+    if (!mask[y * doc.width + x]) continue;
+    left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y);
+  }
+  return right < left ? null : { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
+}
+function performColorSelection(point) {
+  if (!point?.inside || flushInProgress) return;
+  try {
+    const mask = createColorSelectionMask(doc.width, doc.height, doc.activeLayer.pixels, point.x, point.y, {
+      tolerance: Number($('#magic-tolerance').value), contiguous: $('#magic-mode').value === 'contiguous'
+    });
+    const bounds = selectionBounds(mask);
+    if (!bounds) { selection = null; syncSelectionMask(); status('No matching colors selected', 'neutral'); render(); return; }
+    selection = { ...bounds, shape: 'mask', customMask: mask };
+    selectionStart = null; selectionPointerId = null; syncSelectionMask();
+    status(`Color selection: ${mask.reduce((sum, value) => sum + value, 0).toLocaleString()} pixels`, 'success'); render();
+  } catch (error) { status(error.message, 'error'); }
+}
 function performFill(point) {
   if (!point?.inside || flushInProgress) return;
   try {
@@ -468,8 +512,16 @@ function moveStroke(event) {
   if (selectionStart && event.pointerId === selectionPointerId) {
     const point = docPoint(event);
     const x = Math.max(0, Math.min(doc.width - 1, point.x)), y = Math.max(0, Math.min(doc.height - 1, point.y));
-    const left = Math.min(selectionStart.x, x), top = Math.min(selectionStart.y, y);
-    selection = { x: left, y: top, width: Math.abs(x - selectionStart.x) + 1, height: Math.abs(y - selectionStart.y) + 1 };
+    if (selectionStart.shape === 'polygon') {
+      const points = selectionStart.points, last = points[points.length - 1];
+      if ((Math.abs(x - last.x) + Math.abs(y - last.y) >= 1) && points.length < 4096) points.push({ x, y });
+      const xs = points.map(item => item.x), ys = points.map(item => item.y);
+      const left = Math.min(...xs), top = Math.min(...ys), right = Math.max(...xs), bottom = Math.max(...ys);
+      selection = { x: left, y: top, width: right - left + 1, height: bottom - top + 1, shape: 'polygon', points: [...points] };
+    } else {
+      const left = Math.min(selectionStart.x, x), top = Math.min(selectionStart.y, y);
+      selection = { x: left, y: top, width: Math.abs(x - selectionStart.x) + 1, height: Math.abs(y - selectionStart.y) + 1, shape: selectionStart.shape };
+    }
     syncSelectionMask(); render(); return;
   }
   if (panning && panStart) {
@@ -519,13 +571,17 @@ canvas.addEventListener('pointerdown', event => {
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     render(); event.preventDefault(); return;
   }
-  if (tool === 'select') {
+  if (['select', 'select-ellipse', 'select-lasso'].includes(tool)) {
     const point = docPoint(event); if (!point.inside) return;
-    selectionStart = { x: point.x, y: point.y }; selectionPointerId = event.pointerId;
-    selection = { x: point.x, y: point.y, width: 1, height: 1 }; syncSelectionMask();
+    const shape = tool === 'select-ellipse' ? 'ellipse' : tool === 'select-lasso' ? 'polygon' : 'rect';
+    selectionStart = shape === 'polygon' ? { x: point.x, y: point.y, shape, points: [{ x: point.x, y: point.y }] } : { x: point.x, y: point.y, shape };
+    selectionPointerId = event.pointerId;
+    selection = shape === 'polygon' ? { x: point.x, y: point.y, width: 1, height: 1, shape, points: [...selectionStart.points] } : { x: point.x, y: point.y, width: 1, height: 1, shape };
+    syncSelectionMask();
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     render(); event.preventDefault(); return;
   }
+  if (tool === 'select-color') { if (event.button === undefined || event.button === 0) performColorSelection(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'eyedropper') { if (event.button === undefined || event.button === 0) performSample(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'fill') { if (event.button === undefined || event.button === 0) performFill(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'pan' || event.button === 1 || spaceDown) {
@@ -613,7 +669,14 @@ canvas.addEventListener('pointerup', event => {
     const gesture = shapeGesture; shapeGesture = null;
     commitShapeGesture(gesture); render(); return;
   }
-  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; syncSelectionMask(); status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return; }
+  if (selectionStart && event.pointerId === selectionPointerId) {
+    if (selectionStart.shape === 'polygon' && selectionStart.points.length < 3) {
+      selectionStart = null; selectionPointerId = null; selection = null; syncSelectionMask();
+      status('Lasso needs at least three points', 'warning'); render(); return;
+    }
+    selectionStart = null; selectionPointerId = null; syncSelectionMask();
+    status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return;
+  }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(true);
@@ -635,6 +698,7 @@ canvas.addEventListener('pointercancel', event => {
 canvas.addEventListener('lostpointercapture', event => {
   if (gradientGesture && event.pointerId === gradientGesture.pointerId) { gradientGesture = null; render(); return; }
   if (shapeGesture && event.pointerId === shapeGesture.pointerId) { shapeGesture = null; render(); return; }
+  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; selection = null; syncSelectionMask(); render(); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
     virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; render(); return;
@@ -721,6 +785,24 @@ $('#pan-tool').addEventListener('click', () => setTool('pan'));
 $('#fill-tool').addEventListener('click', () => setTool('fill'));
 $('#eyedropper-tool').addEventListener('click', () => setTool('eyedropper'));
 $('#select-tool').addEventListener('click', () => setTool('select'));
+$('#ellipse-select-tool').addEventListener('click', () => setTool('select-ellipse'));
+$('#lasso-select-tool').addEventListener('click', () => setTool('select-lasso'));
+$('#magic-select-tool').addEventListener('click', () => setTool('select-color'));
+$('#magic-tolerance').addEventListener('input', event => { $('#magic-tolerance-value').textContent = event.target.value; });
+$('#selection-radius').addEventListener('input', event => { $('#selection-radius-value').textContent = `${event.target.value} px`; });
+function modifyCurrentSelection(operation) {
+  if (!selection || !doc.selectionMask) { status('Create a selection first', 'neutral'); return; }
+  try {
+    const mask = modifySelectionMask(doc.width, doc.height, doc.selectionMask, operation, Number($('#selection-radius').value));
+    const bounds = selectionBounds(mask);
+    selection = bounds ? { ...bounds, shape: 'mask', customMask: mask } : null;
+    selectionStart = null; selectionPointerId = null; syncSelectionMask();
+    status(selection ? ({ invert: 'Selection inverted', expand: 'Selection expanded', contract: 'Selection contracted' })[operation] : 'Selection is empty', 'success'); render();
+  } catch (error) { status(error.message, 'error'); }
+}
+$('#selection-invert').addEventListener('click', () => modifyCurrentSelection('invert'));
+$('#selection-expand').addEventListener('click', () => modifyCurrentSelection('expand'));
+$('#selection-contract').addEventListener('click', () => modifyCurrentSelection('contract'));
 $('#line-tool').addEventListener('click', () => setTool('shape-line'));
 $('#rectangle-tool').addEventListener('click', () => setTool('shape-rect'));
 $('#ellipse-tool').addEventListener('click', () => setTool('shape-ellipse'));
@@ -767,14 +849,18 @@ function setTool(next) {
   $('#fill-tool').classList.toggle('active', tool === 'fill');
   $('#eyedropper-tool').classList.toggle('active', tool === 'eyedropper');
   $('#select-tool').classList.toggle('active', tool === 'select');
+  $('#ellipse-select-tool').classList.toggle('active', tool === 'select-ellipse');
+  $('#lasso-select-tool').classList.toggle('active', tool === 'select-lasso');
+  $('#magic-select-tool').classList.toggle('active', tool === 'select-color');
   $('#line-tool').classList.toggle('active', tool === 'shape-line');
   $('#rectangle-tool').classList.toggle('active', tool === 'shape-rect');
   $('#ellipse-tool').classList.toggle('active', tool === 'shape-ellipse');
   $('#gradient-tool').classList.toggle('active', tool === 'gradient');
-  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse', gradient: 'Linear gradient' })[tool] ?? 'Pencil';
+  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', 'select-ellipse': 'Elliptical selection', 'select-lasso': 'Lasso selection', 'select-color': 'Magic wand selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse', gradient: 'Linear gradient' })[tool] ?? 'Pencil';
   $('#fill-settings').hidden = tool !== 'fill';
   $('#sample-settings').hidden = tool !== 'eyedropper';
-  if (tool !== 'select') { selectionStart = null; selectionPointerId = null; }
+  $('#magic-settings').hidden = tool !== 'select-color';
+  if (!['select', 'select-ellipse', 'select-lasso'].includes(tool)) { selectionStart = null; selectionPointerId = null; }
   canvas.dataset.tool = tool;
   updateDrawHoldUI();
   render();
@@ -1145,6 +1231,9 @@ window.addEventListener('keydown', event => {
   }
   if (textEntry) return;
   if (nativeControl && !modifiedShortcut && event.key !== 'Escape' && !((event.key === 'Delete' || event.key === 'Backspace') && selection)) return;
+  if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'i' && selection) {
+    event.preventDefault(); modifyCurrentSelection('invert'); return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
     event.preventDefault();
     selection = { x: 0, y: 0, width: doc.width, height: doc.height };
@@ -1183,7 +1272,7 @@ window.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'e') setTool('erase');
   else if (event.key.toLowerCase() === 'g') setTool('fill');
   else if (event.key.toLowerCase() === 'i') setTool('eyedropper');
-  else if (event.key.toLowerCase() === 'm') setTool('select');
+  else if (event.key.toLowerCase() === 'm') setTool(event.shiftKey ? 'select-ellipse' : 'select');
   else if (event.key.toLowerCase() === 'l') setTool('shape-line');
   else if (event.key.toLowerCase() === 'u') setTool('shape-rect');
   else if (event.key.toLowerCase() === 'o') setTool('shape-ellipse');
