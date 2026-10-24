@@ -898,15 +898,38 @@ async function renderProjects() {
   }
 }
 
+const assetTemplates = {
+  custom: { width: 128, height: 128, name: 'Untitled artwork', layers: ['Layer 1'] },
+  character: { width: 64, height: 64, name: 'Character sprite', layers: ['Sketch', 'Lineart', 'Color', 'Shading'] },
+  icon: { width: 32, height: 32, name: 'Game icon', layers: ['Base', 'Details', 'Highlights'] },
+  tile: { width: 32, height: 32, name: 'Environment tile', layers: ['Base', 'Details', 'Edges'] },
+  ui: { width: 128, height: 64, name: 'UI element', layers: ['Base', 'Border', 'Details'] },
+  background: { width: 256, height: 144, name: 'Background scene', layers: ['Far', 'Middle', 'Foreground'] },
+  effect: { width: 64, height: 64, name: 'VFX sprite', layers: ['Core', 'Glow', 'Particles'] }
+};
+$('#new-template').addEventListener('change', event => {
+  const template = assetTemplates[event.target.value] ?? assetTemplates.custom;
+  $('#new-width').value = String(template.width); $('#new-height').value = String(template.height);
+  if (!$('#new-name').value.trim() || $('#new-name').value === 'Untitled artwork' || Object.values(assetTemplates).some(item => item.name === $('#new-name').value)) {
+    $('#new-name').value = template.name;
+  }
+});
 $('#new-document').addEventListener('click', () => $('#new-dialog').showModal());
 $('#cancel-new').addEventListener('click', () => $('#new-dialog').close());
 $('#create-new').addEventListener('click', async () => {
   const width = Number($('#new-width').value), height = Number($('#new-height').value);
   try {
     validateDimensions(width, height); await flushAutosave();
-    doc = new RasterDocument(width, height, $('#new-name').value.trim() || 'Untitled artwork'); clearSelectionState();
+    const template = assetTemplates[$('#new-template').value] ?? assetTemplates.custom;
+    doc = new RasterDocument(width, height, $('#new-name').value.trim() || template.name); clearSelectionState();
+    const firstLayer = doc.activeLayerId;
+    if (template.layers[0] && template.layers[0] !== doc.activeLayer.name) doc.renameLayer(firstLayer, template.layers[0]);
+    for (const layerName of template.layers.slice(1)) doc.addLayer(layerName);
+    doc.setActiveLayer(firstLayer);
+    // Template scaffolding is the initial document state, not user undo history.
+    doc.history.length = 0; doc.future.length = 0; doc.historyBytes = 0; doc.revision = 0; doc.saveVersion = 0; doc.dirty = false;
     $('#new-dialog').close(); fitCanvas(); updateTitle(); renderLayers(); scheduleAutosave();
-    status('New document created', 'success');
+    status(template.layers.length > 1 ? `Created ${template.name} template with ${template.layers.length} layers` : 'New document created', 'success');
   } catch (error) { $('#new-error').textContent = error.message; status(`Could not switch documents: ${error.message}`, 'error'); }
 });
 $('#save').addEventListener('click', async () => {
