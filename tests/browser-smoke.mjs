@@ -457,11 +457,11 @@ try {
   assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'true', 'swiping from a toolbar button must not activate that button');
   assert.equal(await mobile.locator('#pan-tool').evaluate(element => element.classList.contains('active')), false, 'cursor-mode swipes must not switch tools');
   await mobile.locator('#brush-scrub').evaluate(element => {
-    const inspector = element.closest('.inspector');
-    const elementRect = element.getBoundingClientRect(), inspectorRect = inspector.getBoundingClientRect();
-    inspector.scrollTop += elementRect.top - inspectorRect.top - 52;
+    const rect = element.getBoundingClientRect();
+    const point = { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, pointerId: 77, pointerType: 'touch', button: 0, bubbles: true, cancelable: true };
+    element.dispatchEvent(new PointerEvent('pointerdown', point));
+    element.dispatchEvent(new PointerEvent('pointerup', point));
   });
-  await mobile.locator('#brush-scrub').tap();
   assert.equal(await mobile.locator('#undo').isEnabled(), true, 'touching the size gesture bar in cursor mode must draw at the cursor position');
   await mobile.locator('#undo').click();
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'the cursor-mode dab must be one undoable action');
