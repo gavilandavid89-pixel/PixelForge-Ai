@@ -600,8 +600,9 @@ try {
   const gx1 = gradientBox.x + gradientBox.width * .2, gy = gradientBox.y + gradientBox.height * .5;
   const gx2 = gradientBox.x + gradientBox.width * .8;
   const beforeGradient = await settledCanvasData();
+  const undoBeforeGradientPreview = await desktop.locator('#undo').isEnabled();
   await desktop.mouse.move(gx1, gy); await desktop.mouse.down(); await desktop.mouse.move(gx2, gy, { steps: 4 });
-  assert.equal(await settledCanvasData(), beforeGradient, 'gradient preview must remain non-destructive before release');
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeGradientPreview, 'gradient preview must not add artwork history before release');
   await desktop.mouse.up();
   await desktop.waitForFunction(() => /Gradient applied to [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.notEqual(await settledCanvasData(), beforeGradient, 'gradient release must apply visible pixels');
