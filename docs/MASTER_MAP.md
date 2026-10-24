@@ -132,3 +132,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 7. Close mobile, performance, accessibility and release gates.
 
 Parallel work is allowed only when tasks do not conflict in files or shared APIs. Update this map alongside each implementation. Never check a box based on documentation alone.
+
+
+## Selection verification gate
+Selection-only operations must not enter artwork undo history. Every selection-mask change must update the visible contour and constrain all applicable pixel-mutating tools. Browser tests must exercise selections on both transparent and opaque regions so the magic wand cannot accidentally assume the selected area is smaller than the canvas.
