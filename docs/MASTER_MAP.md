@@ -65,7 +65,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 ## Area 2 — General 2D art
 ### Brush and painting engine
 - [x] Basic hard-edge brush and size control.
-- [ ] Opacity, flow, hardness, spacing, shape/texture, angle, rotation and stabilizer.
+- [x] Brush/eraser opacity slider with source-over alpha compositing, partial erasing and atomic undo.\n- [ ] Flow, hardness, spacing, shape/texture, angle, rotation and stabilizer.
 - [ ] Brush presets/library: create, rename, favorite, tag, import/export and reset.
 - [ ] Pressure/tilt when available, mouse/touch fallback, smoothing and tablet/palm behavior.
 - [ ] Smudge, blur, sharpen, dodge/burn, clone stamp and retouch with explicit sampling rules.
