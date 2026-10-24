@@ -531,7 +531,8 @@ export class RasterDocument {
       if (stroke.opacity <= 0) continue;
       let coverage = 1;
       if (stroke.shape === 'circle') {
-        const cx = x + (stroke.size - 1) / 2, cy = y + (stroke.size - 1) / 2, radius = stroke.size / 2;
+        const centerOffset = stroke.size % 2 === 0 ? 0.5 : 0;
+        const cx = x + centerOffset, cy = y + centerOffset, radius = stroke.size / 2;
         const distance = Math.hypot(px - cx, py - cy);
         if (distance >= radius) continue;
         const innerRadius = radius * stroke.hardness;
