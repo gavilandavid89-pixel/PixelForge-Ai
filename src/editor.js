@@ -1187,6 +1187,7 @@ window.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'l') setTool('shape-line');
   else if (event.key.toLowerCase() === 'u') setTool('shape-rect');
   else if (event.key.toLowerCase() === 'o') setTool('shape-ellipse');
+  else if (event.key.toLowerCase() === 'd') setTool('gradient');
   else if ((event.key === 'Delete' || event.key === 'Backspace') && selection) {
     event.preventDefault();
     try {
