@@ -52,8 +52,9 @@ test('AI tools deny project deletion/export and arbitrary actions', () => {
 
 test('AI tool selection and pixel transforms preserve structured bounds', () => {
   const user = new RasterDocument(8, 8);
-  const session = new AICommandSession(new AIWorkspace(user));
-  paint(session.workspace.sandbox, 1, 1);
+  const workspace = new AIWorkspace(user);
+  const session = new AICommandSession(workspace);
+  paint(workspace.sandbox, 1, 1);
   const selection = session.execute({ name: 'selection.create_rect', x: 1, y: 1, width: 1, height: 1 });
   assert.equal(selection.result.selectedPixels, 1);
   const transformed = session.execute({ name: 'canvas.transform_region', x: 1, y: 1, width: 1, height: 1, dx: 2 });
