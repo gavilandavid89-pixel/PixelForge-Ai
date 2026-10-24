@@ -274,7 +274,7 @@ try {
   await selectionCdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [selectionTouchStart] });
   await selectionCdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: selectionTouchStart.x + 24, y: selectionTouchStart.y + 18 }] });
   await selectionCdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await mobile.waitForFunction(() => /Selected \\d+ × \\d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await mobile.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   await mobile.keyboard.press('Escape');
   await mobile.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'mobile selection must not alter document history');
