@@ -124,7 +124,8 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Structured AI sandbox commands for summary, pixel sampling, line drawing, fill, clear, color replacement, transforms, rectangular selection and undo/redo; project delete/export/upload/publish and arbitrary code execution are denied.
 - [x] Proposal snapshots with stale-source and stale-sandbox checks; accepted pixel edits apply as one undoable transaction, while unsubmitted drafts cannot be silently overwritten by sync.
 - [x] Incremental tile synchronization mirrors user pixel edits into reusable sandbox buffers to reduce allocation pressure.
-- [ ] Connect a real model/provider to the tool registry and prompt UI; no provider is currently connected.
+- [x] Provider-independent edit coordinator and OpenAI-compatible endpoint adapter with structured plans, explicit artwork consent, stale-source rejection and rollback on failed plans.
+- [ ] Connect provider configuration and prompt submission to the UI; no provider is configured by default.
 - [ ] Visual partial-acceptance UI, safe merge of layer-structure edits, AI task queue with progress/cancel/retries and recoverable failure.
 - [ ] Mask-aware edits, side-by-side variations and explicit apply transaction.
 - [ ] AI orchestration must use implemented editor operations and shared history, never bypass it.
