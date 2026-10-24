@@ -120,7 +120,7 @@ try {
   await desktop.locator('#eyedropper-tool').click();
   assert.equal(await desktop.locator('#sample-settings').isVisible(), true, 'eyedropper source settings should follow the selected tool');
   await desktop.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  assert.equal(await desktop.locator('#color').inputValue(), '#DCE2F0', 'eyedropper should restore the sampled foreground color');
+  assert.equal((await desktop.locator('#color').inputValue()).toUpperCase(), '#DCE2F0', 'eyedropper should restore the sampled foreground color');
   assert.equal(await desktop.locator('#brush-tool').getAttribute('class').then(value => value.includes('active')), true, 'sampling should return to the previous drawing tool');
   await desktop.locator('#color').evaluate(element => {
     element.value = '#DCE2F0';
