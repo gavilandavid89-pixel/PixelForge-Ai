@@ -30,6 +30,10 @@ AI may make normal edits—including removing pixels or deleting an individual l
 - **Provenance:** record agent/provider, action names, affected regions/layers, timestamp, result, and undo availability. Do not log secrets or unnecessary artwork content.
 - **Truthful status:** AI must distinguish a proposed edit from an applied edit and a completed operation from a failed/cancelled one.
 
+## Implementation status
+
+The first proposal-acceptance path is implemented in `AIWorkspace.acceptProposal()`: it checks the source revision, rejects layer-structure edits that cannot yet be merged safely, applies changed layer pixel buffers as one undoable transaction, and refreshes the sandbox after acceptance. Stale proposals, locked target layers, invalid buffers, and unsupported structural edits are rejected without silently overwriting the user's work. Provider/model tool execution, preview diff UI, and the full structured tool registry remain unimplemented.
+
 ## Initial tool families
 
 ### 1. Inspect and understand
