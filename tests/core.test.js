@@ -400,7 +400,7 @@ test('pixel clipboard copies and pastes bounded active-layer pixels as one rever
   assert.equal(doc.undo(), true);
   assert.equal(doc.activeLayer.pixels[(1 * 4 + 1) * 4 + 3], 0);
   assert.equal(doc.undo(), true);
-  assert.equal(doc.activeLayer.pixels[(1 * 4 + 1) * 4 + 3], 0);
+  assert.equal(doc.activeLayer.pixels[(1 * 4 + 1) * 4 + 3], 255);
   assert.throws(() => doc.pasteRect({ ...clip, pixels: new Uint8ClampedArray(1) }), /Invalid internal pixel clipboard/);
 });
 
