@@ -119,12 +119,17 @@ try {
   await desktop.mouse.up();
   assert.ok(Number(await desktop.locator('#brush-size').inputValue()) < thickerSize, 'dragging right must thin the brush');
   await desktop.locator('#brush-size').evaluate(element => { element.value = '1'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  await desktop.locator('#zoom-in').click(); await desktop.locator('#zoom-in').click();
+  const gridBefore = await settledCanvasData();
   const historyBeforeGrid = await desktop.locator('#undo').isEnabled();
-  await desktop.locator('#grid-toggle').click();
-  assert.equal(await desktop.locator('#grid-toggle').getAttribute('aria-pressed'), 'true', 'pixel grid toggle must expose its enabled state');
-  assert.equal(await desktop.locator('#undo').isEnabled(), historyBeforeGrid, 'view-only grid must not alter artwork history');
-  await desktop.locator('#grid-toggle').click();
-  assert.equal(await desktop.locator('#grid-toggle').getAttribute('aria-pressed'), 'false', 'pixel grid must be independently hideable');
+  for (const mode of ['pixel', 'rect', 'isometric', 'hex']) {
+    await desktop.locator('#grid-mode').selectOption(mode);
+    await desktop.locator('#grid-size').selectOption('16');
+    assert.notEqual(await settledCanvasData(), gridBefore, `${mode} grid should affect only the view overlay`);
+    assert.equal(await desktop.locator('#undo').isEnabled(), historyBeforeGrid, `${mode} grid must not alter artwork history`);
+  }
+  await desktop.locator('#grid-mode').selectOption('off');
+  assert.equal(await settledCanvasData(), gridBefore, 'grid mode changes must never alter document pixels or exports');
   assert.equal(await desktop.locator('#undo').isEnabled(), true, 'a committed stroke must enable undo');
   await desktop.locator('#undo').click();
   assert.equal(await desktop.locator('#redo').isEnabled(), true, 'undo must enable redo');
