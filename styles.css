@@ -102,3 +102,5 @@
 @media(max-width:760px){.context-right{gap:5px}.symmetry-control{gap:3px}.symmetry-control select{max-width:68px;padding:4px 3px}.context-right .mode-pill{display:none}}
 
 .active-layer-controls{margin-top:12px;padding:10px;border:1px solid #303341;border-radius:8px;background:#1b1d26}.active-layer-controls .control-heading{margin-bottom:9px}.active-layer-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:10px}.active-layer-actions button{min-height:30px;padding:4px 5px;border:1px solid #363947;border-radius:6px;background:#22242e;color:#c4c8d7;font-size:9px}.active-layer-actions button:hover:not(:disabled){background:#302d42;border-color:#5c548b}.active-layer-actions button:disabled{opacity:.35;cursor:not-allowed}#layer-opacity:disabled{opacity:.35;cursor:not-allowed}
+
+@media(max-width:760px){.inspector{scroll-padding-top:42px;scroll-padding-bottom:12px}.brush-scrub{scroll-margin-top:42px;scroll-margin-bottom:12px}}
