@@ -45,7 +45,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Eight-way symmetry uses document-space rotations, clips out-of-bounds copies on rectangular canvases and has browser regression coverage.
 - [x] Integer Bresenham line rasterization and connected pixel-stepped rectangle/ellipse outlines; selection masks constrain shape commits.\n- [ ] Dedicated curve algorithms and pixel-perfect ellipse midpoint rasterization.
 - [x] Selection-constrained pencil, eraser, bucket fill and clear operations.\n- [ ] Selection-constrained geometric shapes and transforms.
-- [x] Exact opaque-pixel color replacement on the active layer, preserving alpha, respecting selection masks and supporting atomic undo.\n- [x] One-pixel sprite outline on transparent neighbors, with selection-mask support and one-step undo.\n- [ ] Shading, lighten/darken, dithering, pattern fill and tile stamp.
+- [x] Exact opaque-pixel color replacement on the active layer, preserving alpha, respecting selection masks and supporting atomic undo.\n- [x] One-pixel sprite outline on transparent neighbors, with selection-mask support and one-step undo.\n- [x] Checker dither fill using foreground/background colors, with adjustable 1–16 pixel pattern scale and atomic undo.\n- [ ] Shading, lighten/darken, additional dithering matrices, pattern fill and tile stamp.
 - [ ] Indexed palette mode, nearest-color mapping and palette-safe operations.
 ### Selections and transforms
 - [x] Rectangular marquee visual overlay.
