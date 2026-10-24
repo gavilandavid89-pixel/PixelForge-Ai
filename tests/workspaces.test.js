@@ -146,3 +146,36 @@ test('proposal acceptance rejects empty proposal state and preserves no-op safet
   assert.deepEqual(workspace.acceptProposal(), { status: 'applied', changedPixels: 0, changedLayers: 0 });
   assert.equal(user.history.length, 0);
 });
+
+
+test('proposal snapshot cannot be changed after it is created', () => {
+  const user = new RasterDocument(8, 8);
+  const workspace = new AIWorkspace(user);
+  paint(workspace.sandbox, 1, 1, '#ff0000');
+  workspace.createProposal('First edit');
+  paint(workspace.sandbox, 2, 2, '#00ff00');
+  const result = workspace.acceptProposal();
+  assert.equal(result.reason, 'proposal-changed');
+  assert.equal(user.revision, 0);
+  assert.equal(workspace.hasProposal, true);
+});
+
+test('creating a second proposal cannot silently replace the pending proposal', () => {
+  const workspace = new AIWorkspace(new RasterDocument(4, 4));
+  const first = workspace.createProposal('First');
+  assert.throws(() => workspace.createProposal('Second'), /already pending/);
+  assert.equal(workspace.proposalSummary.id, first.id);
+});
+
+test('unchanged locked layers do not block an accepted pixel edit on another layer', () => {
+  const user = new RasterDocument(8, 8);
+  user.addLayer('Locked layer');
+  user.setLayerLocked(user.layers[1].id, true);
+  user.setActiveLayer(user.layers[0].id);
+  const workspace = new AIWorkspace(user);
+  paint(workspace.sandbox, 3, 3, '#abcdef');
+  workspace.createProposal('Edit unlocked layer');
+  const result = workspace.acceptProposal();
+  assert.deepEqual(result, { status: 'applied', changedPixels: 1, changedLayers: 1 });
+  assert.equal(user.sampleColorAt(3, 3, { merged: false }), '#ABCDEF');
+});
