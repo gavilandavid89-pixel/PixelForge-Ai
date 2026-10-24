@@ -456,6 +456,7 @@ try {
   await touchDrag(panButtonBox.x + panButtonBox.width / 2, panButtonBox.y + panButtonBox.height / 2, panButtonBox.x + panButtonBox.width / 2 + 24, panButtonBox.y + panButtonBox.height / 2 + 12);
   assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'true', 'swiping from a toolbar button must not activate that button');
   assert.equal(await mobile.locator('#pan-tool').evaluate(element => element.classList.contains('active')), false, 'cursor-mode swipes must not switch tools');
+  const beforeCursorDab = await settledCanvasData();
   await mobile.locator('#brush-scrub').evaluate(element => {
     const rect = element.getBoundingClientRect();
     const point = { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, pointerId: 77, pointerType: 'touch', button: 0, bubbles: true, cancelable: true };
@@ -464,7 +465,7 @@ try {
   });
   assert.equal(await mobile.locator('#undo').isEnabled(), true, 'touching the size gesture bar in cursor mode must draw at the cursor position');
   await mobile.locator('#undo').click();
-  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'the cursor-mode dab must be one undoable action');
+  assert.equal(await settledCanvasData(), beforeCursorDab, 'the cursor-mode dab must be one undoable action without affecting prior artwork');
   await mobile.locator('#rectangle-tool').click();
   assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'false', 'choosing a geometric tool must leave cursor mode automatically');
   assert.equal(await mobile.locator('#rectangle-tool').evaluate(element => element.classList.contains('active')), true, 'the selected geometric tool must receive input after leaving cursor mode');
