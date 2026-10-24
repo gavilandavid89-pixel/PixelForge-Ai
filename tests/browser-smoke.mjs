@@ -130,6 +130,28 @@ try {
   assert.equal(await desktop.locator('#redo').isEnabled(), true, 'undo must enable redo');
   await desktop.locator('#redo').click();
 
+  // Geometric tools show a temporary preview, then commit as exactly one undoable pixel action.
+  const settledCanvasData = async () => await canvas.evaluate(element => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(element.toDataURL())))));
+  for (const shape of [
+    { id: '#line-tool', name: 'line', dx: 52, dy: 31 },
+    { id: '#rectangle-tool', name: 'rectangle', dx: 58, dy: 42 },
+    { id: '#ellipse-tool', name: 'ellipse', dx: 64, dy: 38 }
+  ]) {
+    const beforeShape = await settledCanvasData();
+    await desktop.locator(shape.id).click();
+    const sx = box.x + box.width * 0.42, sy = box.y + box.height * 0.42;
+    await desktop.mouse.move(sx, sy);
+    await desktop.mouse.down();
+    await desktop.mouse.move(sx + shape.dx, sy + shape.dy, { steps: 5 });
+    const previewShape = await settledCanvasData();
+    assert.notEqual(previewShape, beforeShape, shape.name + ' should display a live preview while dragging');
+    await desktop.mouse.up();
+    assert.equal(await desktop.locator('#undo').isEnabled(), true, shape.name + ' should commit to history on release');
+    await desktop.locator('#undo').click();
+    assert.equal(await settledCanvasData(), beforeShape, shape.name + ' should be reverted completely by one undo');
+  }
+  await desktop.locator('#brush-tool').click();
+
   // Bucket fill is wired to the same document/history pipeline as brush strokes.
   await desktop.locator('#color').evaluate(element => {
     element.value = '#ff0000';
