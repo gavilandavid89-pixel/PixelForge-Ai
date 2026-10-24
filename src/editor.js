@@ -12,7 +12,7 @@ let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null;
-let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorDrawPointerId = null;
+let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorGestureOrigin = null, cursorGestureStartedOnControl = false, cursorGestureSuppressClick = false, cursorDrawPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
 
@@ -306,15 +306,28 @@ canvas.addEventListener('pointermove', moveStroke);
 window.addEventListener('pointerdown', event => {
   if (!cursorMode || event.pointerType !== 'touch' || cursorGesturePointerId !== null) return;
   if (event.target instanceof Element && event.target.closest('#brush-scrub')) return;
-  cursorGesturePointerId = event.pointerId; cursorGestureLast = { x: event.clientX, y: event.clientY };
+  cursorGesturePointerId = event.pointerId;
+  cursorGestureLast = cursorGestureOrigin = { x: event.clientX, y: event.clientY };
+  cursorGestureStartedOnControl = event.target instanceof Element && Boolean(event.target.closest('button, a, input, select, textarea, [role="button"]'));
+  cursorGestureSuppressClick = false;
 }, true);
 window.addEventListener('pointermove', event => {
   if (!cursorMode || event.pointerType !== 'touch' || event.pointerId !== cursorGesturePointerId || !cursorGestureLast) return;
   const dx = event.clientX - cursorGestureLast.x, dy = event.clientY - cursorGestureLast.y;
   cursorGestureLast = { x: event.clientX, y: event.clientY };
+  if (cursorGestureStartedOnControl && cursorGestureOrigin && Math.hypot(event.clientX - cursorGestureOrigin.x, event.clientY - cursorGestureOrigin.y) > 7) cursorGestureSuppressClick = true;
   if (dx || dy) moveVirtualCursorBy(dx, dy);
 }, true);
-function finishCursorGesture(event) { if (event.pointerId === cursorGesturePointerId) { cursorGesturePointerId = null; cursorGestureLast = null; } }
+window.addEventListener('click', event => {
+  if (!cursorMode || !cursorGestureSuppressClick) return;
+  cursorGestureSuppressClick = false;
+  event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();
+}, true);
+function finishCursorGesture(event) {
+  if (event.pointerId === cursorGesturePointerId) {
+    cursorGesturePointerId = null; cursorGestureLast = null; cursorGestureOrigin = null; cursorGestureStartedOnControl = false;
+  }
+}
 window.addEventListener('pointerup', finishCursorGesture, true);
 window.addEventListener('pointercancel', finishCursorGesture, true);
 canvas.addEventListener('pointerup', event => {
