@@ -149,6 +149,12 @@ try {
 
   await desktop.locator('#add-layer').click();
   assert.match(await desktop.locator('#layer-count').textContent(), /2 layers/);
+  await desktop.getByRole('button', { name: 'Lock layer against edits' }).last().click();
+  assert.equal(await desktop.getByRole('button', { name: 'Unlock layer' }).count(), 1, 'layer lock should update the layer control');
+  await desktop.locator('#undo').click();
+  assert.equal(await desktop.getByRole('button', { name: 'Lock layer against edits' }).count(), 2, 'undo should restore the unlocked layer state');
+  await desktop.locator('#redo').click();
+  assert.equal(await desktop.getByRole('button', { name: 'Unlock layer' }).count(), 1, 'redo should restore the locked layer state');
   await desktop.keyboard.press('Control+s');
   await desktop.waitForFunction(() => /Saved on this device/.test(document.querySelector('#status')?.textContent ?? ''));
   const downloadPromise = desktop.waitForEvent('download');
@@ -228,6 +234,11 @@ try {
   mobile.on('pageerror', error => failures.push(`mobile page error: ${error.message}`));
   await mobile.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
   await mobile.waitForFunction(() => /Ready|Recovered latest local project|Local recovery unavailable/.test(document.querySelector('#status')?.textContent ?? ''));
+  await mobile.locator('#layers-tab').click();
+  assert.equal(await mobile.locator('.inspector').evaluate(element => element.classList.contains('show-layers')), true, 'mobile Layers tab should switch the compact inspector');
+  assert.equal(await mobile.locator('#layers-tab').getAttribute('aria-selected'), 'true');
+  await mobile.locator('#properties-tab').click();
+  assert.equal(await mobile.locator('.inspector').evaluate(element => element.classList.contains('show-layers')), false, 'mobile Properties tab should restore tool controls');
   const mobileCanvas = mobile.locator('#canvas');
   const mobileBox = await mobileCanvas.boundingBox();
   assert.ok(mobileBox && mobileBox.width > 150 && mobileBox.height > 150, 'mobile canvas must remain usable');
