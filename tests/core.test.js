@@ -698,6 +698,82 @@ test('selection quarter-turn rotates irregular masks around their bounds and cli
   assert.deepEqual([...doc.activeLayer.pixels.slice((1 * 6 + 1) * 4, (1 * 6 + 1) * 4 + 4)], [0,255,0,255]);
 });
 
+test('selection transform preview is non-destructive, scales with nearest-neighbor, and commits atomically', () => {
+  const doc = new RasterDocument(8, 6);
+  const layer = doc.activeLayer;
+  layer.pixels.set([255, 0, 0, 255], (2 * doc.width + 2) * 4);
+  layer.pixels.set([0, 255, 0, 255], (2 * doc.width + 3) * 4);
+  const before = new Uint8ClampedArray(layer.pixels);
+  doc.setSelectionMask(createSelectionMask(doc.width, doc.height, { x: 2, y: 2, width: 2, height: 1 }));
+  const preview = doc.previewTransformRect(2, 2, 2, 1, { scaleX: 2, interpolation: 'nearest' });
+  assert.equal(preview.selectedPixels, 4);
+  assert.deepEqual(layer.pixels, before, 'preview must not mutate source pixels');
+  assert.equal(doc.history.length, 0, 'preview must not enter history');
+  assert.deepEqual(preview.bounds, { x: 1, y: 2, width: 4, height: 1 });
+  const result = doc.transformRect(2, 2, 2, 1, { scaleX: 2, interpolation: 'nearest' });
+  assert.equal(result.selectedPixels, 4);
+  assert.equal(doc.history.length, 1, 'transform should be one history operation');
+  assert.deepEqual([...layer.pixels.slice((2 * 8 + 1) * 4, (2 * 8 + 5) * 4)], [
+    255,0,0,255, 255,0,0,255, 0,255,0,255, 0,255,0,255
+  ]);
+  doc.setSelectionMask(result.selectionMask);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual(layer.pixels, before, 'undo restores exact original pixels');
+  assert.equal(doc.redo(), true);
+  assert.deepEqual([...layer.pixels.slice((2 * 8 + 1) * 4, (2 * 8 + 5) * 4)], [
+    255,0,0,255, 255,0,0,255, 0,255,0,255, 0,255,0,255
+  ]);
+});
+
+test('selection transforms support skew, quarter turns, and alpha-aware bilinear preview', () => {
+  const doc = new RasterDocument(10, 10);
+  const layer = doc.activeLayer;
+  layer.pixels.set([255, 0, 0, 255], (3 * 10 + 3) * 4);
+  layer.pixels.set([0, 0, 255, 0], (3 * 10 + 4) * 4);
+  doc.setSelectionMask(createSelectionMask(10, 10, { x: 3, y: 3, width: 2, height: 1 }));
+  const preview = doc.previewTransformRect(3, 3, 2, 1, { scaleX: 2, rotate: 90, skewX: 0.25, interpolation: 'bilinear' });
+  assert.ok(preview.selectedPixels > 0);
+  assert.ok(preview.bounds && preview.bounds.width > 0 && preview.bounds.height > 0);
+  assert.equal(doc.history.length, 0);
+  assert.equal(layer.pixels[(3 * 10 + 3) * 4], 255, 'preview must leave original layer untouched');
+  assert.throws(() => doc.previewTransformRect(3, 3, 2, 1, { scaleX: 0 }), /scale/);
+  assert.throws(() => doc.previewTransformRect(3, 3, 2, 1, { interpolation: 'cubic' }), /interpolation/);
+});
+
+test('canvas crop resizes every layer, preserves offsets, and is one undoable transaction', () => {
+  const doc = new RasterDocument(5, 4);
+  const first = doc.activeLayer;
+  first.pixels.set([255, 0, 0, 255], (2 * 5 + 2) * 4);
+  const second = doc.addLayer('Foreground');
+  second.pixels.set([0, 255, 0, 255], (1 * 5 + 3) * 4);
+  const originalFirst = new Uint8ClampedArray(first.pixels);
+  const originalSecond = new Uint8ClampedArray(second.pixels);
+  doc.setSelectionMask(createSelectionMask(5, 4, { x: 1, y: 1, width: 3, height: 2 }));
+  assert.equal(doc.cropCanvas(1, 1, 3, 2), true);
+  assert.equal(doc.width, 3); assert.equal(doc.height, 2);
+  assert.deepEqual([...doc.activeLayer.pixels.slice((0 * 3 + 2) * 4, (0 * 3 + 2) * 4 + 4)], [0, 255, 0, 255]);
+  assert.equal(doc.selectionMask, null);
+  assert.equal(doc.history.at(-1).type, 'document-crop');
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.width, 5); assert.equal(doc.height, 4);
+  assert.deepEqual(doc.layers.find(layer => layer.name === 'Layer 1').pixels, originalFirst);
+  assert.deepEqual(doc.layers.find(layer => layer.name === 'Foreground').pixels, originalSecond);
+  assert.equal(doc.redo(), true);
+  assert.equal(doc.width, 3); assert.equal(doc.height, 2);
+  assert.deepEqual([...doc.layers.find(layer => layer.name === 'Foreground').pixels.slice(8, 12)], [0, 255, 0, 255]);
+});
+
+test('canvas crop validates bounds and a no-op crop does not create history', () => {
+  const doc = new RasterDocument(4, 3);
+  assert.equal(doc.cropCanvas(0, 0, 4, 3), false);
+  assert.equal(doc.history.length, 0);
+  assert.throws(() => doc.cropCanvas(-1, 0, 2, 2), /Crop bounds/);
+  assert.throws(() => doc.cropCanvas(3, 2, 2, 2), /Crop bounds/);
+  assert.throws(() => doc.cropCanvas(0, 0, 0, 1), /Crop bounds/);
+  assert.equal(doc.width, 4); assert.equal(doc.height, 3);
+  assert.equal(doc.history.length, 0);
+});
+
 test('selection transform validates parameters and respects layer locks', () => {
   const doc = new RasterDocument(4, 4);
   assert.throws(() => doc.transformRect(0, 0, 2, 2, { rotate: 45 }), /rotation/);
