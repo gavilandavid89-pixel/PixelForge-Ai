@@ -474,6 +474,7 @@ function renderLayers() {
   [...doc.layers].reverse().forEach(layer => {
     const row = document.createElement('div');
     row.className = `layer-row${layer.id === doc.activeLayerId ? ' selected' : ''}`;
+    const layerIndex = doc.layers.findIndex(item => item.id === layer.id);
     const select = document.createElement('button');
     select.className = 'layer-select'; select.textContent = layer.name; select.title = 'Select layer';
     select.addEventListener('click', () => { doc.setActiveLayer(layer.id); renderLayers(); updateTitle(); scheduleAutosave(); });
@@ -492,7 +493,21 @@ function renderLayers() {
       changed(); renderLayers();
       status(layer.locked ? 'Layer locked' : 'Layer unlocked', 'success');
     });
-    row.append(visibility, select, lock); list.append(row);
+    const order = document.createElement('div'); order.className = 'layer-order-controls';
+    const raise = document.createElement('button');
+    raise.className = 'layer-order'; raise.textContent = '↑'; raise.title = 'Raise layer';
+    raise.setAttribute('aria-label', 'Raise layer'); raise.disabled = layerIndex === doc.layers.length - 1;
+    raise.addEventListener('click', () => {
+      if (doc.moveLayer(layer.id, layerIndex + 1)) { changed(); renderLayers(); status('Layer moved up', 'success'); }
+    });
+    const lower = document.createElement('button');
+    lower.className = 'layer-order'; lower.textContent = '↓'; lower.title = 'Lower layer';
+    lower.setAttribute('aria-label', 'Lower layer'); lower.disabled = layerIndex === 0;
+    lower.addEventListener('click', () => {
+      if (doc.moveLayer(layer.id, layerIndex - 1)) { changed(); renderLayers(); status('Layer moved down', 'success'); }
+    });
+    order.append(raise, lower);
+    row.append(visibility, select, lock, order); list.append(row);
   });
 }
 function safeName(value) { return (value || 'pixelforge-artwork').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'pixelforge-artwork'; }
