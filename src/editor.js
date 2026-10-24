@@ -12,6 +12,7 @@ let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null;
+let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorDrawPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
 
@@ -119,11 +120,16 @@ function render() {
       ctx.strokeRect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1));
       ctx.strokeStyle = '#282532'; ctx.lineDashOffset = 5; ctx.strokeRect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1)); ctx.restore();
     }
-    if (virtualCursorVisible && virtualCursorScreen) {
-      ctx.strokeStyle = drawHeld ? '#69dfbb' : '#e8eaf2'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(virtualCursorScreen.x, virtualCursorScreen.y, 8, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(virtualCursorScreen.x - 12, virtualCursorScreen.y); ctx.lineTo(virtualCursorScreen.x + 12, virtualCursorScreen.y);
-      ctx.moveTo(virtualCursorScreen.x, virtualCursorScreen.y - 12); ctx.lineTo(virtualCursorScreen.x, virtualCursorScreen.y + 12); ctx.stroke();
+    if (virtualCursorVisible && virtualCursorScreen && (cursorMode || virtualCursorPointerId !== null)) {
+      const radius = Math.max(2, Math.min(48, brushSize * zoom / 2));
+      ctx.save(); ctx.strokeStyle = cursorMode ? '#69dfbb' : drawHeld ? '#69dfbb' : '#e8eaf2'; ctx.lineWidth = 1.25;
+      if (['draw', 'erase'].includes(tool)) { ctx.beginPath(); ctx.arc(virtualCursorScreen.x, virtualCursorScreen.y, radius, 0, Math.PI * 2); ctx.stroke(); }
+      // Small arrow/pencil marker for the independent on-screen cursor.
+      ctx.beginPath(); ctx.moveTo(virtualCursorScreen.x + 1, virtualCursorScreen.y + 1);
+      ctx.lineTo(virtualCursorScreen.x + 1, virtualCursorScreen.y + 17); ctx.lineTo(virtualCursorScreen.x + 5, virtualCursorScreen.y + 13);
+      ctx.lineTo(virtualCursorScreen.x + 8, virtualCursorScreen.y + 20); ctx.lineTo(virtualCursorScreen.x + 11, virtualCursorScreen.y + 18);
+      ctx.lineTo(virtualCursorScreen.x + 8, virtualCursorScreen.y + 11); ctx.lineTo(virtualCursorScreen.x + 13, virtualCursorScreen.y + 11);
+      ctx.closePath(); ctx.fillStyle = '#171922'; ctx.fill(); ctx.stroke(); ctx.restore();
     }
     $('#zoom-label').textContent = `${Math.round(zoom * 100)}%`;
   });
@@ -132,7 +138,13 @@ function eventPoint(event) {
   const rect = canvas.getBoundingClientRect();
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
-function docPoint(event) { return screenToDocument(eventPoint(event), { zoom, panX, panY }, doc); }
+function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
+function docPoint(event) { return documentPointFromScreen(eventPoint(event)); }
+function moveVirtualCursorBy(dx, dy) {
+  if (!virtualCursorScreen) virtualCursorScreen = { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 };
+  virtualCursorScreen = { x: Math.max(0, Math.min(canvas.clientWidth, virtualCursorScreen.x + dx)), y: Math.max(0, Math.min(canvas.clientHeight, virtualCursorScreen.y + dy)) };
+  virtualCursorPoint = documentPointFromScreen(virtualCursorScreen); virtualCursorVisible = true; render();
+}
 function scheduleAutosave() {
   clearTimeout(autosaveTimer); autosaveTimer = null;
   status('Unsaved changes', 'warning');
@@ -259,6 +271,7 @@ function endStroke(event, commit = true) {
 }
 canvas.addEventListener('pointerdown', event => {
   if (flushInProgress) { event.preventDefault(); return; }
+  if (cursorMode) { event.preventDefault(); return; }
   if (tool === 'select') {
     const point = docPoint(event); if (!point.inside) return;
     selectionStart = { x: point.x, y: point.y }; selectionPointerId = event.pointerId;
@@ -286,6 +299,20 @@ canvas.addEventListener('pointerdown', event => {
   beginStroke(event);
 });
 canvas.addEventListener('pointermove', moveStroke);
+window.addEventListener('pointerdown', event => {
+  if (!cursorMode || event.pointerType !== 'touch' || cursorGesturePointerId !== null) return;
+  if (event.target instanceof Element && event.target.closest('#brush-scrub')) return;
+  cursorGesturePointerId = event.pointerId; cursorGestureLast = { x: event.clientX, y: event.clientY };
+}, true);
+window.addEventListener('pointermove', event => {
+  if (!cursorMode || event.pointerType !== 'touch' || event.pointerId !== cursorGesturePointerId || !cursorGestureLast) return;
+  const dx = event.clientX - cursorGestureLast.x, dy = event.clientY - cursorGestureLast.y;
+  cursorGestureLast = { x: event.clientX, y: event.clientY };
+  if (dx || dy) moveVirtualCursorBy(dx, dy);
+}, true);
+function finishCursorGesture(event) { if (event.pointerId === cursorGesturePointerId) { cursorGesturePointerId = null; cursorGestureLast = null; } }
+window.addEventListener('pointerup', finishCursorGesture, true);
+window.addEventListener('pointercancel', finishCursorGesture, true);
 canvas.addEventListener('pointerup', event => {
   if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return; }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
@@ -361,6 +388,24 @@ canvas.addEventListener('wheel', event => {
   zoomAt(p, zoom * (event.deltaY < 0 ? 1.15 : 1 / 1.15));
 }, { passive: false });
 
+const cursorModeButton = $('#cursor-mode');
+function setCursorMode(enabled) {
+  cursorMode = Boolean(enabled);
+  cursorModeButton.classList.toggle('active', cursorMode);
+  cursorModeButton.setAttribute('aria-pressed', String(cursorMode));
+  canvas.dataset.cursorMode = String(cursorMode);
+  cursorGesturePointerId = null; cursorGestureLast = null;
+  if (cursorMode) {
+    virtualCursorScreen ??= { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 };
+    virtualCursorPoint = documentPointFromScreen(virtualCursorScreen); virtualCursorVisible = true;
+    status('Cursor mode: swipe anywhere to move; touch the size bar to draw', 'success');
+  } else {
+    virtualCursorVisible = false; virtualCursorScreen = null; virtualCursorPoint = null;
+    status('Direct drawing mode', 'neutral');
+  }
+  render();
+}
+cursorModeButton.addEventListener('click', () => setCursorMode(!cursorMode));
 $('#brush-tool').addEventListener('click', () => setTool('draw'));
 $('#eraser-tool').addEventListener('click', () => setTool('erase'));
 $('#pan-tool').addEventListener('click', () => setTool('pan'));
@@ -429,6 +474,10 @@ function resetBrushScrub() {
 }
 brushScrub.addEventListener('pointerdown', event => {
   if (event.button !== undefined && event.button !== 0) return;
+  if (cursorMode && ['draw', 'erase'].includes(tool) && virtualCursorPoint?.inside && !flushInProgress && !activeStroke) {
+    cursorDrawPointerId = event.pointerId;
+    startStrokeAt(virtualCursorPoint, event.pointerId);
+  }
   const rect = brushScrub.getBoundingClientRect();
   scrubStartX = rect.left + rect.width / 2;
   scrubStartSize = brushSize;
@@ -452,6 +501,10 @@ brushScrub.addEventListener('pointermove', event => {
 });
 function finishBrushScrub(event) {
   if (scrubPointerId === null || (event?.pointerId !== undefined && event.pointerId !== scrubPointerId)) return;
+  if (cursorDrawPointerId !== null && (event?.pointerId === undefined || event.pointerId === cursorDrawPointerId)) {
+    if (activeStroke && pointerId === cursorDrawPointerId) finishActiveStroke(true);
+    cursorDrawPointerId = null;
+  }
   resetBrushScrub();
 }
 brushScrub.addEventListener('pointerup', finishBrushScrub);
