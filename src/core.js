@@ -63,6 +63,15 @@ export class RasterDocument {
     if (!this.layers.some(layer => layer.id === id)) throw new Error('Unknown layer ID.');
     if (this.activeLayerId !== id) { this.activeLayerId = id; this.dirty = true; this.saveVersion++; }
   }
+  setLayerLocked(id, locked) {
+    if (typeof locked !== 'boolean') throw new TypeError('Layer lock must be a boolean.');
+    const layer = this.layers.find(item => item.id === id);
+    if (!layer) throw new Error('Unknown layer ID.');
+    if (layer.locked === locked) return;
+    const before = layer.locked;
+    layer.locked = locked;
+    this.#record({ type: 'layer-lock', layerId: id, before, after: locked });
+  }
   setLayerVisibility(id, visible) {
     if (typeof visible !== 'boolean') throw new TypeError('Layer visibility must be a boolean.');
     const layer = this.layers.find(item => item.id === id);
@@ -336,6 +345,9 @@ export class RasterDocument {
     if (entry.type === 'pixels') {
       const layer = this.layers.find(item => item.id === entry.layerId);
       if (layer) for (const tile of entry.tiles) this.#writeTile(layer, tile.tileX, tile.tileY, forward ? tile.after : tile.before);
+    } else if (entry.type === 'layer-lock') {
+      const layer = this.layers.find(item => item.id === entry.layerId);
+      if (layer) layer.locked = forward ? entry.after : entry.before;
     } else if (entry.type === 'layer-visibility') {
       const layer = this.layers.find(item => item.id === entry.layerId);
       if (layer) layer.visible = forward ? entry.after : entry.before;
