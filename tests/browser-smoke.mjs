@@ -471,16 +471,18 @@ try {
   assert.equal(await mobile.locator('#rectangle-tool').evaluate(element => element.classList.contains('active')), true, 'the selected geometric tool must receive input after leaving cursor mode');
   await mobile.locator('#brush-tool').click();
   const startX = mobileBox.x + mobileBox.width / 2, startY = mobileBox.y + mobileBox.height / 2;
+  const beforeDirectTouch = await settledCanvasData();
   await touchDrag(startX, startY, startX + 18, startY + 8);
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
-  assert.equal(await mobile.locator('#undo').isEnabled(), true, 'dragging on the canvas with the pencil must draw immediately without a separate hold button');
+  assert.notEqual(await settledCanvasData(), beforeDirectTouch, 'dragging on the canvas with the pencil must draw immediately without a separate hold button');
   await mobile.locator('#undo').click();
-  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'the direct touch stroke should undo as one action');
+  assert.equal(await settledCanvasData(), beforeDirectTouch, 'the direct touch stroke should undo as one action');
   const drawHoldBounds = await mobile.locator('#draw-hold').boundingBox();
   assert.ok(drawHoldBounds && drawHoldBounds.width > 70, 'mobile draw-hold control must be reachable');
   const holdX = drawHoldBounds.x + drawHoldBounds.width / 2, holdY = drawHoldBounds.y + drawHoldBounds.height / 2;
 
   // Releasing the hold while the cursor finger remains down must stop drawing immediately.
+  const beforeReleaseHold = await settledCanvasData();
   await mobile.mouse.move(holdX, holdY);
   await mobile.mouse.down();
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 2, x: startX, y: startY }] });
@@ -490,21 +492,24 @@ try {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
   await mobile.locator('#undo').click();
-  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'release must stop drawing without leaving a second history action');
+  assert.equal(await settledCanvasData(), beforeReleaseHold, 'release must stop drawing without leaving a second history action');
 
   // Also exercise the real two-touch pattern: one touch holds the control, the other moves the cursor.
+  const beforeTwoTouchHold = await settledCanvasData();
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 3, x: holdX, y: holdY }, { id: 4, x: startX, y: startY }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 3, x: holdX, y: holdY }, { id: 4, x: startX + 18, y: startY + 8 }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
   assert.equal(await mobile.locator('#undo').isEnabled(), true, 'two-touch hold-to-draw must create an undoable stroke');
+  assert.notEqual(await settledCanvasData(), beforeTwoTouchHold, 'two-touch hold-to-draw must visibly alter the canvas');
   await mobile.locator('#undo').click();
-  assert.equal(await mobile.locator('#undo').isEnabled(), false);
+  assert.equal(await settledCanvasData(), beforeTwoTouchHold, 'two-touch hold-to-draw must undo in one action');
+  const beforeEscapeCancel = await settledCanvasData();
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 5, x: holdX, y: holdY }, { id: 6, x: startX, y: startY }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 5, x: holdX, y: holdY }, { id: 6, x: startX + 18, y: startY + 8 }] });
   await mobile.keyboard.press('Escape');
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'Escape must cancel an in-progress touch stroke without history');
+  assert.equal(await settledCanvasData(), beforeEscapeCancel, 'Escape must cancel an in-progress touch stroke without changing artwork');
   assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'Escape must release the draw-hold state');
   // Eight-way symmetry must stay geometrically valid on a rectangular document.
   await desktop.locator('#new-document').click();
