@@ -428,7 +428,7 @@ function resetBrushScrub() {
 brushScrub.addEventListener('pointerdown', event => {
   if (event.button !== undefined && event.button !== 0) return;
   const rect = brushScrub.getBoundingClientRect();
-  scrubStartX = event.clientX;
+  scrubStartX = rect.left + rect.width / 2;
   scrubStartSize = brushSize;
   scrubPointerId = event.pointerId;
   brushScrub.classList.add('is-dragging');
