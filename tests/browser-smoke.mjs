@@ -437,7 +437,7 @@ try {
   const tx = transformBox.x + transformBox.width / 2, ty = transformBox.y + transformBox.height / 2;
   await desktop.mouse.move(tx - 15, ty - 12); await desktop.mouse.down();
   await desktop.mouse.move(tx + 15, ty + 12); await desktop.mouse.up();
-  await desktop.waitForFunction(() => /Selected \\d+ × \\d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.equal(await desktop.locator('#selection-settings [data-transform="right"]').isVisible(), true, 'selection move controls should appear with an active selection');
   await desktop.locator('#selection-settings [data-transform="right"]').click();
   await desktop.waitForFunction(() => /Transformed selection|Selection moved without changing visible pixels/.test(document.querySelector('#status')?.textContent ?? ''));
