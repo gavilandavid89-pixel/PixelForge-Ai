@@ -21,7 +21,7 @@ This is the capability checklist, not a promise that every item already exists. 
 - Symmetry: horizontal, vertical, radial; mirrored drawing; tiled seamless mode.
 
 ### General 2D raster
-- Brush with size, opacity, flow, hardness, spacing, shape/texture, angle and stabilizer.
+- **Implemented:** brush size can be changed with the standard range input or a center-origin gesture scrubber; dragging left increases thickness, dragging right decreases it, and farther travel applies a nonlinear stronger adjustment. The scrubber recenters visually on release while the selected size remains active. Keyboard arrows also adjust the size. **Planned:** opacity, flow, hardness, spacing, shape/texture, angle and stabilizer.
 - Pressure/tilt support when available; tablet input gracefully falls back to mouse/touch.
 - Smudge, blur, sharpen, dodge/burn, clone stamp, healing-like retouch where feasible.
 - Gradient fills, selection-bound fills, text, paths and basic vector-like shape layers.
