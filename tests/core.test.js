@@ -431,3 +431,21 @@ test('Bresenham raster lines are integer, connected, reversible in direction, an
   }
   assert.throws(() => rasterLinePoints(0, 0, 1.5, 2), /must be integers/);
 });
+
+
+test('color replacement preserves alpha, respects selection, and is one-step undoable', () => {
+  const doc = new RasterDocument(3, 1);
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 1 });
+  doc.strokeTo(stroke, 0, 0); doc.strokeTo(stroke, 1, 0); doc.endStroke(stroke);
+  doc.activeLayer.pixels[3] = 128;
+  const mask = new Uint8Array([1, 0, 1]); doc.setSelectionMask(mask);
+  assert.equal(doc.replaceColor('#ff0000', '#00ff00'), 1);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [0, 255, 0, 128]);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(4, 8)], [255, 0, 0, 255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [255, 0, 0, 128]);
+  assert.equal(doc.replaceColor('#ffffff', '#000000'), 0);
+  assert.throws(() => doc.replaceColor('#ff0000', '#000000', -1), /tolerance/);
+  doc.setLayerLocked(doc.activeLayerId, true);
+  assert.throws(() => doc.replaceColor('#ff0000', '#000000'), /locked/);
+});
