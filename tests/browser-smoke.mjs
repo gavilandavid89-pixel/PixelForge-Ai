@@ -534,6 +534,10 @@ try {
   await mobile.locator('#layers-tab').click();
   assert.equal(await mobile.locator('.inspector').evaluate(element => element.classList.contains('show-layers')), true, 'mobile Layers tab should switch the compact inspector');
   assert.equal(await mobile.locator('#layers-tab').getAttribute('aria-selected'), 'true');
+  await mobile.locator('#ai-tab').click();
+  assert.equal(await mobile.locator('#ai-tab').getAttribute('aria-selected'), 'true', 'mobile AI tab should select the isolated workspace');
+  assert.equal(await mobile.locator('#ai-workspace-panel').isVisible(), true, 'mobile AI tab should reveal the sandbox preview');
+  assert.equal(await mobile.locator('.layer-section').isVisible(), false, 'mobile AI tab should hide unrelated panels');
   await mobile.locator('#properties-tab').click();
   assert.equal(await mobile.locator('.inspector').evaluate(element => element.classList.contains('show-layers')), false, 'mobile Properties tab should restore tool controls');
   const mobileCanvas = mobile.locator('#canvas');
