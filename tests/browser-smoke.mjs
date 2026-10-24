@@ -377,6 +377,24 @@ try {
   assert.equal(await desktop.locator('#layer-count').textContent(), '2 layers', 'IndexedDB recovery must preserve document layers');
   assert.ok(await desktop.locator('#user-palette .palette-item').count() >= 3, 'local palette colors should persist across page reloads');
 
+  // Freehand lasso selection records a polygon mask without changing artwork history.
+  const undoBeforeLassoSelection = await desktop.locator('#undo').isEnabled();
+  await desktop.locator('#lasso-select-tool').click();
+  assert.equal(await desktop.locator('#lasso-select-tool').evaluate(element => element.classList.contains('active')), true);
+  const lassoCanvasBox = await desktop.locator('#canvas').boundingBox();
+  assert.ok(lassoCanvasBox);
+  const lassoX = lassoCanvasBox.x + lassoCanvasBox.width / 2, lassoY = lassoCanvasBox.y + lassoCanvasBox.height / 2;
+  await desktop.mouse.move(lassoX - 24, lassoY - 18);
+  await desktop.mouse.down();
+  await desktop.mouse.move(lassoX + 24, lassoY - 18, { steps: 3 });
+  await desktop.mouse.move(lassoX + 10, lassoY + 22, { steps: 3 });
+  await desktop.mouse.move(lassoX - 24, lassoY - 18, { steps: 3 });
+  await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeLassoSelection, 'lasso selection must not add artwork history');
+
   // Elliptical marquee selection is a view-only selection operation and clears without touching pixels.
   const undoBeforeEllipseSelection = await desktop.locator('#undo').isEnabled();
   await desktop.locator('#ellipse-select-tool').click();
