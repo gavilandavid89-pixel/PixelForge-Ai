@@ -540,7 +540,9 @@ function setCursorMode(enabled) {
   cursorModeButton.classList.toggle('active', cursorMode);
   cursorModeButton.setAttribute('aria-pressed', String(cursorMode));
   canvas.dataset.cursorMode = String(cursorMode);
-  cursorGesturePointerId = null; cursorGestureLast = null;
+  cursorGesturePointerId = null; cursorGestureLast = null; cursorGestureOrigin = null;
+  cursorGestureStartedOnControl = false; cursorGestureControlTarget = null; cursorGestureSuppressClick = false;
+  if (!cursorMode) { virtualCursorPointerId = null; virtualCursorCanDraw = false; }
   updateDrawHoldUI();
   if (cursorMode) {
     virtualCursorScreen = { x: Math.max(0, Math.min(canvas.clientWidth, doc.width * zoom / 2 + panX)), y: Math.max(0, Math.min(canvas.clientHeight, doc.height * zoom / 2 + panY)) };
