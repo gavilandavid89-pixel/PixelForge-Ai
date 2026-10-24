@@ -66,3 +66,14 @@ test('AI tool selection and pixel transforms preserve structured bounds', () => 
 test('AI command session requires the isolated workspace controller', () => {
   assert.throws(() => new AICommandSession(new RasterDocument(4, 4)), /AIWorkspace/);
 });
+
+
+test('pending proposals freeze further AI mutations but still allow inspection', () => {
+  const workspace = new AIWorkspace(new RasterDocument(4, 4));
+  const session = new AICommandSession(workspace);
+  session.execute({ name: 'canvas.draw_line', x0: 0, y0: 0, x1: 0, y1: 0, color: '#ff0000' });
+  session.createProposal('First change');
+  assert.equal(session.execute({ name: 'document.get_summary' }).ok, true);
+  assert.equal(session.execute({ name: 'canvas.draw_line', x0: 1, y0: 1, x1: 1, y1: 1, color: '#00ff00' }).error.code, 'proposal_pending');
+  assert.equal(workspace.acceptProposal().reason, undefined);
+});
