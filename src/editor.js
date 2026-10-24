@@ -145,7 +145,19 @@ function renderAIWorkspacePreview() {
   if (preview.width !== sandbox.width || preview.height !== sandbox.height) {
     preview.width = sandbox.width; preview.height = sandbox.height;
   }
-  const pixels = sandbox.composite();
+  const mode = $('#ai-preview-mode').value;
+  let pixels;
+  if (mode === 'original') {
+    pixels = doc.composite();
+    $('#ai-diff-count').textContent = 'Choose Changes only to compare';
+  } else if (mode === 'changes') {
+    const diff = aiWorkspace.getVisualDiff();
+    pixels = diff.pixels;
+    $('#ai-diff-count').textContent = diff.changedPixels.toLocaleString() + ' changed pixels';
+  } else {
+    pixels = sandbox.composite();
+    $('#ai-diff-count').textContent = 'Choose Changes only to compare';
+  }
   const previewContext = preview.getContext('2d', { alpha: true });
   previewContext.clearRect(0, 0, preview.width, preview.height);
   previewContext.putImageData(new ImageData(new Uint8ClampedArray(pixels), sandbox.width, sandbox.height), 0, 0);
@@ -925,6 +937,7 @@ $('#ai-sync').addEventListener('click', () => {
   else status('A proposal is pending. Discard it before synchronizing.', 'warning');
   renderAIWorkspacePreview();
 });
+$('#ai-preview-mode').addEventListener('change', renderAIWorkspacePreview);
 $('#ai-refresh-preview').addEventListener('click', () => { renderAIWorkspacePreview(); status('AI canvas preview refreshed', 'success'); });
 $('#ai-discard-proposal').addEventListener('click', () => {
   if (!aiWorkspace.discardProposal()) { status('There is no proposal to discard', 'neutral'); return; }
