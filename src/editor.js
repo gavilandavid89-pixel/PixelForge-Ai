@@ -13,7 +13,7 @@ let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null, pixelClipboard = null;
-let shapeGesture = null, symmetryMode = 0;
+let shapeGesture = null, gradientGesture = null, symmetryMode = 0;
 let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorGestureOrigin = null, cursorGestureStartedOnControl = false, cursorGestureControlTarget = null, cursorGestureSuppressClick = false, cursorDrawPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
@@ -206,6 +206,16 @@ function render() {
       ctx.restore();
     }
     drawSymmetryGuides();
+    if (gradientGesture) {
+      const x1 = panX + (gradientGesture.x1 + .5) * zoom, y1 = panY + (gradientGesture.y1 + .5) * zoom;
+      const x2 = panX + (gradientGesture.x2 + .5) * zoom, y2 = panY + (gradientGesture.y2 + .5) * zoom;
+      ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.setLineDash([]); ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = backgroundColor; ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = color; ctx.stroke(); ctx.restore();
+    }
     if (shapeGesture) {
       const points = shapePoints(shapeGesture);
       if (points.length) {
@@ -492,6 +502,14 @@ function endStroke(event, commit = true) {
 canvas.addEventListener('pointerdown', event => {
   if (flushInProgress) { event.preventDefault(); return; }
   if (cursorMode) { event.preventDefault(); return; }
+  if (tool === 'gradient') {
+    if (event.button !== undefined && event.button !== 0) return;
+    if (doc.activeLayer?.locked) { status('The active layer is locked.', 'error'); event.preventDefault(); return; }
+    const point = docPoint(event); if (!point.inside) return;
+    gradientGesture = { x1: point.x, y1: point.y, x2: point.x, y2: point.y, pointerId: event.pointerId };
+    try { canvas.setPointerCapture?.(event.pointerId); } catch {}
+    render(); event.preventDefault(); return;
+  }
   if (['shape-line', 'shape-rect', 'shape-ellipse'].includes(tool)) {
     if (event.button !== undefined && event.button !== 0) return;
     if (doc.activeLayer?.locked) { status('The active layer is locked.', 'error'); event.preventDefault(); return; }
@@ -529,6 +547,12 @@ canvas.addEventListener('pointerdown', event => {
   beginStroke(event);
 });
 canvas.addEventListener('pointermove', event => {
+  if (gradientGesture && event.pointerId === gradientGesture.pointerId) {
+    const point = docPoint(event);
+    gradientGesture.x2 = Math.max(0, Math.min(doc.width - 1, point.x));
+    gradientGesture.y2 = Math.max(0, Math.min(doc.height - 1, point.y));
+    render(); return;
+  }
   if (shapeGesture && event.pointerId === shapeGesture.pointerId) {
     const point = docPoint(event);
     shapeGesture.x2 = Math.max(0, Math.min(doc.width - 1, point.x));
@@ -574,6 +598,17 @@ function finishCursorGesture(event) {
 window.addEventListener('pointerup', finishCursorGesture, true);
 window.addEventListener('pointercancel', finishCursorGesture, true);
 canvas.addEventListener('pointerup', event => {
+  if (gradientGesture && event.pointerId === gradientGesture.pointerId) {
+    const gesture = gradientGesture; gradientGesture = null;
+    try {
+      const count = doc.fillGradient(gesture.x1, gesture.y1, gesture.x2, gesture.y2, {
+        startColor: color, endColor: backgroundColor, opacity: Number($('#brush-opacity').value) / 100
+      });
+      if (count) { changed(); status(`Gradient applied to ${count.toLocaleString()} pixels`, 'success'); }
+      else status('Gradient made no changes', 'neutral');
+    } catch (error) { status(error.message, 'error'); }
+    render(); return;
+  }
   if (shapeGesture && event.pointerId === shapeGesture.pointerId) {
     const gesture = shapeGesture; shapeGesture = null;
     commitShapeGesture(gesture); render(); return;
@@ -587,6 +622,7 @@ canvas.addEventListener('pointerup', event => {
   endStroke(event, true);
 });
 canvas.addEventListener('pointercancel', event => {
+  if (gradientGesture && event.pointerId === gradientGesture.pointerId) { gradientGesture = null; render(); return; }
   if (shapeGesture && event.pointerId === shapeGesture.pointerId) { shapeGesture = null; render(); return; }
   if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; selection = null; syncSelectionMask(); render(); return; }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); }
@@ -597,6 +633,7 @@ canvas.addEventListener('pointercancel', event => {
   endStroke(event, false);
 });
 canvas.addEventListener('lostpointercapture', event => {
+  if (gradientGesture && event.pointerId === gradientGesture.pointerId) { gradientGesture = null; render(); return; }
   if (shapeGesture && event.pointerId === shapeGesture.pointerId) { shapeGesture = null; render(); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
@@ -687,6 +724,7 @@ $('#select-tool').addEventListener('click', () => setTool('select'));
 $('#line-tool').addEventListener('click', () => setTool('shape-line'));
 $('#rectangle-tool').addEventListener('click', () => setTool('shape-rect'));
 $('#ellipse-tool').addEventListener('click', () => setTool('shape-ellipse'));
+$('#gradient-tool').addEventListener('click', () => setTool('gradient'));
 $('#symmetry-mode').addEventListener('change', event => {
   symmetryMode = Number(event.target.value) || 0;
   $('#symmetry-mode').setAttribute('aria-label', symmetryMode ? `Symmetry: ${symmetryMode} parts` : 'Symmetry: off');
@@ -719,7 +757,7 @@ mobileInspector.addEventListener('change', () => setInspectorPanel('properties')
 function setTool(next) {
   if (cursorMode && !['draw', 'erase'].includes(next)) setCursorMode(false);
   if (activeStroke) finishActiveStroke(false);
-  shapeGesture = null;
+  shapeGesture = null; gradientGesture = null;
   if (next === 'eyedropper' && tool !== 'eyedropper') returnTool = ['draw', 'erase'].includes(tool) ? tool : 'draw';
   drawHeld = false; drawHoldPointerId = null;
   tool = next;
@@ -732,7 +770,8 @@ function setTool(next) {
   $('#line-tool').classList.toggle('active', tool === 'shape-line');
   $('#rectangle-tool').classList.toggle('active', tool === 'shape-rect');
   $('#ellipse-tool').classList.toggle('active', tool === 'shape-ellipse');
-  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse' })[tool] ?? 'Pencil';
+  $('#gradient-tool').classList.toggle('active', tool === 'gradient');
+  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse', gradient: 'Linear gradient' })[tool] ?? 'Pencil';
   $('#fill-settings').hidden = tool !== 'fill';
   $('#sample-settings').hidden = tool !== 'eyedropper';
   if (tool !== 'select') { selectionStart = null; selectionPointerId = null; }
@@ -1159,6 +1198,7 @@ window.addEventListener('keydown', event => {
   }
   else if (event.key === 'Escape') {
     if (shapeGesture) { shapeGesture = null; status('Shape preview cancelled', 'neutral'); }
+    if (gradientGesture) { gradientGesture = null; status('Gradient preview cancelled', 'neutral'); }
     if (selection) { selection = null; selectionStart = null; selectionPointerId = null; syncSelectionMask(); status('Selection cleared', 'neutral'); }
     if (activeStroke) finishActiveStroke(false);
     drawHeld = false; drawHoldPointerId = null;
