@@ -224,7 +224,7 @@ export class RasterDocument {
       if (this.selectionMask && !this.selectionMask[pixel]) return false;
       if (!matches(index)) return false;
       if (replacement.every((value, channel) => layer.pixels[index + channel] === value)) return false;
-      const pixel = Math.floor(index / 4), px = pixel % this.width, py = Math.floor(pixel / this.width);
+      const px = pixel % this.width, py = Math.floor(pixel / this.width);
       const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
       if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
       for (let channel = 0; channel < 4; channel++) layer.pixels[index + channel] = replacement[channel];
