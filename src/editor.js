@@ -443,7 +443,7 @@ function performSample(point) {
 function performFill(point) {
   if (!point?.inside || flushInProgress) return;
   try {
-    const count = doc.fillAt(point.x, point.y, { color, tolerance: fillTolerance, contiguous: fillContiguous });
+    const count = doc.fillAt(point.x, point.y, { color, tolerance: fillTolerance, contiguous: fillContiguous, pattern: $('#fill-pattern').value, secondaryColor: backgroundColor });
     if (count) { changed(); status(`Filled ${count.toLocaleString()} pixels`, 'success'); }
     else status('Fill made no changes', 'neutral');
   } catch (error) { status(error.message, 'error'); }
