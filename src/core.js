@@ -345,6 +345,46 @@ export class RasterDocument {
     }
     return this.pasteRect({ ...clipboard, pixels }, { x: clipboard.x, y: clipboard.y });
   }
+  fillGradient(x0, y0, x1, y1, { startColor = '#20202a', endColor = '#ffffff', opacity = 1 } = {}) {
+    if (![x0, y0, x1, y1].every(Number.isInteger) || x0 < 0 || y0 < 0 || x1 < 0 || y1 < 0 ||
+        x0 >= this.width || x1 >= this.width || y0 >= this.height || y1 >= this.height) {
+      throw new RangeError('Gradient endpoints must be integer document coordinates inside the canvas.');
+    }
+    if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new RangeError('Gradient opacity must be between 0 and 1.');
+    const layer = this.activeLayer;
+    if (layer.locked) throw new Error('The active layer is locked.');
+    if (opacity === 0) return 0;
+    const start = parseHexColor(startColor), end = parseHexColor(endColor);
+    const dx = x1 - x0, dy = y1 - y0, lengthSquared = dx * dx + dy * dy || 1;
+    const tilesBefore = new Map();
+    let changedPixels = 0;
+    for (let y = 0; y < this.height; y++) for (let x = 0; x < this.width; x++) {
+      const pixel = y * this.width + x;
+      if (this.selectionMask && !this.selectionMask[pixel]) continue;
+      const t = Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / lengthSquared));
+      const gradient = start.map((channel, index) => Math.round(channel + (end[index] - channel) * t));
+      const i = pixel * 4, destinationAlpha = layer.pixels[i + 3] / 255;
+      const outputAlpha = opacity + destinationAlpha * (1 - opacity);
+      const next = [
+        Math.round((gradient[0] * opacity + layer.pixels[i] * destinationAlpha * (1 - opacity)) / outputAlpha),
+        Math.round((gradient[1] * opacity + layer.pixels[i + 1] * destinationAlpha * (1 - opacity)) / outputAlpha),
+        Math.round((gradient[2] * opacity + layer.pixels[i + 2] * destinationAlpha * (1 - opacity)) / outputAlpha),
+        Math.round(outputAlpha * 255)
+      ];
+      if (next.every((value, channel) => value === layer.pixels[i + channel])) continue;
+      const tileX = Math.floor(x / TILE_SIZE), tileY = Math.floor(y / TILE_SIZE), key = `${tileX}:${tileY}`;
+      if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
+      layer.pixels.set(next, i); this.compositeDirtyTiles.add(key); changedPixels++;
+    }
+    if (changedPixels) {
+      const tiles = [...tilesBefore.entries()].map(([key, before]) => {
+        const [tileX, tileY] = key.split(':').map(Number);
+        return { tileX, tileY, before, after: this.#captureTile(layer, tileX, tileY) };
+      });
+      this.#record({ type: 'pixels', layerId: layer.id, tiles });
+    }
+    return changedPixels;
+  }
   replaceColor(sourceColor, targetColor, tolerance = 0) {
     if (!Number.isInteger(tolerance) || tolerance < 0 || tolerance > 255) throw new RangeError('Color replacement tolerance must be an integer from 0 to 255.');
     const source = parseHexColor(sourceColor), target = parseHexColor(targetColor), layer = this.activeLayer;
