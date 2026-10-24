@@ -69,7 +69,7 @@ test('coordinator rejects a stale source if the user edits while the provider is
   const session = new AICommandSession(workspace);
   const coordinator = new AIEditCoordinator({
     workspace, session,
-    provider: { generatePlan: async () => { paint(user, 7, 7, '#00ff00'); return { summary: 'Add red', actions: [{ name: 'canvas.draw_line', x0: 1, y0: 1, x1: 1, y1: 1, color: '#ff0000' }] }; },
+    provider: { generatePlan: async () => { paint(user, 7, 7, '#00ff00'); return { summary: 'Add red', actions: [{ name: 'canvas.draw_line', x0: 1, y0: 1, x1: 1, y1: 1, color: '#ff0000' }] }; } },
   });
   const result = await coordinator.requestEdit('Add red');
   assert.deepEqual(result, { status: 'rejected', reason: 'stale-source' });
