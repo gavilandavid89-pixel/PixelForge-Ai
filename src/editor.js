@@ -443,7 +443,7 @@ function performSample(point) {
 function performFill(point) {
   if (!point?.inside || flushInProgress) return;
   try {
-    const count = doc.fillAt(point.x, point.y, { color, tolerance: fillTolerance, contiguous: fillContiguous, pattern: $('#fill-pattern').value, secondaryColor: backgroundColor });
+    const count = doc.fillAt(point.x, point.y, { color, tolerance: fillTolerance, contiguous: fillContiguous, pattern: $('#fill-pattern').value, secondaryColor: backgroundColor, scale: Number($('#fill-scale').value) });
     if (count) { changed(); status(`Filled ${count.toLocaleString()} pixels`, 'success'); }
     else status('Fill made no changes', 'neutral');
   } catch (error) { status(error.message, 'error'); }
@@ -779,6 +779,7 @@ $('#replace-color').addEventListener('click', () => {
     else status('No matching opaque pixels on the active layer', 'neutral');
   } catch (error) { status(error.message, 'error'); }
 });
+$('#fill-scale').addEventListener('input', event => { $('#fill-scale-value').textContent = `${event.target.value} px`; });
 $('#brush-size').addEventListener('input', event => {
   brushSize = Number(event.target.value); $('#brush-size-value').textContent = `${brushSize} px`;
 });
