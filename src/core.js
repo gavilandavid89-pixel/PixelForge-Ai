@@ -132,6 +132,7 @@ function cloneLayer(layer) { return { ...layer, pixels: clonePixels(layer.pixels
 const TILE_SIZE = 64;
 function entryBytes(entry) {
   if (entry.type === 'pixels') return entry.tiles.reduce((sum, tile) => sum + tile.before.byteLength + tile.after.byteLength, 64);
+  if (entry.type === 'pixels-batch') return entry.layers.reduce((sum, layer) => sum + layer.tiles.reduce((tileSum, tile) => tileSum + tile.before.byteLength + tile.after.byteLength, 0), 64);
   if (entry.type === 'layer-add') return (entry.addedLayer?.pixels.byteLength ?? 0) + 128;
   if (entry.type === 'layer-delete') return (entry.removedLayer?.pixels.byteLength ?? 0) + 128;
   return 128;
@@ -501,6 +502,57 @@ export class RasterDocument {
       bounds: maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
     };
   }
+  replaceLayerPixelsBatch(replacements) {
+    if (!Array.isArray(replacements) || replacements.length < 1 || replacements.length > 64) {
+      throw new TypeError('Pixel replacement must contain between 1 and 64 layers.');
+    }
+    const seen = new Set();
+    const prepared = replacements.map(item => {
+      if (!item || typeof item.layerId !== 'string' || seen.has(item.layerId)) throw new TypeError('Each replacement must target a unique layer ID.');
+      seen.add(item.layerId);
+      const layer = this.layers.find(candidate => candidate.id === item.layerId);
+      if (!layer) throw new Error('Unknown layer ID.');
+      if (layer.locked) throw new Error(`Layer "${layer.name}" is locked.`);
+      if (!(item.pixels instanceof Uint8Array) || item.pixels.length !== this.width * this.height * 4) {
+        throw new TypeError('Replacement pixels must be a byte array matching the document dimensions.');
+      }
+      return { layer, pixels: item.pixels };
+    });
+
+    const changedLayers = [];
+    let changedPixels = 0;
+    for (const { layer, pixels } of prepared) {
+      const tiles = [];
+      for (let tileY = 0; tileY < Math.ceil(this.height / TILE_SIZE); tileY++) {
+        for (let tileX = 0; tileX < Math.ceil(this.width / TILE_SIZE); tileX++) {
+          const startX = tileX * TILE_SIZE, startY = tileY * TILE_SIZE;
+          const tileWidth = Math.min(TILE_SIZE, this.width - startX), tileHeight = Math.min(TILE_SIZE, this.height - startY);
+          let tileChangedPixels = 0;
+          for (let row = 0; row < tileHeight; row++) {
+            const start = ((startY + row) * this.width + startX) * 4;
+            for (let col = 0; col < tileWidth; col++) {
+              const offset = start + col * 4;
+              if (layer.pixels[offset] !== pixels[offset] || layer.pixels[offset + 1] !== pixels[offset + 1] ||
+                  layer.pixels[offset + 2] !== pixels[offset + 2] || layer.pixels[offset + 3] !== pixels[offset + 3]) tileChangedPixels++;
+            }
+          }
+          if (!tileChangedPixels) continue;
+          const before = this.#captureTile(layer, tileX, tileY);
+          for (let row = 0; row < tileHeight; row++) {
+            const start = ((startY + row) * this.width + startX) * 4;
+            layer.pixels.set(pixels.subarray(start, start + tileWidth * 4), start);
+          }
+          const after = this.#captureTile(layer, tileX, tileY);
+          tiles.push({ tileX, tileY, before, after });
+          this.compositeDirtyTiles.add(`${tileX}:${tileY}`);
+          changedPixels += tileChangedPixels;
+        }
+      }
+      if (tiles.length) changedLayers.push({ layerId: layer.id, tiles });
+    }
+    if (changedLayers.length) this.#record({ type: 'pixels-batch', layers: changedLayers });
+    return { changedPixels, changedLayers: changedLayers.length };
+  }
   flipRect(x, y, width, height, axis = 'horizontal') {
     if (!['horizontal', 'vertical'].includes(axis)) throw new TypeError('Flip axis must be horizontal or vertical.');
     const clipboard = this.copyRect(x, y, width, height);
@@ -821,7 +873,12 @@ export class RasterDocument {
     }
   }
   #applyEntry(entry, forward) {
-    if (entry.type === 'pixels') {
+    if (entry.type === 'pixels-batch') {
+      for (const change of entry.layers) {
+        const layer = this.layers.find(item => item.id === change.layerId);
+        if (layer) for (const tile of change.tiles) this.#writeTile(layer, tile.tileX, tile.tileY, forward ? tile.after : tile.before);
+      }
+    } else if (entry.type === 'pixels') {
       const layer = this.layers.find(item => item.id === entry.layerId);
       if (layer) for (const tile of entry.tiles) this.#writeTile(layer, tile.tileX, tile.tileY, forward ? tile.after : tile.before);
     } else if (entry.type === 'layer-move') {
