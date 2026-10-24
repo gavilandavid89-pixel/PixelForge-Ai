@@ -194,11 +194,11 @@ Do not expose controls for features that are not implemented. Animation, advance
 Next test milestone: expand browser coverage for image import, malformed files, pointer cancellation/focus loss, responsive resizing, storage failures and accessibility; then run a manual smoke test on a physical Android touch device.
 
 
-### Post-run bucket-fill extension — pending fresh verification
+### Post-run editor extensions — pending fresh verification
 
 - Added the connected/global bucket-fill command, color tolerance, transparent-pixel equivalence, active-layer lock checks and single-command tile-patch undo/redo.
 - Added seven Node regression tests across bucket fill, color sampling, layer-lock history/persistence and layer-stack reorder/composite history, plus headless-browser smoke scenarios for fill execution/undo, eyedropper sampling/return-to-tool, layer lock undo/redo, layer reordering and mobile inspector tab switching.
-- These additions are present in the current source, but the last confirmed CI record below is from before these changes. Five Node regression cases and two browser-smoke scenarios have been added since that baseline; do not count them as passed until a fresh CI run confirms them.
+- These additions are present in the current source, but the last confirmed CI record below is from before these changes. Seven Node regression cases and five browser-smoke scenarios have been added since that baseline; do not count them as passed until a fresh CI run confirms them.
 
 ### Browser smoke checks — GitHub Actions run #149
 
