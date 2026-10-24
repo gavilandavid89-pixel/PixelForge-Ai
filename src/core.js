@@ -119,6 +119,8 @@ export class RasterDocument {
     const seedOffset = (y * this.width + x) * 4;
     const seed = Array.from(layer.pixels.subarray(seedOffset, seedOffset + 4));
     const matches = index => {
+      // RGB values under zero alpha are invisible and must not split a transparent fill region.
+      if (seed[3] === 0 && layer.pixels[index + 3] === 0) return true;
       for (let channel = 0; channel < 4; channel++) {
         if (Math.abs(layer.pixels[index + channel] - seed[channel]) > tolerance) return false;
       }
