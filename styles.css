@@ -84,3 +84,15 @@
 /* Rectangular selection is an overlay; it never writes to artwork pixels. */
 #canvas[data-tool=select]{cursor:crosshair}
 @media(max-width:760px){#canvas[data-tool=select]{touch-action:none}}
+
+/* Center-origin brush-size gesture: direction chooses the change, distance controls its strength. */
+.brush-scrub{--scrub-offset:0%;display:grid;grid-template-columns:52px minmax(0,1fr) 52px;align-items:center;gap:8px;min-height:38px;padding:4px 8px;border:1px solid #343744;border-radius:9px;background:#1d1f29;cursor:ew-resize;touch-action:none;user-select:none;outline:none}
+.brush-scrub:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.scrub-direction{font-size:9px;color:#a4a9bb;white-space:nowrap}
+.scrub-thicker{text-align:right;color:#c5b8ff}.scrub-thinner{color:#9ca3b7}
+.scrub-track{position:relative;height:4px;border-radius:5px;background:linear-gradient(90deg,#9b8afb 0%,#555b70 50%,#69dfbb 100%)}
+.scrub-center{position:absolute;left:50%;top:50%;width:2px;height:15px;background:#f0efff;transform:translate(-50%,-50%);opacity:.9}
+.scrub-knob{position:absolute;left:calc(50% + var(--scrub-offset));top:50%;width:10px;height:10px;border:2px solid #f4f0ff;border-radius:50%;background:#7770bb;transform:translate(-50%,-50%);box-shadow:0 0 0 3px #a79aff22}
+.brush-scrub.is-dragging{border-color:#625a91;background:#242334}
+.brush-scrub.is-dragging .scrub-knob{background:#d4ccff;box-shadow:0 0 0 4px #a79aff33}
+@media(max-width:760px){.brush-scrub{grid-template-columns:48px minmax(0,1fr) 48px;min-height:44px;gap:6px}.scrub-direction{font-size:10px}}
