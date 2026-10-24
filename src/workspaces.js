@@ -36,6 +36,8 @@ export class AIWorkspace {
   #baseRevision;
   #layerBindings = [];
   #baseLayerState = [];
+  #sourceFutureLength = 0;
+  #sourceLastHistoryEntry = null;
   #proposal = null;
 
   constructor(sourceDocument) {
@@ -65,7 +67,7 @@ export class AIWorkspace {
       return { status: 'proposal-pending', stale: this.#source.revision !== this.#proposal.baseRevision };
     }
     this.#proposal = null;
-    this.#refreshSandbox();
+    this.#syncSandboxFromSource();
     return { status: 'synced', baseRevision: this.#baseRevision };
   }
 
@@ -85,7 +87,7 @@ export class AIWorkspace {
   discardProposal() {
     if (!this.#proposal) return false;
     this.#proposal = null;
-    this.#refreshSandbox();
+    this.#syncSandboxFromSource();
     return true;
   }
 
@@ -155,7 +157,7 @@ export class AIWorkspace {
         ? this.#source.replaceLayerPixelsBatch(replacements)
         : { changedPixels: 0, changedLayers: 0 };
       this.#proposal = null;
-      this.#refreshSandbox();
+      this.#syncSandboxFromSource();
       return { status: 'applied', changedPixels: result.changedPixels, changedLayers: result.changedLayers };
     } catch (error) {
       return { status: 'rejected', reason: 'apply-failed', message: error instanceof Error ? error.message : 'Could not apply proposal.' };
@@ -164,13 +166,106 @@ export class AIWorkspace {
 
   #refreshSandbox() {
     this.#sandbox = cloneRasterDocument(this.#source, { name: this.#source.name });
-    this.#baseRevision = this.#source.revision;
     this.#layerBindings = this.#source.layers.map((layer, index) => ({
       sourceId: layer.id,
       sandboxId: this.#sandbox.layers[index].id,
     }));
+    this.#rememberSourceState();
+  }
+
+  #rememberSourceState() {
+    this.#baseRevision = this.#source.revision;
     this.#baseLayerState = this.#source.layers.map(layer => ({
       name: layer.name, visible: layer.visible, opacity: layer.opacity, locked: layer.locked,
     }));
+    this.#sourceFutureLength = this.#source.future.length;
+    this.#sourceLastHistoryEntry = this.#source.history.at(-1) ?? null;
+  }
+
+  #resetSandboxHistory() {
+    this.#sandbox.history.length = 0;
+    this.#sandbox.future.length = 0;
+    this.#sandbox.historyBytes = 0;
+    this.#sandbox.revision = this.#source.revision;
+    this.#sandbox.saveVersion = this.#source.saveVersion;
+    this.#sandbox.dirty = false;
+    this.#sandbox.selectionMask = null;
+  }
+
+  #copyChangedTiles(changes) {
+    for (const change of changes) {
+      const sourceLayer = this.#source.layers.find(layer => layer.id === change.layerId);
+      const binding = this.#layerBindings.find(item => item.sourceId === change.layerId);
+      const sandboxLayer = binding && this.#sandbox.layers.find(layer => layer.id === binding.sandboxId);
+      if (!sourceLayer || !sandboxLayer) return false;
+      for (const tile of change.tiles) {
+        const startX = tile.tileX * 64, startY = tile.tileY * 64;
+        const width = Math.min(64, this.#source.width - startX), height = Math.min(64, this.#source.height - startY);
+        for (let row = 0; row < height; row++) {
+          const start = ((startY + row) * this.#source.width + startX) * 4;
+          sandboxLayer.pixels.set(sourceLayer.pixels.subarray(start, start + width * 4), start);
+        }
+        this.#sandbox.compositeDirtyTiles.add(tile.tileX + ':' + tile.tileY);
+      }
+    }
+    return true;
+  }
+
+  #syncSandboxFromSource() {
+    const bindingsMatch = this.#source.width === this.#sandbox.width &&
+      this.#source.height === this.#sandbox.height &&
+      this.#source.layers.length === this.#layerBindings.length &&
+      this.#layerBindings.every(binding =>
+        this.#source.layers.some(layer => layer.id === binding.sourceId) &&
+        this.#sandbox.layers.some(layer => layer.id === binding.sandboxId));
+    if (!bindingsMatch) {
+      this.#refreshSandbox();
+      return;
+    }
+
+    const lastEntry = this.#source.history.at(-1);
+    const incremental = this.#source.revision === this.#baseRevision + 1 &&
+      this.#source.future.length === 0 && this.#sourceFutureLength === 0 &&
+      lastEntry && lastEntry !== this.#sourceLastHistoryEntry &&
+      (lastEntry.type === 'pixels' || lastEntry.type === 'pixels-batch');
+    if (incremental) {
+      const changes = lastEntry.type === 'pixels'
+        ? [{ layerId: lastEntry.layerId, tiles: lastEntry.tiles }]
+        : lastEntry.layers;
+      if (this.#copyChangedTiles(changes)) {
+        const activeBinding = this.#layerBindings.find(item => item.sourceId === this.#source.activeLayerId);
+        if (!activeBinding) { this.#refreshSandbox(); return; }
+        this.#sandbox.activeLayerId = activeBinding.sandboxId;
+        this.#sandbox.name = this.#source.name;
+        this.#resetSandboxHistory();
+        this.#rememberSourceState();
+        return;
+      }
+    }
+
+    const sandboxLayers = new Map(this.#sandbox.layers.map(layer => [layer.id, layer]));
+    const nextLayers = [];
+    for (const sourceLayer of this.#source.layers) {
+      const binding = this.#layerBindings.find(item => item.sourceId === sourceLayer.id);
+      const sandboxLayer = binding && sandboxLayers.get(binding.sandboxId);
+      if (!sandboxLayer) { this.#refreshSandbox(); return; }
+      sandboxLayer.name = sourceLayer.name;
+      sandboxLayer.visible = sourceLayer.visible;
+      sandboxLayer.opacity = sourceLayer.opacity;
+      sandboxLayer.locked = sourceLayer.locked;
+      sandboxLayer.pixels.set(sourceLayer.pixels);
+      nextLayers.push(sandboxLayer);
+    }
+    const activeBinding = this.#layerBindings.find(item => item.sourceId === this.#source.activeLayerId);
+    if (!activeBinding) { this.#refreshSandbox(); return; }
+    this.#sandbox.layers = nextLayers;
+    this.#sandbox.activeLayerId = activeBinding.sandboxId;
+    this.#sandbox.name = this.#source.name;
+    this.#sandbox.compositeDirtyTiles.clear();
+    for (let y = 0; y < this.#source.height; y += 64) for (let x = 0; x < this.#source.width; x += 64) {
+      this.#sandbox.compositeDirtyTiles.add(Math.floor(x / 64) + ':' + Math.floor(y / 64));
+    }
+    this.#resetSandboxHistory();
+    this.#rememberSourceState();
   }
 }
