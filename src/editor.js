@@ -523,6 +523,7 @@ $('#layers-tab').addEventListener('click', () => {
 });
 mobileInspector.addEventListener('change', () => setInspectorPanel('properties'));
 function setTool(next) {
+  if (cursorMode && !['draw', 'erase'].includes(next)) setCursorMode(false);
   if (activeStroke) finishActiveStroke(false);
   shapeGesture = null;
   if (next === 'eyedropper' && tool !== 'eyedropper') returnTool = ['draw', 'erase'].includes(tool) ? tool : 'draw';
