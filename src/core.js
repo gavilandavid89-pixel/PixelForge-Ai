@@ -63,6 +63,17 @@ export class RasterDocument {
     if (!this.layers.some(layer => layer.id === id)) throw new Error('Unknown layer ID.');
     if (this.activeLayerId !== id) { this.activeLayerId = id; this.dirty = true; this.saveVersion++; }
   }
+  moveLayer(id, targetIndex) {
+    if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= this.layers.length) throw new RangeError('Layer target index is outside the layer stack.');
+    const beforeIndex = this.layers.findIndex(layer => layer.id === id);
+    if (beforeIndex < 0) throw new Error('Unknown layer ID.');
+    if (beforeIndex === targetIndex) return false;
+    const [layer] = this.layers.splice(beforeIndex, 1);
+    this.layers.splice(targetIndex, 0, layer);
+    this.#markAllCompositeDirty();
+    this.#record({ type: 'layer-move', layerId: id, beforeIndex, afterIndex: targetIndex });
+    return true;
+  }
   setLayerLocked(id, locked) {
     if (typeof locked !== 'boolean') throw new TypeError('Layer lock must be a boolean.');
     const layer = this.layers.find(item => item.id === id);
@@ -345,6 +356,14 @@ export class RasterDocument {
     if (entry.type === 'pixels') {
       const layer = this.layers.find(item => item.id === entry.layerId);
       if (layer) for (const tile of entry.tiles) this.#writeTile(layer, tile.tileX, tile.tileY, forward ? tile.after : tile.before);
+    } else if (entry.type === 'layer-move') {
+      const currentIndex = this.layers.findIndex(item => item.id === entry.layerId);
+      if (currentIndex >= 0) {
+        const [layer] = this.layers.splice(currentIndex, 1);
+        const targetIndex = forward ? entry.afterIndex : entry.beforeIndex;
+        this.layers.splice(Math.min(targetIndex, this.layers.length), 0, layer);
+        this.#markAllCompositeDirty();
+      }
     } else if (entry.type === 'layer-lock') {
       const layer = this.layers.find(item => item.id === entry.layerId);
       if (layer) layer.locked = forward ? entry.after : entry.before;
