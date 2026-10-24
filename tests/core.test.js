@@ -482,3 +482,58 @@ test('sprite outline fills only transparent neighbors, respects selection, and u
   assert.deepEqual([...doc.activeLayer.pixels.slice(4, 8)], [0, 255, 0, 255]);
   assert.throws(() => doc.createOutline('#fff', { diagonals: 'yes' }), /boolean/);
 });
+
+
+test('checker dither fill alternates foreground/background, respects scale and undoes atomically', () => {
+  const doc = new RasterDocument(4, 2);
+  const count = doc.fillAt(0, 0, { color: '#ff0000', secondaryColor: '#0000ff', contiguous: false, pattern: 'checker' });
+  assert.equal(count, 8);
+  const pixel = (x, y) => [...doc.activeLayer.pixels.slice((y * doc.width + x) * 4, (y * doc.width + x) * 4 + 4)];
+  assert.deepEqual(pixel(0, 0), [255, 0, 0, 255]);
+  assert.deepEqual(pixel(1, 0), [0, 0, 255, 255]);
+  assert.deepEqual(pixel(0, 1), [0, 0, 255, 255]);
+  assert.deepEqual(pixel(1, 1), [255, 0, 0, 255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual(pixel(0, 0), [0, 0, 0, 0]);
+  assert.equal(doc.fillAt(0, 0, { color: '#ff0000', secondaryColor: '#0000ff', contiguous: false, pattern: 'checker', scale: 2 }), 8);
+  assert.deepEqual(pixel(0, 0), [255, 0, 0, 255]);
+  assert.deepEqual(pixel(1, 0), [255, 0, 0, 255]);
+  assert.deepEqual(pixel(2, 0), [0, 0, 255, 255]);
+  assert.throws(() => doc.fillAt(0, 0, { pattern: 'noise' }), /pattern/);
+});
+
+
+test('brush opacity alpha-composites draw strokes and partially erases with atomic undo', () => {
+  const doc = new RasterDocument(1, 1);
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 1, opacity: 0.5 });
+  doc.strokeTo(stroke, 0, 0); assert.equal(doc.endStroke(stroke), true);
+  assert.deepEqual([...doc.activeLayer.pixels], [255, 0, 0, 128]);
+  stroke = doc.beginStroke({ color: '#0000ff', size: 1, opacity: 0.5 });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  assert.deepEqual([...doc.activeLayer.pixels], [85, 0, 170, 192]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual([...doc.activeLayer.pixels], [255, 0, 0, 128]);
+  stroke = doc.beginStroke({ size: 1, mode: 'erase', opacity: 0.5 });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  assert.deepEqual([...doc.activeLayer.pixels], [255, 0, 0, 64]);
+  assert.throws(() => doc.beginStroke({ opacity: 1.1 }), /opacity/);
+  stroke = doc.beginStroke({ opacity: 0 });
+  doc.strokeTo(stroke, 0, 0);
+  assert.equal(doc.endStroke(stroke), false, 'zero-opacity stroke should not create a history entry');
+});
+
+
+test('unchanged stroke pixels do not create empty undo entries', () => {
+  const doc = new RasterDocument(1, 1);
+  let stroke = doc.beginStroke({ mode: 'erase' });
+  doc.strokeTo(stroke, 0, 0);
+  assert.equal(doc.endStroke(stroke), false);
+  assert.equal(doc.history.length, 0);
+  stroke = doc.beginStroke({ color: '#ff0000' });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  assert.equal(doc.history.length, 1);
+  stroke = doc.beginStroke({ color: '#ff0000' });
+  doc.strokeTo(stroke, 0, 0);
+  assert.equal(doc.endStroke(stroke), false);
+  assert.equal(doc.history.length, 1);
+});

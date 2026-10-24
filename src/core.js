@@ -164,12 +164,13 @@ export class RasterDocument {
     this.#markAllCompositeDirty();
     this.#record({ type: 'layer-visibility', layerId: id, before, after: layer.visible });
   }
-  beginStroke({ color = '#20202a', size = 1, mode = 'draw' } = {}) {
+  beginStroke({ color = '#20202a', size = 1, mode = 'draw', opacity = 1 } = {}) {
     const layer = this.activeLayer;
     if (layer.locked) throw new Error('The active layer is locked.');
     if (!Number.isFinite(size) || size < 1 || size > 128) throw new RangeError('Brush size must be between 1 and 128 pixels.');
     if (!['draw', 'erase'].includes(mode)) throw new Error('Unsupported stroke mode.');
-    return { layerId: layer.id, tilesBefore: new Map(), color: parseHexColor(color), size: Math.round(size), mode, last: null, changed: false };
+    if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new RangeError('Stroke opacity must be between 0 and 1.');
+    return { layerId: layer.id, tilesBefore: new Map(), color: parseHexColor(color), size: Math.round(size), mode, opacity, last: null, changed: false };
   }
   strokeTo(stroke, x, y) {
     if (!Number.isInteger(x) || !Number.isInteger(y)) throw new TypeError('Stroke coordinates must be integer document coordinates.');
@@ -198,15 +199,17 @@ export class RasterDocument {
     this.#record({ type: 'pixels', layerId: layer.id, tiles });
     return true;
   }
-  fillAt(x, y, { color = '#20202a', tolerance = 0, contiguous = true } = {}) {
+  fillAt(x, y, { color = '#20202a', tolerance = 0, contiguous = true, pattern = 'solid', secondaryColor = '#ffffff', scale = 1 } = {}) {
     if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= this.width || y >= this.height) {
       throw new RangeError('Fill coordinates are outside the document bounds.');
     }
     if (typeof contiguous !== 'boolean') throw new TypeError('Fill mode must be contiguous or global.');
+    if (!['solid', 'checker'].includes(pattern)) throw new TypeError('Fill pattern must be solid or checker.');
+    if (!Number.isInteger(scale) || scale < 1 || scale > 16) throw new RangeError('Dither scale must be an integer from 1 to 16.');
     if (!Number.isInteger(tolerance) || tolerance < 0 || tolerance > 255) throw new RangeError('Fill tolerance must be an integer from 0 to 255.');
     const layer = this.activeLayer;
     if (layer.locked) throw new Error('The active layer is locked.');
-    const replacement = [...parseHexColor(color), 255];
+    const replacement = [...parseHexColor(color), 255], secondary = [...parseHexColor(secondaryColor), 255];
     const seedOffset = (y * this.width + x) * 4;
     const seed = Array.from(layer.pixels.subarray(seedOffset, seedOffset + 4));
     const matches = index => {
@@ -217,17 +220,18 @@ export class RasterDocument {
       }
       return true;
     };
-    if (tolerance === 0 && seed.every((value, channel) => value === replacement[channel])) return 0;
+    if (pattern === 'solid' && tolerance === 0 && seed.every((value, channel) => value === replacement[channel])) return 0;
     const tilesBefore = new Map();
     const paint = index => {
       const pixel = index / 4;
       if (this.selectionMask && !this.selectionMask[pixel]) return false;
       if (!matches(index)) return false;
-      if (replacement.every((value, channel) => layer.pixels[index + channel] === value)) return false;
       const px = pixel % this.width, py = Math.floor(pixel / this.width);
+      const pixelReplacement = pattern === 'checker' && (Math.floor(px / scale) + Math.floor(py / scale)) % 2 === 1 ? secondary : replacement;
+      if (pixelReplacement.every((value, channel) => layer.pixels[index + channel] === value)) return false;
       const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
       if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
-      for (let channel = 0; channel < 4; channel++) layer.pixels[index + channel] = replacement[channel];
+      for (let channel = 0; channel < 4; channel++) layer.pixels[index + channel] = pixelReplacement[channel];
       this.compositeDirtyTiles.add(key);
       return true;
     };
@@ -522,12 +526,25 @@ export class RasterDocument {
     for (let py = minY; py <= maxY; py++) for (let px = minX; px <= maxX; px++) {
       const pixelIndex = py * this.width + px;
       if (this.selectionMask && !this.selectionMask[pixelIndex]) continue;
+      if (stroke.opacity <= 0) continue;
+      const i = pixelIndex * 4, next = [layer.pixels[i], layer.pixels[i + 1], layer.pixels[i + 2], layer.pixels[i + 3]];
+      if (stroke.mode === 'erase') {
+        next[3] = Math.round(next[3] * (1 - stroke.opacity));
+        if (next[3] === 0) next[0] = next[1] = next[2] = 0;
+      } else {
+        const destinationAlpha = next[3] / 255, sourceAlpha = stroke.opacity;
+        const outputAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha);
+        if (outputAlpha <= 0) continue;
+        next[0] = Math.round((stroke.color[0] * sourceAlpha + next[0] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
+        next[1] = Math.round((stroke.color[1] * sourceAlpha + next[1] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
+        next[2] = Math.round((stroke.color[2] * sourceAlpha + next[2] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
+        next[3] = Math.round(outputAlpha * 255);
+      }
+      if (next.every((value, channel) => value === layer.pixels[i + channel])) continue;
       const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
       if (!stroke.tilesBefore.has(key)) stroke.tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
-      const i = pixelIndex * 4;
+      layer.pixels.set(next, i);
       this.compositeDirtyTiles.add(key);
-      if (stroke.mode === 'erase') layer.pixels[i + 3] = 0;
-      else { layer.pixels[i] = stroke.color[0]; layer.pixels[i + 1] = stroke.color[1]; layer.pixels[i + 2] = stroke.color[2]; layer.pixels[i + 3] = 255; }
     }
   }
   #record(entry) {

@@ -79,9 +79,8 @@ $('#palette-export').addEventListener('click', () => {
     const rgb = value.slice(1).match(/../g).map(part => parseInt(part, 16));
     lines.push(`${rgb[0]} ${rgb[1]} ${rgb[2]} ${value}`);
   }
-  const url = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' }));
-  const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'pixelforge-palette.gpl'; anchor.click();
-  URL.revokeObjectURL(url); status('Palette exported as GPL', 'success');
+  downloadBlob(new Blob([lines.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' }), 'pixelforge-palette.gpl');
+  status('Palette exported as GPL', 'success');
 });
 renderUserPalette();
 
@@ -350,7 +349,7 @@ function commitShapeGesture(gesture) {
   try {
     const points = shapePoints(gesture);
     if (!points.length) return;
-    const stroke = doc.beginStroke({ color, size: brushSize, mode: 'draw' });
+    const stroke = doc.beginStroke({ color, size: brushSize, mode: 'draw', opacity: Number($('#brush-opacity').value) / 100 });
     stroke.symmetryMode = symmetryMode;
     for (const point of points) strokeToWithSymmetry(stroke, point.x, point.y);
     doc.endStroke(stroke, { commit: true });
@@ -420,7 +419,7 @@ function changed() { render(); updateTitle(); scheduleAutosave(); }
 function startStrokeAt(point, id) {
   if (!point?.inside || activeStroke) return;
   try {
-    activeStroke = doc.beginStroke({ color, size: brushSize, mode: tool });
+    activeStroke = doc.beginStroke({ color, size: brushSize, mode: tool, opacity: Number($('#brush-opacity').value) / 100 });
     activeStroke.symmetryMode = symmetryMode;
     pointerId = id;
     strokeToWithSymmetry(activeStroke, point.x, point.y);
@@ -443,7 +442,7 @@ function performSample(point) {
 function performFill(point) {
   if (!point?.inside || flushInProgress) return;
   try {
-    const count = doc.fillAt(point.x, point.y, { color, tolerance: fillTolerance, contiguous: fillContiguous });
+    const count = doc.fillAt(point.x, point.y, { color, tolerance: fillTolerance, contiguous: fillContiguous, pattern: $('#fill-pattern').value, secondaryColor: backgroundColor, scale: Number($('#fill-scale').value) });
     if (count) { changed(); status(`Filled ${count.toLocaleString()} pixels`, 'success'); }
     else status('Fill made no changes', 'neutral');
   } catch (error) { status(error.message, 'error'); }
@@ -779,6 +778,8 @@ $('#replace-color').addEventListener('click', () => {
     else status('No matching opaque pixels on the active layer', 'neutral');
   } catch (error) { status(error.message, 'error'); }
 });
+$('#fill-scale').addEventListener('input', event => { $('#fill-scale-value').textContent = `${event.target.value} px`; });
+$('#brush-opacity').addEventListener('input', event => { $('#brush-opacity-value').textContent = `${event.target.value}%`; });
 $('#brush-size').addEventListener('input', event => {
   brushSize = Number(event.target.value); $('#brush-size-value').textContent = `${brushSize} px`;
 });
@@ -1081,6 +1082,12 @@ window.addEventListener('keydown', event => {
   }
   if (textEntry) return;
   if (nativeControl && !modifiedShortcut && event.key !== 'Escape' && !((event.key === 'Delete' || event.key === 'Backspace') && selection)) return;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+    event.preventDefault();
+    selection = { x: 0, y: 0, width: doc.width, height: doc.height };
+    selectionStart = null; selectionPointerId = null; syncSelectionMask();
+    status('Selected entire canvas', 'success'); render(); return;
+  }
   if ((event.ctrlKey || event.metaKey) && ['c', 'x', 'v'].includes(event.key.toLowerCase())) {
     event.preventDefault();
     try {

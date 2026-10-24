@@ -190,10 +190,15 @@ try {
   });
   await desktop.locator('#fill-tool').click();
   assert.equal(await desktop.locator('#fill-settings').isVisible(), true, 'fill settings should follow the selected tool');
+  await desktop.locator('#fill-pattern').selectOption('checker');
+  await desktop.locator('#fill-scale').evaluate(element => { element.value = '2'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  assert.equal(await desktop.locator('#fill-scale-value').textContent(), '2 px', 'dither scale should update from its slider');
   await desktop.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await desktop.waitForFunction(() => /Filled [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.equal(await desktop.locator('#undo').isEnabled(), true, 'a fill must create one undoable edit');
   await desktop.locator('#undo').click();
+  await desktop.locator('#fill-pattern').selectOption('solid');
+  await desktop.locator('#fill-scale').evaluate(element => { element.value = '1'; element.dispatchEvent(new Event('input', { bubbles: true })); });
   await desktop.locator('#eyedropper-tool').click();
   assert.equal(await desktop.locator('#sample-settings').isVisible(), true, 'eyedropper source settings should follow the selected tool');
   await desktop.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
@@ -203,6 +208,9 @@ try {
     element.value = '#DCE2F0';
     element.dispatchEvent(new Event('input', { bubbles: true }));
   });
+  await desktop.locator('#brush-opacity').evaluate(element => { element.value = '50'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  assert.equal(await desktop.locator('#brush-opacity-value').textContent(), '50%', 'brush opacity slider should update its displayed value');
+  await desktop.locator('#brush-opacity').evaluate(element => { element.value = '100'; element.dispatchEvent(new Event('input', { bubbles: true })); });
   // Foreground/background swap and recent colors are real controls, not decorative UI.
   const foregroundBeforeSwap = (await desktop.locator('#color').inputValue()).toUpperCase();
   const backgroundBeforeSwap = await desktop.locator('#background-swatch').evaluate(element => getComputedStyle(element).backgroundColor);
@@ -367,6 +375,7 @@ try {
   await desktop.reload({ waitUntil: 'networkidle' });
   await desktop.waitForFunction(() => /Recovered latest local project/.test(document.querySelector('#status')?.textContent ?? ''), null, { timeout: 5000 });
   assert.equal(await desktop.locator('#layer-count').textContent(), '2 layers', 'IndexedDB recovery must preserve document layers');
+  assert.ok(await desktop.locator('#user-palette .palette-item').count() >= 3, 'local palette colors should persist across page reloads');
 
   // Rectangular marquee selection must work with a mouse and clear cleanly on Escape.
   const undoBeforeSelection = await desktop.locator('#undo').isEnabled();
@@ -409,6 +418,13 @@ try {
   await desktop.waitForFunction(() => /Pasted [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.equal(await settledCanvasData(), beforeClipboardRoundTrip, 'cut then paste at the selection origin must restore exact canvas pixels');
   await desktop.keyboard.press('Escape');
+
+  const undoBeforeSelectAll = await desktop.locator('#undo').isEnabled();
+  await desktop.keyboard.press('Control+a');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selected entire canvas');
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeSelectAll, 'select-all must only change the selection mask, not artwork history');
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
 
   // Use an isolated context so desktop autosaved state cannot leak into the mobile smoke tests.
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
