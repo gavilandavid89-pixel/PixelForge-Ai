@@ -8,7 +8,7 @@ const workArea = $('#work-area');
 const previewCanvas = document.createElement('canvas'), previewCtx = previewCanvas.getContext('2d', { alpha: true });
 let doc = new RasterDocument(128, 128), tool = 'draw', spaceDown = false;
 let color = $('#color').value, brushSize = Number($('#brush-size').value);
-let fillTolerance = 0, fillContiguous = true;
+let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 'draw';
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null;
 let drawHeld = false, drawHoldPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false;
@@ -159,6 +159,20 @@ function startStrokeAt(point, id) {
     render();
   } catch (error) { status(error.message, 'error'); }
 }
+function performSample(point) {
+  if (!point?.inside) return;
+  try {
+    const sampled = doc.sampleColorAt(point.x, point.y, { merged: sampleMerged });
+    if (!sampled) status('No visible color at this pixel', 'neutral');
+    else {
+      color = sampled;
+      $('#color').value = sampled;
+      $('#color-value').textContent = sampled;
+      status(`Sampled ${sampled}`, 'success');
+    }
+    setTool(returnTool);
+  } catch (error) { status(error.message, 'error'); }
+}
 function performFill(point) {
   if (!point?.inside || flushInProgress) return;
   try {
@@ -204,6 +218,7 @@ function endStroke(event, commit = true) {
 }
 canvas.addEventListener('pointerdown', event => {
   if (flushInProgress) { event.preventDefault(); return; }
+  if (tool === 'eyedropper') { if (event.button === undefined || event.button === 0) performSample(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'fill') { if (event.button === undefined || event.button === 0) performFill(docPoint(event)); event.preventDefault(); return; }
   if (tool === 'pan' || event.button === 1 || spaceDown) {
     panning = true;
@@ -298,19 +313,24 @@ $('#brush-tool').addEventListener('click', () => setTool('draw'));
 $('#eraser-tool').addEventListener('click', () => setTool('erase'));
 $('#pan-tool').addEventListener('click', () => setTool('pan'));
 $('#fill-tool').addEventListener('click', () => setTool('fill'));
+$('#eyedropper-tool').addEventListener('click', () => setTool('eyedropper'));
+$('#sample-source').addEventListener('change', event => { sampleMerged = event.target.value === 'merged'; });
 $('#fill-tolerance').addEventListener('input', event => { fillTolerance = Number(event.target.value); $('#fill-tolerance-value').textContent = `${fillTolerance}`; });
 $('#fill-mode').addEventListener('change', event => { fillContiguous = event.target.value === 'contiguous'; });
 $('#layers-tab').addEventListener('click', () => $('#layers').scrollIntoView({ behavior: 'smooth', block: 'center' }));
 function setTool(next) {
   if (activeStroke) finishActiveStroke(false);
+  if (next === 'eyedropper' && tool !== 'eyedropper') returnTool = ['draw', 'erase', 'fill'].includes(tool) ? tool : 'draw';
   drawHeld = false; drawHoldPointerId = null;
   tool = next;
   $('#brush-tool').classList.toggle('active', tool === 'draw');
   $('#eraser-tool').classList.toggle('active', tool === 'erase');
   $('#pan-tool').classList.toggle('active', tool === 'pan');
   $('#fill-tool').classList.toggle('active', tool === 'fill');
-  $('#tool-label').textContent = tool === 'draw' ? 'Pencil' : tool === 'erase' ? 'Eraser' : tool === 'fill' ? 'Bucket fill' : 'Pan';
+  $('#eyedropper-tool').classList.toggle('active', tool === 'eyedropper');
+  $('#tool-label').textContent = tool === 'draw' ? 'Pencil' : tool === 'erase' ? 'Eraser' : tool === 'fill' ? 'Bucket fill' : tool === 'eyedropper' ? 'Eyedropper' : 'Pan';
   $('#fill-settings').hidden = tool !== 'fill';
+  $('#sample-settings').hidden = tool !== 'eyedropper';
   canvas.dataset.tool = tool;
   updateDrawHoldUI();
 }
@@ -476,6 +496,7 @@ window.addEventListener('keydown', event => {
   } else if (event.key.toLowerCase() === 'b') setTool('draw');
   else if (event.key.toLowerCase() === 'e') setTool('erase');
   else if (event.key.toLowerCase() === 'g') setTool('fill');
+  else if (event.key.toLowerCase() === 'i') setTool('eyedropper');
   else if (event.key === 'Escape') {
     if (activeStroke) finishActiveStroke(false);
     drawHeld = false; drawHoldPointerId = null;
