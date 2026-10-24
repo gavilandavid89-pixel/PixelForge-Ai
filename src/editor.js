@@ -911,6 +911,7 @@ const mobileInspector = window.matchMedia('(max-width: 760px)');
 function setInspectorPanel(panel) {
   const inspector = document.querySelector('.inspector');
   inspector.dataset.panel = panel;
+  inspector.classList.toggle('show-layers', panel === 'layers' && mobileInspector.matches);
   if (mobileInspector.matches) inspector.scrollTop = 0;
   const panels = { properties: '#properties-tab', layers: '#layers-tab', ai: '#ai-tab' };
   for (const [name, selector] of Object.entries(panels)) {
@@ -956,6 +957,7 @@ $('#ai-accept-proposal').addEventListener('click', () => {
   status('Proposal accepted · ' + result.changedPixels.toLocaleString() + ' pixels changed in ' + result.changedLayers + ' layer(s)', 'success');
 });
 mobileInspector.addEventListener('change', () => setInspectorPanel('properties'));
+setInspectorPanel('properties');
 function setTool(next) {
   if (cursorMode && !['draw', 'erase'].includes(next)) setCursorMode(false);
   if (activeStroke) finishActiveStroke(false);
