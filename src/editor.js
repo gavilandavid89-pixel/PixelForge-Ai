@@ -10,6 +10,7 @@ const $ = selector => document.querySelector(selector);
 const canvas = $('#canvas'), ctx = canvas.getContext('2d', { alpha: true });
 const workArea = $('#work-area');
 const previewCanvas = document.createElement('canvas'), previewCtx = previewCanvas.getContext('2d', { alpha: true });
+const transformPreviewCanvas = document.createElement('canvas'), transformPreviewCtx = transformPreviewCanvas.getContext('2d', { alpha: true });
 let doc = new RasterDocument(128, 128), aiWorkspace = new AIWorkspace(doc), tool = 'draw', spaceDown = false;
 let aiCommandSession = new AICommandSession(aiWorkspace), aiProvider = null, aiCoordinator = null, activeAIRequestController = null;
 let aiPanelVisible = false;
@@ -18,6 +19,7 @@ let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null, pixelClipboard = null;
+let transformPreview = null, cropPreview = null;
 let shapeGesture = null, gradientGesture = null, symmetryMode = 0;
 let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorGestureOrigin = null, cursorGestureStartedOnControl = false, cursorGestureControlTarget = null, cursorGestureSuppressClick = false, cursorDrawPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
@@ -261,6 +263,15 @@ function render() {
     ctx.fillStyle = '#20232d';
     ctx.fillRect(panX - 1, panY - 1, doc.width * zoom + 2, doc.height * zoom + 2);
     ctx.drawImage(previewCanvas, panX, panY, doc.width * zoom, doc.height * zoom);
+    if (transformPreview && transformPreview.docWidth === doc.width && transformPreview.docHeight === doc.height) {
+      ctx.save(); ctx.globalAlpha = .78; ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(transformPreviewCanvas, panX, panY, doc.width * zoom, doc.height * zoom); ctx.restore();
+      if (transformPreview.bounds) {
+        ctx.save(); ctx.strokeStyle = '#69dfbb'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 3]);
+        ctx.strokeRect(panX + transformPreview.bounds.x * zoom, panY + transformPreview.bounds.y * zoom,
+          transformPreview.bounds.width * zoom, transformPreview.bounds.height * zoom); ctx.restore();
+      }
+    }
     ctx.strokeStyle = '#555b6c'; ctx.lineWidth = 1;
     ctx.strokeRect(Math.round(panX) + .5, Math.round(panY) + .5, Math.round(doc.width * zoom), Math.round(doc.height * zoom));
     // View-only pixel grid: clipped to the visible canvas region and never part of document pixels/exports.
@@ -288,6 +299,17 @@ function render() {
       }
       ctx.stroke();
       ctx.restore();
+    }
+    if (cropPreview && cropPreview.docWidth === doc.width && cropPreview.docHeight === doc.height) {
+      const left = panX + cropPreview.x * zoom, top = panY + cropPreview.y * zoom;
+      const right = left + cropPreview.width * zoom, bottom = top + cropPreview.height * zoom;
+      ctx.save(); ctx.fillStyle = 'rgba(8, 9, 14, .62)';
+      ctx.fillRect(panX, panY, doc.width * zoom, Math.max(0, top - panY));
+      ctx.fillRect(panX, bottom, doc.width * zoom, Math.max(0, panY + doc.height * zoom - bottom));
+      ctx.fillRect(panX, top, Math.max(0, left - panX), cropPreview.height * zoom);
+      ctx.fillRect(right, top, Math.max(0, panX + doc.width * zoom - right), cropPreview.height * zoom);
+      ctx.strokeStyle = '#69dfbb'; ctx.lineWidth = 2; ctx.setLineDash([6, 3]);
+      ctx.strokeRect(left, top, cropPreview.width * zoom, cropPreview.height * zoom); ctx.restore();
     }
     drawSymmetryGuides();
     if (gradientGesture) {
@@ -532,7 +554,7 @@ async function flushAutosave({ force = false } = {}) {
   try { await flushPromise; }
   finally { flushPromise = null; }
 }
-function changed() { syncAIWorkspaceFromUser(); render(); updateTitle(); scheduleAutosave(); }
+function changed() { clearTransformPreview(); clearCropPreview(); syncAIWorkspaceFromUser(); render(); updateTitle(); scheduleAutosave(); }
 function startStrokeAt(point, id) {
   if (!point?.inside || activeStroke) return;
   try {
@@ -887,6 +909,110 @@ function modifyCurrentSelection(operation) {
 $('#selection-invert').addEventListener('click', () => modifyCurrentSelection('invert'));
 $('#selection-expand').addEventListener('click', () => modifyCurrentSelection('expand'));
 $('#selection-contract').addEventListener('click', () => modifyCurrentSelection('contract'));
+
+function clearTransformPreview() {
+  transformPreview = null;
+  $('#transform-apply').disabled = true;
+  $('#transform-cancel').disabled = true;
+  transformPreviewCanvas.width = 0; transformPreviewCanvas.height = 0;
+}
+function clearCropPreview() {
+  cropPreview = null;
+  $('#crop-apply').disabled = true;
+  $('#crop-cancel').disabled = true;
+}
+function sameMask(a, b) {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+function readTransformOptions() {
+  const scaleX = Number($('#transform-scale-x').value) / 100;
+  const scaleY = Number($('#transform-scale-y').value) / 100;
+  const skewX = Number($('#transform-skew-x').value) / 100;
+  const skewY = Number($('#transform-skew-y').value) / 100;
+  if (![scaleX, scaleY, skewX, skewY].every(Number.isFinite) || scaleX < .1 || scaleX > 8 || scaleY < .1 || scaleY > 8 || Math.abs(skewX) > 4 || Math.abs(skewY) > 4) {
+    throw new RangeError('Scale must be 10–800%; skew must be -400–400%.');
+  }
+  return { scaleX, scaleY, skewX, skewY, interpolation: $('#transform-interpolation').value };
+}
+function requireSelection() {
+  if (!selection || !doc.selectionMask) throw new Error('Create a selection first.');
+  if (!selection.width || !selection.height) throw new Error('Selection bounds are empty.');
+}
+$('#transform-preview').addEventListener('click', () => {
+  try {
+    requireSelection();
+    const options = readTransformOptions();
+    const args = { x: selection.x, y: selection.y, width: selection.width, height: selection.height, options };
+    const result = doc.previewTransformRect(args.x, args.y, args.width, args.height, options);
+    if (!result.selectedPixels || !result.bounds) throw new Error('The transform contains no selected pixels inside the canvas.');
+    transformPreviewCanvas.width = doc.width; transformPreviewCanvas.height = doc.height;
+    transformPreviewCtx.clearRect(0, 0, doc.width, doc.height);
+    transformPreviewCtx.putImageData(new ImageData(new Uint8ClampedArray(result.pixels), doc.width, doc.height), 0, 0);
+    transformPreview = { ...args, result, docWidth: doc.width, docHeight: doc.height, revision: doc.revision, layerId: doc.activeLayerId, mask: new Uint8Array(doc.selectionMask) };
+    clearCropPreview();
+    $('#transform-apply').disabled = false; $('#transform-cancel').disabled = false;
+    status(`Transform preview · ${result.selectedPixels.toLocaleString()} pixels · source remains unchanged`, 'success');
+    render();
+  } catch (error) { status(error.message, 'error'); }
+});
+$('#transform-apply').addEventListener('click', () => {
+  if (!transformPreview) return;
+  const pending = transformPreview;
+  if (pending.docWidth !== doc.width || pending.docHeight !== doc.height || pending.revision !== doc.revision ||
+      pending.layerId !== doc.activeLayerId || !sameMask(pending.mask, doc.selectionMask)) {
+    clearTransformPreview(); render(); status('Preview became stale; create a new preview before applying', 'warning'); return;
+  }
+  try {
+    const result = doc.transformRect(pending.x, pending.y, pending.width, pending.height, pending.options);
+    selection = result.bounds ? { ...result.bounds, shape: 'mask', customMask: result.selectionMask } : null;
+    clearTransformPreview(); clearCropPreview(); syncSelectionMask(); changed();
+    status(`Transform applied · ${result.changedPixels.toLocaleString()} pixels changed · one undo step`, 'success');
+  } catch (error) { status(error.message, 'error'); }
+});
+$('#transform-cancel').addEventListener('click', () => { clearTransformPreview(); render(); status('Transform preview cancelled; artwork unchanged', 'neutral'); });
+for (const id of ['transform-scale-x','transform-scale-y','transform-skew-x','transform-skew-y','transform-interpolation']) {
+  $(`#${id}`).addEventListener('input', () => {
+    if (transformPreview) { clearTransformPreview(); render(); status('Transform settings changed; preview again to review them', 'neutral'); }
+  });
+}
+$('#crop-preview').addEventListener('click', () => {
+  try {
+    requireSelection();
+    if (selection.x < 0 || selection.y < 0 || selection.x + selection.width > doc.width || selection.y + selection.height > doc.height) {
+      throw new RangeError('Crop selection must be fully inside the canvas.');
+    }
+    clearTransformPreview();
+    cropPreview = { x: selection.x, y: selection.y, width: selection.width, height: selection.height,
+      docWidth: doc.width, docHeight: doc.height, revision: doc.revision, layerId: doc.activeLayerId, mask: new Uint8Array(doc.selectionMask) };
+    $('#crop-apply').disabled = false; $('#crop-cancel').disabled = false;
+    status(`Crop preview · canvas will become ${cropPreview.width} × ${cropPreview.height} px · no pixels changed yet`, 'success');
+    render();
+  } catch (error) { status(error.message, 'error'); }
+});
+$('#crop-apply').addEventListener('click', () => {
+  if (!cropPreview) return;
+  const pending = cropPreview;
+  if (pending.docWidth !== doc.width || pending.docHeight !== doc.height || pending.revision !== doc.revision ||
+      pending.layerId !== doc.activeLayerId || !sameMask(pending.mask, doc.selectionMask)) {
+    clearCropPreview(); render(); status('Crop preview became stale; preview again before applying', 'warning'); return;
+  }
+  try {
+    const didCrop = doc.cropCanvas(pending.x, pending.y, pending.width, pending.height);
+    clearTransformPreview(); clearCropPreview(); selection = null; selectionStart = null; selectionPointerId = null;
+    syncSelectionMask(); fitCanvas(); resetAIWorkspaceForDocument(); render(); updateTitle(); scheduleAutosave();
+    status(didCrop ? `Canvas cropped to ${doc.width} × ${doc.height} px · undo restores every layer` : 'Crop matches the current canvas; no change made', didCrop ? 'success' : 'neutral');
+  } catch (error) { status(error.message, 'error'); }
+});
+$('#crop-cancel').addEventListener('click', () => { clearCropPreview(); render(); status('Crop preview cancelled; canvas unchanged', 'neutral'); });
+canvas.addEventListener('pointerdown', event => {
+  if (!transformPreview && !cropPreview) return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  status('Finish or cancel the active preview before editing the canvas', 'warning');
+}, true);
+
 const selectionTransformActions = document.createElement('div');
 selectionTransformActions.className = 'transform-actions selection-transform-actions';
 selectionTransformActions.setAttribute('aria-label', 'Move or rotate selected pixels');
