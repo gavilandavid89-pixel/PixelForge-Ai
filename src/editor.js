@@ -683,6 +683,16 @@ document.addEventListener('keydown', event => {
     event.preventDefault(); $('#swap-colors').click();
   }
 });
+function flipPixels(axis) {
+  try {
+    const rect = selection ?? { x: 0, y: 0, width: doc.width, height: doc.height };
+    const count = doc.flipRect(rect.x, rect.y, rect.width, rect.height, axis);
+    if (count) { changed(); status(`Flipped ${count.toLocaleString()} pixels ${axis === 'horizontal' ? 'horizontally' : 'vertically'}`, 'success'); }
+    else status('Flip made no changes', 'neutral');
+  } catch (error) { status(error.message, 'error'); }
+}
+$('#flip-horizontal').addEventListener('click', () => flipPixels('horizontal'));
+$('#flip-vertical').addEventListener('click', () => flipPixels('vertical'));
 $('#replace-color').addEventListener('click', () => {
   try {
     const count = doc.replaceColor($('#replace-source').value, color, 0);
