@@ -446,10 +446,10 @@ export class RasterDocument {
     const minX = Math.max(0, x - offset), maxX = Math.min(this.width - 1, x - offset + stroke.size - 1);
     const minY = Math.max(0, y - offset), maxY = Math.min(this.height - 1, y - offset + stroke.size - 1);
     for (let py = minY; py <= maxY; py++) for (let px = minX; px <= maxX; px++) {
-      const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
-      if (!stroke.tilesBefore.has(key)) stroke.tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
       const pixelIndex = py * this.width + px;
       if (this.selectionMask && !this.selectionMask[pixelIndex]) continue;
+      const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
+      if (!stroke.tilesBefore.has(key)) stroke.tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
       const i = pixelIndex * 4;
       this.compositeDirtyTiles.add(key);
       if (stroke.mode === 'erase') layer.pixels[i + 3] = 0;
