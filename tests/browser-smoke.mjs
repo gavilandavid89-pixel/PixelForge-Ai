@@ -431,6 +431,20 @@ try {
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
 
+  // Selected pixels can be nudged independently from the selection outline; this is a real canvas command.
+  await desktop.locator('#select-tool').click();
+  const transformBox = await desktop.locator('#canvas').boundingBox();
+  const tx = transformBox.x + transformBox.width / 2, ty = transformBox.y + transformBox.height / 2;
+  await desktop.mouse.move(tx - 15, ty - 12); await desktop.mouse.down();
+  await desktop.mouse.move(tx + 15, ty + 12); await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \\d+ × \\d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.equal(await desktop.locator('#selection-settings [data-transform="right"]').isVisible(), true, 'selection move controls should appear with an active selection');
+  await desktop.locator('#selection-settings [data-transform="right"]').click();
+  await desktop.waitForFunction(() => /Transformed selection|Selection moved without changing visible pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.equal(await desktop.locator('#selection-settings').isVisible(), true, 'the selection should remain available after moving its pixels');
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+
   // Elliptical marquee selection is a view-only selection operation and clears without touching pixels.
   const undoBeforeEllipseSelection = await desktop.locator('#undo').isEnabled();
   await desktop.locator('#ellipse-select-tool').click();
