@@ -358,8 +358,8 @@ $('#color').addEventListener('input', event => {
 $('#brush-size').addEventListener('input', event => {
   brushSize = Number(event.target.value); $('#brush-size-value').textContent = `${brushSize} px`;
 });
-$('#undo').addEventListener('click', () => { if (doc.undo()) changed(); });
-$('#redo').addEventListener('click', () => { if (doc.redo()) changed(); });
+$('#undo').addEventListener('click', () => { if (doc.undo()) { changed(); renderLayers(); } });
+$('#redo').addEventListener('click', () => { if (doc.redo()) { changed(); renderLayers(); } });
 $('#fit').addEventListener('click', fitCanvas);
 const viewportCenter = () => ({ x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 });
 $('#zoom-in').addEventListener('click', () => zoomAt(viewportCenter(), zoom * 1.25));
@@ -518,9 +518,9 @@ window.addEventListener('keydown', event => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
     event.preventDefault(); $('#save').click(); return;
   } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
-    event.preventDefault(); if (event.shiftKey) { if (doc.redo()) changed(); } else if (doc.undo()) changed();
+    event.preventDefault(); if (event.shiftKey) { if (doc.redo()) { changed(); renderLayers(); } } else if (doc.undo()) { changed(); renderLayers(); }
   } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
-    event.preventDefault(); if (doc.redo()) changed();
+    event.preventDefault(); if (doc.redo()) { changed(); renderLayers(); }
   } else if (event.key.toLowerCase() === 'b') setTool('draw');
   else if (event.key.toLowerCase() === 'e') setTool('erase');
   else if (event.key.toLowerCase() === 'g') setTool('fill');
