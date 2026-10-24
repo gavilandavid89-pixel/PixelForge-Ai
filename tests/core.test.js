@@ -636,3 +636,25 @@ test('linear gradient interpolates endpoints and commits as one reversible opera
   assert.throws(() => doc.fillGradient(-1, 0, 1, 0), /endpoints/);
   assert.throws(() => doc.fillGradient(0, 0, 1, 0, { opacity: 2 }), /opacity/);
 });
+
+
+test('masked pixel clipboard preserves unselected destination pixels when pasted without an active selection', () => {
+  const doc = new RasterDocument(6, 3);
+  doc.fillAt(0, 0, { color: '#0000ff' });
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 1 });
+  doc.strokeTo(stroke, 1, 1); doc.endStroke(stroke);
+  const selection = new Uint8Array(18); selection[1 * 6 + 1] = 1;
+  doc.setSelectionMask(selection);
+  const clip = doc.copyRect(0, 0, 3, 3);
+  assert.equal(clip.mask.reduce((sum, value) => sum + value, 0), 1);
+  assert.equal(clip.mask[4], 1);
+  doc.setSelectionMask(null);
+  assert.equal(doc.pasteRect(clip, { x: 3, y: 0 }), 1);
+  const pixel = (x, y) => [...doc.activeLayer.pixels.slice((y * 6 + x) * 4, (y * 6 + x) * 4 + 4)];
+  assert.deepEqual(pixel(4, 1), [255, 0, 0, 255], 'selected source pixel should be pasted');
+  assert.deepEqual(pixel(3, 0), [0, 0, 255, 255], 'unselected clipboard pixels must not erase destination pixels');
+  assert.deepEqual(pixel(5, 2), [0, 0, 255, 255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual(pixel(4, 1), [0, 0, 255, 255], 'paste should undo as one action');
+  assert.throws(() => doc.pasteRect({ ...clip, mask: new Uint8Array(1) }), /Invalid internal pixel clipboard/);
+});
