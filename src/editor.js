@@ -3,12 +3,15 @@ import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById 
 import { preflightImageFile } from './image-import.js';
 import { createSpriteSheetLayout } from './asset-export.js';
 import { AIWorkspace } from './workspaces.js';
+import { AICommandSession } from './ai-tools.js';
+import { AIEditCoordinator, OpenAICompatibleProvider } from './ai-provider.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#canvas'), ctx = canvas.getContext('2d', { alpha: true });
 const workArea = $('#work-area');
 const previewCanvas = document.createElement('canvas'), previewCtx = previewCanvas.getContext('2d', { alpha: true });
 let doc = new RasterDocument(128, 128), aiWorkspace = new AIWorkspace(doc), tool = 'draw', spaceDown = false;
+let aiCommandSession = new AICommandSession(aiWorkspace), aiProvider = null, aiCoordinator = null, activeAIRequestController = null;
 let aiPanelVisible = false;
 let color = $('#color').value, backgroundColor = '#242632', recentColors = [], brushSize = Number($('#brush-size').value);
 let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 'draw';
@@ -176,7 +179,10 @@ function renderAIWorkspacePreview() {
   updateAIWorkspaceUI();
 }
 function resetAIWorkspaceForDocument() {
+  activeAIRequestController?.abort();
   aiWorkspace = new AIWorkspace(doc);
+  aiCommandSession = new AICommandSession(aiWorkspace);
+  aiCoordinator = aiProvider ? new AIEditCoordinator({ workspace: aiWorkspace, session: aiCommandSession, provider: aiProvider }) : null;
   updateAIWorkspaceUI();
   if (aiPanelVisible) renderAIWorkspacePreview();
 }
@@ -956,6 +962,79 @@ $('#ai-sync').addEventListener('click', () => {
   if (result.status === 'synced') status('AI canvas synchronized from the original', 'success');
   else status(result.status === 'sandbox-pending' ? 'AI draft pending. Discard it before synchronizing.' : 'A proposal is pending. Discard it before synchronizing.', 'warning');
   renderAIWorkspacePreview();
+});
+$('#ai-configure-provider').addEventListener('click', () => {
+  try {
+    activeAIRequestController?.abort();
+    aiProvider = new OpenAICompatibleProvider({
+      endpoint: $('#ai-provider-endpoint').value.trim(),
+      model: $('#ai-provider-model').value.trim(),
+      apiKey: $('#ai-provider-key').value,
+    });
+    $('#ai-provider-key').value = '';
+    aiCoordinator = new AIEditCoordinator({ workspace: aiWorkspace, session: aiCommandSession, provider: aiProvider });
+    $('#ai-connection-state').textContent = 'Provider configured for ' + aiProvider.model + '. No network request is sent until you generate a proposal.';
+    $('#ai-generate-proposal').disabled = Boolean(activeAIRequestController);
+    status('Provider configured in memory. No network request has been sent.', 'success');
+  } catch (error) {
+    status(error instanceof Error ? error.message : 'Provider configuration is invalid.', 'error');
+  }
+});
+$('#ai-cancel-request').addEventListener('click', () => {
+  if (activeAIRequestController) {
+    activeAIRequestController.abort();
+    status('Cancelling AI request…', 'warning');
+  }
+});
+$('#ai-generate-proposal').addEventListener('click', async () => {
+  if (!aiCoordinator) { status('Configure an AI provider first.', 'warning'); return; }
+  if (activeAIRequestController) return;
+  const prompt = $('#ai-prompt').value.trim();
+  if (!prompt) { status('Describe the change you want first.', 'warning'); return; }
+  const controller = new AbortController();
+  activeAIRequestController = controller;
+  $('#ai-generate-proposal').disabled = true;
+  $('#ai-cancel-request').disabled = false;
+  $('#ai-connection-state').textContent = 'Request in progress. The original canvas remains protected.';
+  status('Asking the configured model for a structured edit plan…', 'neutral');
+  try {
+    const includeArtwork = $('#ai-send-artwork').checked;
+    let imageDataUrl;
+    if (includeArtwork) {
+      const imageCanvas = document.createElement('canvas');
+      imageCanvas.width = doc.width; imageCanvas.height = doc.height;
+      const imageContext = imageCanvas.getContext('2d', { alpha: true });
+      imageContext.putImageData(new ImageData(new Uint8ClampedArray(doc.composite()), doc.width, doc.height), 0, 0);
+      imageDataUrl = imageCanvas.toDataURL('image/png');
+    }
+    const result = await aiCoordinator.requestEdit(prompt, {
+      includeArtwork,
+      ...(imageDataUrl ? { imageDataUrl } : {}),
+      signal: controller.signal,
+    });
+    if (result.status === 'proposal') {
+      $('#ai-preview-mode').value = 'changes';
+      renderAIWorkspacePreview();
+      status('AI proposal ready for review. The original drawing has not been changed.', 'success');
+    } else if (result.status === 'cancelled') {
+      status('AI request cancelled. The original drawing is unchanged.', 'neutral');
+    } else if (result.status === 'rejected' && result.reason === 'stale-source') {
+      status('The original canvas changed while the model was thinking. Review the current canvas and try again.', 'warning');
+    } else if (result.status === 'rejected' && result.reason === 'empty-plan') {
+      status(result.summary || 'The model did not return an applicable edit.', 'warning');
+    } else {
+      status(result.message || result.error?.message || result.error?.message || result.reason || 'The AI request could not be completed.', 'error');
+    }
+    updateAIWorkspaceUI();
+  } catch (error) {
+    status(error instanceof Error ? error.message : 'The AI request failed.', 'error');
+  } finally {
+    if (activeAIRequestController === controller) activeAIRequestController = null;
+    $('#ai-cancel-request').disabled = true;
+    $('#ai-generate-proposal').disabled = !aiCoordinator;
+    if (aiCoordinator) $('#ai-connection-state').textContent = 'Provider configured for ' + aiProvider.model + '. API key is memory-only; requests send artwork only when the checkbox is enabled.';
+    updateAIWorkspaceUI();
+  }
 });
 $('#ai-preview-mode').addEventListener('change', renderAIWorkspacePreview);
 $('#ai-refresh-preview').addEventListener('click', () => { renderAIWorkspacePreview(); status('AI canvas preview refreshed', 'success'); });
