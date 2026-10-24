@@ -15,7 +15,7 @@ This is the capability checklist, not a promise that every item already exists. 
 ### Pixel-precise
 - **Implemented:** pixel-aligned pencil and eraser; bucket fill with connected/global modes, per-channel color tolerance, transparent-pixel equivalence, active-layer lock checks, bounded traversal buffers and one undoable tile-patch command; temporary eyedropper with merged/active-layer sampling and return-to-previous-tool behavior.
 - Planned: pixel-perfect line; extend bucket fill with merged-image sampling and selection boundaries.
-- Eyedropper (current layer / merged image), color replace, gradient, dithering, pixel-perfect shapes.
+- Planned: color replace, gradient, dithering and pixel-perfect shapes.
 - Rectangle, rounded rectangle, ellipse, polygon, polyline, curve/bezier, spray, tile stamp.
 - Shading tool, outline, lighten/darken, indexed palette mode, pattern fill.
 - Symmetry: horizontal, vertical, radial; mirrored drawing; tiled seamless mode.
