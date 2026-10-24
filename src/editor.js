@@ -488,9 +488,8 @@ function renderLayers() {
     lock.setAttribute('aria-pressed', String(layer.locked));
     lock.title = layer.locked ? 'Unlock layer for editing' : 'Lock layer against edits';
     lock.addEventListener('click', () => {
-      layer.locked = !layer.locked;
-      doc.dirty = true; doc.saveVersion++;
-      scheduleAutosave(); updateTitle(); renderLayers();
+      doc.setLayerLocked(layer.id, !layer.locked);
+      changed(); renderLayers();
       status(layer.locked ? 'Layer locked' : 'Layer unlocked', 'success');
     });
     row.append(visibility, select, lock); list.append(row);
