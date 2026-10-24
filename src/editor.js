@@ -622,6 +622,7 @@ canvas.addEventListener('pointercancel', event => {
 });
 canvas.addEventListener('lostpointercapture', event => {
   if (shapeGesture && event.pointerId === shapeGesture.pointerId) { shapeGesture = null; render(); return; }
+  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; selection = null; syncSelectionMask(); render(); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
     virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; render(); return;
