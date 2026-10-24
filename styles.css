@@ -80,3 +80,7 @@
   .layer-order-controls{flex-basis:64px;gap:3px}
   .layer-order{width:30px}
 }
+
+/* Rectangular selection is an overlay; it never writes to artwork pixels. */
+#canvas[data-tool=select]{cursor:crosshair}
+@media(max-width:760px){#canvas[data-tool=select]{touch-action:none}}
