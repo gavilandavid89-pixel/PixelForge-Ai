@@ -172,6 +172,16 @@ export class RasterDocument {
     }
     return changedPixels;
   }
+  sampleColorAt(x, y, { merged = true } = {}) {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= this.width || y >= this.height) {
+      throw new RangeError('Sample coordinates are outside the document bounds.');
+    }
+    if (typeof merged !== 'boolean') throw new TypeError('Sample source must be merged or active layer.');
+    const pixels = merged ? this.composite() : this.activeLayer.pixels;
+    const offset = (y * this.width + x) * 4;
+    if (pixels[offset + 3] === 0) return null;
+    return '#' + [...pixels.subarray(offset, offset + 3)].map(channel => channel.toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
   getCompositeDirtyTiles() {
     return [...this.compositeDirtyTiles].map(key => {
       const [tileX, tileY] = key.split(':').map(Number);
