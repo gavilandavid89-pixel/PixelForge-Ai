@@ -482,3 +482,22 @@ test('sprite outline fills only transparent neighbors, respects selection, and u
   assert.deepEqual([...doc.activeLayer.pixels.slice(4, 8)], [0, 255, 0, 255]);
   assert.throws(() => doc.createOutline('#fff', { diagonals: 'yes' }), /boolean/);
 });
+
+
+test('checker dither fill alternates foreground/background, respects scale and undoes atomically', () => {
+  const doc = new RasterDocument(4, 2);
+  const count = doc.fillAt(0, 0, { color: '#ff0000', secondaryColor: '#0000ff', contiguous: false, pattern: 'checker' });
+  assert.equal(count, 8);
+  const pixel = (x, y) => [...doc.activeLayer.pixels.slice((y * doc.width + x) * 4, (y * doc.width + x) * 4 + 4)];
+  assert.deepEqual(pixel(0, 0), [255, 0, 0, 255]);
+  assert.deepEqual(pixel(1, 0), [0, 0, 255, 255]);
+  assert.deepEqual(pixel(0, 1), [0, 0, 255, 255]);
+  assert.deepEqual(pixel(1, 1), [255, 0, 0, 255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual(pixel(0, 0), [0, 0, 0, 0]);
+  assert.equal(doc.fillAt(0, 0, { color: '#ff0000', secondaryColor: '#0000ff', contiguous: false, pattern: 'checker', scale: 2 }), 8);
+  assert.deepEqual(pixel(0, 0), [255, 0, 0, 255]);
+  assert.deepEqual(pixel(1, 0), [255, 0, 0, 255]);
+  assert.deepEqual(pixel(2, 0), [0, 0, 255, 255]);
+  assert.throws(() => doc.fillAt(0, 0, { pattern: 'noise' }), /pattern/);
+});
