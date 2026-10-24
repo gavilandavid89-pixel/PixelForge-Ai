@@ -97,7 +97,9 @@ try {
     const preview = document.querySelector('#ai-preview-canvas');
     return dimensions.length === 2 && preview?.width === dimensions[0] && preview?.height === dimensions[1];
   });
-  assert.ok((await desktop.locator('#ai-connection-state').textContent()).includes('not wired into the UI yet'), 'the UI must not claim an AI model is connected');
+  assert.ok((await desktop.locator('#ai-connection-state').textContent()).includes('No provider configured'), 'the UI must not claim an AI model is connected');
+  assert.equal(await desktop.locator('#ai-generate-proposal').isDisabled(), true, 'proposal generation must stay disabled until a provider is configured');
+  assert.equal(await desktop.locator('#ai-send-artwork').isChecked(), false, 'sending artwork must require explicit consent');
   await desktop.locator('#ai-preview-mode').selectOption('changes');
   await desktop.waitForFunction(() => document.querySelector('#ai-diff-count')?.textContent === '0 changed pixels');
   await desktop.locator('#ai-preview-mode').selectOption('original');
