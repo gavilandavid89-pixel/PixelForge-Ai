@@ -751,6 +751,13 @@ document.addEventListener('keydown', event => {
     event.preventDefault(); $('#swap-colors').click();
   }
 });
+$('#create-outline').addEventListener('click', () => {
+  try {
+    const count = doc.createOutline(color);
+    if (count) { changed(); status(`Added ${count.toLocaleString()} outline pixels`, 'success'); }
+    else status('No transparent edge pixels to outline', 'neutral');
+  } catch (error) { status(error.message, 'error'); }
+});
 function flipPixels(axis) {
   try {
     const rect = selection ?? { x: 0, y: 0, width: doc.width, height: doc.height };
