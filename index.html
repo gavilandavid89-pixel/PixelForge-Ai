@@ -110,7 +110,30 @@
         <button class="file-button" id="ai-sync" type="button">↻ Sync from user canvas</button>
         <button class="file-button" id="ai-refresh-preview" type="button">◉ Refresh AI preview</button>
       </div>
-      <div class="ai-connection-note"><strong>AI command engine</strong><span id="ai-connection-state">Sandbox tools are ready; model/provider connection is not wired into the UI yet.</span></div>
+      <div class="ai-connection-note"><strong>AI command engine</strong><span id="ai-connection-state">No provider configured. Nothing is sent until you configure a provider and request an edit.</span></div>
+      <details id="ai-provider-settings" class="ai-provider-settings">
+        <summary>Configure model provider</summary>
+        <div class="ai-provider-fields">
+          <label for="ai-provider-endpoint">OpenAI-compatible endpoint</label>
+          <input id="ai-provider-endpoint" type="url" placeholder="https://provider.example/v1/chat/completions" autocomplete="url" />
+          <label for="ai-provider-model">Model name</label>
+          <input id="ai-provider-model" type="text" placeholder="model-id" maxlength="180" />
+          <label for="ai-provider-key">API key <span>(optional for local models)</span></label>
+          <input id="ai-provider-key" type="password" placeholder="Only held in memory" autocomplete="off" />
+          <p class="small-note">The key is not saved to the project or browser storage. Remote endpoints must use HTTPS; local HTTP is allowed only for localhost. The provider must allow browser CORS requests.</p>
+          <button class="file-button" id="ai-configure-provider" type="button">Use this provider</button>
+        </div>
+      </details>
+      <div class="ai-prompt-card">
+        <label for="ai-prompt">Describe the change</label>
+        <textarea id="ai-prompt" rows="3" maxlength="4000" placeholder="Describe the edit you want the AI to propose…"></textarea>
+        <label class="ai-artwork-consent" for="ai-send-artwork"><input id="ai-send-artwork" type="checkbox" /> Send a PNG preview of this canvas to the configured provider</label>
+        <p class="small-note">Unchecked: only your prompt and document/layer metadata are sent. Checked: the current canvas image is also sent for visual context. This choice is off by default.</p>
+        <div class="ai-workspace-actions">
+          <button class="primary-button" id="ai-generate-proposal" type="button" disabled>✦ Generate proposal</button>
+          <button class="file-button" id="ai-cancel-request" type="button" disabled>Cancel request</button>
+        </div>
+      </div>
       <div class="ai-proposal-card">
         <div class="control-heading"><span>Suggestion review</span><span class="tiny-tag">HUMAN APPROVAL</span></div>
         <p id="ai-proposal-summary" class="small-note">No proposal to review yet.</p>
