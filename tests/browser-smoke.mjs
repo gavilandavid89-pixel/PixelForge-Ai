@@ -105,6 +105,7 @@ try {
   await desktop.locator('#ai-sync').click();
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'AI canvas synchronized from the original');
   await desktop.locator('#properties-tab').click();
+  assert.equal(await desktop.evaluate(() => window.scrollY), 0, 'inspector tabs must not scroll the whole page away from the canvas');
 
   const canvas = desktop.locator('#canvas');
   const box = await canvas.boundingBox();
