@@ -143,7 +143,10 @@ function docPoint(event) { return documentPointFromScreen(eventPoint(event)); }
 function moveVirtualCursorBy(dx, dy) {
   if (!virtualCursorScreen) virtualCursorScreen = { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 };
   virtualCursorScreen = { x: Math.max(0, Math.min(canvas.clientWidth, virtualCursorScreen.x + dx)), y: Math.max(0, Math.min(canvas.clientHeight, virtualCursorScreen.y + dy)) };
-  virtualCursorPoint = documentPointFromScreen(virtualCursorScreen); virtualCursorVisible = true; render();
+  const point = documentPointFromScreen(virtualCursorScreen);
+  // Keep the virtual tool on a drawable pixel even when the viewport is panned or the document is smaller than the work area.
+  virtualCursorPoint = { x: Math.max(0, Math.min(doc.width - 1, point.x)), y: Math.max(0, Math.min(doc.height - 1, point.y)), inside: true };
+  virtualCursorVisible = true; render();
 }
 function scheduleAutosave() {
   clearTimeout(autosaveTimer); autosaveTimer = null;
@@ -398,8 +401,10 @@ function setCursorMode(enabled) {
   cursorGesturePointerId = null; cursorGestureLast = null;
   updateDrawHoldUI();
   if (cursorMode) {
-    virtualCursorScreen ??= { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 };
-    virtualCursorPoint = documentPointFromScreen(virtualCursorScreen); virtualCursorVisible = true;
+    virtualCursorScreen = { x: Math.max(0, Math.min(canvas.clientWidth, doc.width * zoom / 2 + panX)), y: Math.max(0, Math.min(canvas.clientHeight, doc.height * zoom / 2 + panY)) };
+    const point = documentPointFromScreen(virtualCursorScreen);
+    virtualCursorPoint = { x: Math.max(0, Math.min(doc.width - 1, point.x)), y: Math.max(0, Math.min(doc.height - 1, point.y)), inside: true };
+    virtualCursorVisible = true;
     status('Cursor mode: swipe anywhere to move; touch the size bar to draw', 'success');
   } else {
     virtualCursorVisible = false; virtualCursorScreen = null; virtualCursorPoint = null;
