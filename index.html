@@ -74,7 +74,13 @@
     </section>
     <section class="inspector-section layer-section">
       <div class="section-heading"><span class="section-icon">▤</span><h2>Layers</h2><button id="add-layer" class="icon-add" aria-label="Add layer" title="Add layer">＋</button></div>
-      <div id="layers" class="layer-list"></div><div class="layer-footer"><span>Compositing</span><span>Normal · 100%</span></div>
+      <div id="layers" class="layer-list"></div>
+      <div class="active-layer-controls">
+        <div class="control-heading"><label for="layer-opacity">Active layer opacity</label><span id="layer-opacity-value">100%</span></div>
+        <input id="layer-opacity" class="range-input" type="range" min="0" max="100" value="100" aria-label="Active layer opacity">
+        <div class="active-layer-actions"><button id="rename-layer" type="button">Rename</button><button id="duplicate-layer" type="button">Duplicate</button><button id="delete-layer" type="button">Delete</button></div>
+      </div>
+      <div class="layer-footer"><span>Compositing</span><span>Normal · 100%</span></div>
     </section>
     <section class="inspector-section files-section">
       <div class="section-heading"><span class="section-icon">⇧</span><h2>Import & project</h2></div>
