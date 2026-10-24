@@ -53,7 +53,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [ ] Persistent mask, ellipse/lasso/polygon/magic-wand/color-range selections.
 - [ ] Add/subtract/intersect/invert/feather/expand/contract and saved selections.
 - [x] Internal active-layer pixel copy/cut/paste with clipped bounds, selection-aware paste, and atomic undo for cut/paste.\n- [ ] Move/duplicate pasted pixels independently, system clipboard interoperability, and copy merged composite.
-- [ ] Move pixels vs move selection; flip, rotate, scale, skew, crop and transforms.
+- [x] Horizontal/vertical flip of the selected rectangle or whole active layer, selection-aware and one-step undoable.\n- [ ] Move pixels vs move selection; rotate, scale, skew, crop and transform previews.
 - [ ] Preview/cancel/commit, interpolation choices, clipping and single-step undo.
 ### Palettes and sprite animation
 - [x] Foreground/background color swap and eight-color recent history with keyboard shortcut.\n- [ ] Persistent user palettes, named color history and palette import/export.
