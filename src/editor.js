@@ -907,16 +907,16 @@ function setInspectorPanel(panel) {
   if (aiPanelVisible) renderAIWorkspacePreview();
 }
 $('#properties-tab').addEventListener('click', () => {
-  if (mobileInspector.matches) setInspectorPanel('properties');
-  else $('.inspector-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setInspectorPanel('properties');
+  if (!mobileInspector.matches) $('.inspector-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 $('#layers-tab').addEventListener('click', () => {
-  if (mobileInspector.matches) setInspectorPanel('layers');
-  else $('#layers').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setInspectorPanel('layers');
+  if (!mobileInspector.matches) $('#layers').scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
 $('#ai-tab').addEventListener('click', () => {
-  if (mobileInspector.matches) setInspectorPanel('ai');
-  else $('#ai-workspace-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setInspectorPanel('ai');
+  if (!mobileInspector.matches) $('#ai-workspace-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
   aiPanelVisible = true; renderAIWorkspacePreview();
 });
 $('#ai-sync').addEventListener('click', () => {
