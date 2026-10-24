@@ -40,7 +40,7 @@ export function createSelectionMask(width, height, selection) {
     for (let y = top; y < bottom; y++) mask.fill(1, y * width + left, y * width + right);
   } else if (selection.shape === 'ellipse') {
     const cx = selection.x + (selection.width - 1) / 2, cy = selection.y + (selection.height - 1) / 2;
-    const rx = Math.max(.5, selection.width / 2), ry = Math.max(.5, selection.height / 2);
+    const rx = Math.max(.5, (selection.width - 1) / 2), ry = Math.max(.5, (selection.height - 1) / 2);
     for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
       const dx = (x - cx) / rx, dy = (y - cy) / ry;
       if (dx * dx + dy * dy <= 1) mask[y * width + x] = 1;
