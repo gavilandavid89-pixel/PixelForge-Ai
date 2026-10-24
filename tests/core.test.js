@@ -2,6 +2,43 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES } from '../src/core.js';
 
+test('bucket fill respects connected boundaries and is one undoable pixel command', () => {
+  const doc = new RasterDocument(5, 3);
+  const barrier = doc.beginStroke({ color: '#ff0000', size: 1 });
+  for (let y = 0; y < 3; y++) doc.strokeTo(barrier, 2, y);
+  doc.endStroke(barrier);
+  const beforeFillHistory = doc.history.length;
+  const count = doc.fillAt(0, 0, { color: '#00ff00' });
+  assert.equal(count, 6);
+  assert.equal(doc.history.length, beforeFillHistory + 1);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [0, 255, 0, 255]);
+  assert.equal(doc.activeLayer.pixels[(0 * 5 + 4) * 4 + 3], 0);
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.activeLayer.pixels[3], 0);
+  assert.equal(doc.redo(), true);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [0, 255, 0, 255]);
+});
+
+test('bucket fill global mode changes disconnected matching pixels only', () => {
+  const doc = new RasterDocument(5, 3);
+  const barrier = doc.beginStroke({ color: '#ff0000', size: 1 });
+  for (let y = 0; y < 3; y++) doc.strokeTo(barrier, 2, y);
+  doc.endStroke(barrier);
+  assert.equal(doc.fillAt(0, 0, { color: '#0000ff', contiguous: false }), 12);
+  assert.deepEqual([...doc.activeLayer.pixels.slice((4 * 4), (4 * 4) + 4)], [0, 0, 255, 255]);
+  assert.deepEqual([...doc.activeLayer.pixels.slice((2 * 4), (2 * 4) + 4)], [255, 0, 0, 255]);
+});
+
+test('bucket fill tolerance is bounded, detects similar colors, and respects layer locks', () => {
+  const doc = new RasterDocument(3, 1);
+  doc.activeLayer.pixels.set([0,0,0,255, 5,0,0,255, 255,0,0,255]);
+  assert.equal(doc.fillAt(0, 0, { color: '#ffffff', tolerance: 5 }), 2);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 8)], [255,255,255,255, 255,255,255,255]);
+  assert.throws(() => doc.fillAt(0, 0, { tolerance: 256 }), /tolerance/);
+  doc.activeLayer.locked = true;
+  assert.throws(() => doc.fillAt(0, 0, { color: '#000000' }), /locked/);
+});
+
 test('dimension validation rejects invalid and oversized canvases', () => {
   assert.throws(() => validateDimensions(0, 20), RangeError);
   assert.throws(() => validateDimensions(2049, 1), RangeError);
