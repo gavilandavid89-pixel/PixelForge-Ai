@@ -26,20 +26,40 @@ export function createSelectionMask(width, height, selection) {
   validateDimensions(width, height);
   if (selection === null) return null;
   if (!selection || ![selection.x, selection.y, selection.width, selection.height].every(Number.isInteger) ||
-      selection.width < 1 || selection.height < 1 || !['rect', 'ellipse'].includes(selection.shape ?? 'rect')) {
-    throw new TypeError('Selection must have integer bounds and a supported rect/ellipse shape.');
+      selection.width < 1 || selection.height < 1 || !['rect', 'ellipse', 'polygon'].includes(selection.shape ?? 'rect')) {
+    throw new TypeError('Selection must have integer bounds and a supported rect/ellipse/polygon shape.');
+  }
+  if (selection.shape === 'polygon' && (!Array.isArray(selection.points) || selection.points.length < 3 || selection.points.length > 4096 ||
+      selection.points.some(point => !point || !Number.isInteger(point.x) || !Number.isInteger(point.y)))) {
+    throw new TypeError('Polygon selection requires 3–4096 integer points.');
   }
   const mask = new Uint8Array(width * height);
   const left = Math.max(0, selection.x), top = Math.max(0, selection.y);
   const right = Math.min(width, selection.x + selection.width), bottom = Math.min(height, selection.y + selection.height);
   if ((selection.shape ?? 'rect') === 'rect') {
     for (let y = top; y < bottom; y++) mask.fill(1, y * width + left, y * width + right);
-  } else {
+  } else if (selection.shape === 'ellipse') {
     const cx = selection.x + (selection.width - 1) / 2, cy = selection.y + (selection.height - 1) / 2;
     const rx = Math.max(.5, selection.width / 2), ry = Math.max(.5, selection.height / 2);
     for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
       const dx = (x - cx) / rx, dy = (y - cy) / ry;
       if (dx * dx + dy * dy <= 1) mask[y * width + x] = 1;
+    }
+  } else {
+    const points = selection.points;
+    const onSegment = (x, y, a, b) => {
+      const cross = (x - a.x) * (b.y - a.y) - (y - a.y) * (b.x - a.x);
+      if (Math.abs(cross) > .5) return false;
+      return x >= Math.min(a.x, b.x) - .5 && x <= Math.max(a.x, b.x) + .5 && y >= Math.min(a.y, b.y) - .5 && y <= Math.max(a.y, b.y) + .5;
+    };
+    for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
+      let inside = false;
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const a = points[i], b = points[j];
+        if (onSegment(x, y, a, b)) { inside = true; break; }
+        if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+      }
+      if (inside) mask[y * width + x] = 1;
     }
   }
   return mask;
