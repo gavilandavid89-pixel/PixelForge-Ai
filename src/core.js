@@ -22,6 +22,29 @@ export function rasterLinePoints(x0, y0, x1, y1) {
   return points;
 }
 
+export function createSelectionMask(width, height, selection) {
+  validateDimensions(width, height);
+  if (selection === null) return null;
+  if (!selection || ![selection.x, selection.y, selection.width, selection.height].every(Number.isInteger) ||
+      selection.width < 1 || selection.height < 1 || !['rect', 'ellipse'].includes(selection.shape ?? 'rect')) {
+    throw new TypeError('Selection must have integer bounds and a supported rect/ellipse shape.');
+  }
+  const mask = new Uint8Array(width * height);
+  const left = Math.max(0, selection.x), top = Math.max(0, selection.y);
+  const right = Math.min(width, selection.x + selection.width), bottom = Math.min(height, selection.y + selection.height);
+  if ((selection.shape ?? 'rect') === 'rect') {
+    for (let y = top; y < bottom; y++) mask.fill(1, y * width + left, y * width + right);
+  } else {
+    const cx = selection.x + (selection.width - 1) / 2, cy = selection.y + (selection.height - 1) / 2;
+    const rx = Math.max(.5, selection.width / 2), ry = Math.max(.5, selection.height / 2);
+    for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
+      const dx = (x - cx) / rx, dy = (y - cy) / ry;
+      if (dx * dx + dy * dy <= 1) mask[y * width + x] = 1;
+    }
+  }
+  return mask;
+}
+
 export function screenToDocument(point, viewport, dimensions) {
   const x = Math.floor((point.x - viewport.panX) / viewport.zoom);
   const y = Math.floor((point.y - viewport.panY) / viewport.zoom);
