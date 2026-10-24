@@ -14,6 +14,10 @@ Research and define the editing engine before building the visual interface. Use
 - [LibreSprite source (GPL-2.0)](https://github.com/LibreSprite/LibreSprite)
 - [Krita source and license](https://krita.org/en/about/license/)
 
+## Current editing tools
+
+- **Multi-part symmetry:** turn mirroring off or draw in 2, 4, or 8 linked parts. Pencil, eraser, and geometric tools share one gesture across all reflected copies, with view-only symmetry guides and one-step undo.
+
 ## Documents
 
 - `docs/EDITOR_RESEARCH.md` — source-code architecture, release/APK references, licensing notes, and feature analysis.
