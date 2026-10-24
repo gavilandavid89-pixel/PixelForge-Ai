@@ -13,7 +13,7 @@ This is the capability checklist, not a promise that every item already exists. 
 
 ## B. Tools
 ### Pixel-precise
-- **Implemented:** pixel-aligned pencil and eraser; bucket fill with connected/global modes, per-channel color tolerance, transparent-pixel equivalence, active-layer lock checks, bounded traversal buffers and one undoable tile-patch command; temporary eyedropper with merged/active-layer sampling and return-to-previous-tool behavior.
+- **Implemented:** pixel-aligned pencil and eraser; bucket fill with connected/global modes, per-channel color tolerance, transparent-pixel equivalence, active-layer lock checks, bounded traversal buffers and one undoable tile-patch command; temporary eyedropper with merged/active-layer sampling and return-to-previous-tool behavior; persistent layer locks that share undo/redo with artwork edits; mobile inspector tabs and enlarged touch controls.
 - Planned: pixel-perfect line; extend bucket fill with merged-image sampling and selection boundaries.
 - Planned: color replace, gradient, dithering and pixel-perfect shapes.
 - Rectangle, rounded rectangle, ellipse, polygon, polyline, curve/bezier, spray, tile stamp.
@@ -36,7 +36,7 @@ This is the capability checklist, not a promise that every item already exists. 
 
 ## C. Layers and compositing
 - Raster, group, reference, text, tilemap and adjustment/effect layer types.
-- Visibility, lock, alpha lock, clipping, masks, opacity, blend modes, reorder, group, merge, flatten.
+- **Implemented:** layer visibility and persistent lock toggle with undo/redo; **Planned:** alpha lock, clipping, masks, opacity, blend modes, reorder, group, merge, flatten.
 - Non-destructive effects: outline, drop shadow, gradient map, hue/saturation, levels/curves, blur/sharpen.
 - Layer/cel linking, per-frame cels, rename, color labels, isolate, search and batch operations.
 - Layer comps/visibility snapshots and export selected layers.
