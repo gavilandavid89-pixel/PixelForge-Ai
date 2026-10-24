@@ -480,7 +480,7 @@ function resetBrushScrub() {
   scrubPointerId = null;
 }
 brushScrub.addEventListener('pointerdown', event => {
-  if (event.button !== undefined && event.button !== 0) return;
+  if (event.pointerType !== 'touch' && event.button !== undefined && event.button !== 0) return;
   if (cursorMode && ['draw', 'erase'].includes(tool) && virtualCursorPoint?.inside && !flushInProgress && !activeStroke) {
     cursorDrawPointerId = event.pointerId;
     startStrokeAt(virtualCursorPoint, event.pointerId);
