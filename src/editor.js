@@ -1,6 +1,7 @@
 import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints } from './core.js';
 import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
 import { preflightImageFile } from './image-import.js';
+import { createSpriteSheetLayout } from './asset-export.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#canvas'), ctx = canvas.getContext('2d', { alpha: true });
@@ -907,6 +908,26 @@ $('#export-project').addEventListener('click', () => {
     downloadBlob(new Blob([JSON.stringify(snapshot)], { type: 'application/json' }), filename);
     status('Project exported', 'success');
   } catch (error) { status(`Project export failed: ${error.message}`, 'error'); }
+});
+$('#export-sprite-sheet').addEventListener('click', async () => {
+  try {
+    settleActiveInput();
+    const layout = createSpriteSheetLayout(doc.layers.length, doc.width, doc.height, { columns: Math.ceil(Math.sqrt(doc.layers.length)), padding: 1 });
+    const sheet = document.createElement('canvas'); sheet.width = layout.width; sheet.height = layout.height;
+    const context = sheet.getContext('2d', { alpha: true });
+    if (!context) throw new Error('Could not create the sprite sheet export surface.');
+    context.clearRect(0, 0, sheet.width, sheet.height);
+    const frames = layout.frames.map((frame, index) => {
+      const layer = doc.layers[index];
+      context.putImageData(new ImageData(new Uint8ClampedArray(layer.pixels), doc.width, doc.height), frame.x, frame.y);
+      return { ...frame, name: layer.name, visible: layer.visible, opacity: layer.opacity, locked: layer.locked };
+    });
+    const manifest = { format: 'pixelforge-sprite-sheet', version: 1, document: doc.name, sheet: { width: layout.width, height: layout.height, columns: layout.columns, rows: layout.rows, padding: layout.padding }, frameSize: { width: doc.width, height: doc.height }, pivot: 'center', frames };
+    const png = await new Promise((resolve, reject) => sheet.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG encoder returned no data.')), 'image/png'));
+    downloadBlob(png, `${safeName(doc.name)}-spritesheet.png`);
+    downloadBlob(new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' }), `${safeName(doc.name)}-spritesheet.json`);
+    status(`Sprite sheet exported: ${frames.length} frames, ${layout.width} × ${layout.height}`, 'success');
+  } catch (error) { status(`Sprite sheet export failed: ${error.message}`, 'error'); }
 });
 $('#export-png').addEventListener('click', () => {
   try {
