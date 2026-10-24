@@ -279,6 +279,48 @@ export class RasterDocument {
     }
     return changedPixels;
   }
+  copyRect(x, y, width, height) {
+    if (![x, y, width, height].every(Number.isInteger) || width < 1 || height < 1) throw new RangeError('Copy rectangle coordinates and dimensions must be positive integers.');
+    const left = Math.max(0, x), top = Math.max(0, y), right = Math.min(this.width, x + width), bottom = Math.min(this.height, y + height);
+    if (left >= right || top >= bottom) throw new RangeError('Copy rectangle is outside document bounds.');
+    const layer = this.activeLayer, pixels = new Uint8ClampedArray((right - left) * (bottom - top) * 4);
+    for (let row = 0; row < bottom - top; row++) {
+      const start = ((top + row) * this.width + left) * 4;
+      pixels.set(layer.pixels.subarray(start, start + (right - left) * 4), row * (right - left) * 4);
+    }
+    return { x: left, y: top, width: right - left, height: bottom - top, pixels };
+  }
+  pasteRect(clipboard, { x = clipboard?.x, y = clipboard?.y } = {}) {
+    if (!clipboard || !Number.isInteger(clipboard.width) || !Number.isInteger(clipboard.height) || clipboard.width < 1 || clipboard.height < 1 ||
+        !(clipboard.pixels instanceof Uint8ClampedArray) || clipboard.pixels.length !== clipboard.width * clipboard.height * 4 ||
+        !Number.isInteger(x) || !Number.isInteger(y)) throw new TypeError('Invalid internal pixel clipboard.');
+    const layer = this.activeLayer;
+    if (layer.locked) throw new Error('The active layer is locked.');
+    const left = Math.max(0, x), top = Math.max(0, y), right = Math.min(this.width, x + clipboard.width), bottom = Math.min(this.height, y + clipboard.height);
+    if (left >= right || top >= bottom) return 0;
+    const tilesBefore = new Map();
+    let changedPixels = 0;
+    for (let py = top; py < bottom; py++) for (let px = left; px < right; px++) {
+      const docPixel = py * this.width + px;
+      if (this.selectionMask && !this.selectionMask[docPixel]) continue;
+      const srcX = px - x, srcY = py - y, srcOffset = (srcY * clipboard.width + srcX) * 4, dstOffset = docPixel * 4;
+      let differs = false;
+      for (let channel = 0; channel < 4; channel++) if (layer.pixels[dstOffset + channel] !== clipboard.pixels[srcOffset + channel]) { differs = true; break; }
+      if (!differs) continue;
+      const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
+      if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
+      layer.pixels.set(clipboard.pixels.subarray(srcOffset, srcOffset + 4), dstOffset);
+      this.compositeDirtyTiles.add(key); changedPixels++;
+    }
+    if (changedPixels) {
+      const tiles = [...tilesBefore.entries()].map(([key, before]) => {
+        const [tileX, tileY] = key.split(':').map(Number);
+        return { tileX, tileY, before, after: this.#captureTile(layer, tileX, tileY) };
+      });
+      this.#record({ type: 'pixels', layerId: layer.id, tiles });
+    }
+    return changedPixels;
+  }
   sampleColorAt(x, y, { merged = true } = {}) {
     if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= this.width || y >= this.height) {
       throw new RangeError('Sample coordinates are outside the document bounds.');
