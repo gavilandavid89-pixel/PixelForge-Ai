@@ -537,3 +537,22 @@ test('unchanged stroke pixels do not create empty undo entries', () => {
   assert.equal(doc.endStroke(stroke), false);
   assert.equal(doc.history.length, 1);
 });
+
+
+test('circular brush shape excludes distant corners and hardness controls edge coverage', () => {
+  const doc = new RasterDocument(5, 5);
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 5, shape: 'circle', hardness: 1 });
+  doc.strokeTo(stroke, 2, 2); doc.endStroke(stroke);
+  const alpha = (x, y) => doc.activeLayer.pixels[(y * 5 + x) * 4 + 3];
+  assert.equal(alpha(0, 0), 0, 'circular brush should not paint the distant corner');
+  assert.equal(alpha(2, 0), 255, 'circular brush should paint pixels within the radius');
+  assert.equal(alpha(2, 2), 255);
+  assert.equal(doc.undo(), true);
+  stroke = doc.beginStroke({ color: '#ff0000', size: 5, shape: 'circle', hardness: 0 });
+  doc.strokeTo(stroke, 2, 2); doc.endStroke(stroke);
+  assert.equal(alpha(2, 2), 255, 'soft brush center should be fully opaque');
+  assert.ok(alpha(2, 0) > 0 && alpha(2, 0) < 255, 'soft brush edge should have partial alpha');
+  assert.equal(alpha(0, 0), 0);
+  assert.throws(() => doc.beginStroke({ shape: 'triangle' }), /Brush shape/);
+  assert.throws(() => doc.beginStroke({ hardness: 1.1 }), /hardness/);
+});
