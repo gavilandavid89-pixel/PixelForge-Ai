@@ -547,8 +547,12 @@ test('rectangle and ellipse selection masks produce clipped deterministic pixel 
   assert.equal(ellipse[2 * 5 + 2], 1, 'ellipse should include its center');
   assert.equal(ellipse[0], 0, 'ellipse should exclude bounding-box corners');
   assert.equal(ellipse[2], 1, 'ellipse should include the top-center pixel');
+  const polygon = createSelectionMask(5, 5, { x: 0, y: 0, width: 5, height: 5, shape: 'polygon', points: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 0, y: 4 }] });
+  assert.equal(polygon[0], 1, 'polygon should include its boundary');
+  assert.equal(polygon[1 * 5 + 1], 1, 'polygon should include interior pixels');
+  assert.equal(polygon[4 * 5 + 4], 0, 'polygon should exclude pixels outside its path');
   assert.equal(createSelectionMask(5, 5, null), null);
-  assert.throws(() => createSelectionMask(5, 5, { x: 0, y: 0, width: 2, height: 2, shape: 'lasso' }), /supported rect\/ellipse/);
+  assert.throws(() => createSelectionMask(5, 5, { x: 0, y: 0, width: 2, height: 2, shape: 'lasso' }), /supported rect\/ellipse\/polygon/);
 });
 
 test('copyRect copies only selected pixels and leaves unselected clipboard pixels transparent', () => {
