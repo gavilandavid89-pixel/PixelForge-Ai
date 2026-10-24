@@ -29,6 +29,14 @@ test('bucket fill global mode changes disconnected matching pixels only', () => 
   assert.deepEqual([...doc.activeLayer.pixels.slice((2 * 4), (2 * 4) + 4)], [255, 0, 0, 255]);
 });
 
+test('bucket fill treats erased transparent pixels as one region despite hidden RGB values', () => {
+  const doc = new RasterDocument(3, 1);
+  doc.activeLayer.pixels.set([200,0,0,0, 0,200,0,0, 0,0,200,255]);
+  assert.equal(doc.fillAt(0, 0, { color: '#00ff00' }), 2);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 8)], [0,255,0,255, 0,255,0,255]);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(8, 12)], [0,0,200,255]);
+});
+
 test('bucket fill tolerance is bounded, detects similar colors, and respects layer locks', () => {
   const doc = new RasterDocument(3, 1);
   doc.activeLayer.pixels.set([0,0,0,255, 5,0,0,255, 255,0,0,255]);
