@@ -175,3 +175,17 @@ test('visual diff reports visible pixel changes without exposing or mutating the
   assert.deepEqual(user.layers[0].pixels, before);
   assert.equal(user.revision, 0);
 });
+
+
+test('user edits sync into the same sandbox buffers without allocating a new full document each time', () => {
+  const user = new RasterDocument(16, 16);
+  const workspace = new AIWorkspace(user);
+  const sandbox = workspace.sandbox;
+  const sandboxPixels = sandbox.layers[0].pixels;
+  paint(user, 5, 6, '#123456');
+  assert.equal(workspace.syncFromUser().status, 'synced');
+  assert.equal(workspace.sandbox, sandbox, 'the isolated document object should be reused for pixel-only syncs');
+  assert.equal(workspace.sandbox.layers[0].pixels, sandboxPixels, 'pixel buffer should be reused for incremental tile sync');
+  assert.equal(workspace.sandbox.sampleColorAt(5, 6, { merged: false }), '#123456');
+  assert.equal(workspace.sandbox.history.length, 0, 'mirror sync must not create AI undo history');
+});
