@@ -48,7 +48,7 @@ Use these labels consistently:
 
 ### Current functional slice
 
-- Dedicated artwork canvas with fit, zoom, pan, pixel-aligned pencil and eraser, plus a bucket-fill tool with connected/global modes and color tolerance.
+- Dedicated artwork canvas with fit, zoom, pan, pixel-aligned pencil and eraser, connected/global bucket fill with color tolerance, and a temporary eyedropper that samples the visible composite or active layer.
 - Mobile virtual cursor: touch movement is view-only; a separate hold-to-draw/erase control is required to modify pixels.
 - Color selection, brush-size control, multiple layers and visibility toggles.
 - Undo/redo with tile-based pixel history and a bounded history-memory budget.
