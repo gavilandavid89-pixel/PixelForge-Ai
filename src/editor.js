@@ -411,6 +411,57 @@ $('#color').addEventListener('input', event => {
 $('#brush-size').addEventListener('input', event => {
   brushSize = Number(event.target.value); $('#brush-size-value').textContent = `${brushSize} px`;
 });
+const brushScrub = $('#brush-scrub');
+let scrubStartX = 0, scrubStartSize = brushSize, scrubPointerId = null;
+function syncBrushSize(value) {
+  brushSize = Math.max(1, Math.min(32, Math.round(value)));
+  $('#brush-size').value = String(brushSize);
+  $('#brush-size-value').textContent = `${brushSize} px`;
+  brushScrub.setAttribute('aria-valuenow', String(brushSize));
+  brushScrub.setAttribute('aria-valuetext', `${brushSize} pixel${brushSize === 1 ? '' : 's'}. Drag left for thicker, right for thinner.`);
+}
+function resetBrushScrub() {
+  brushScrub.classList.remove('is-dragging');
+  brushScrub.style.setProperty('--scrub-offset', '0%');
+  scrubPointerId = null;
+}
+brushScrub.addEventListener('pointerdown', event => {
+  if (event.button !== undefined && event.button !== 0) return;
+  const rect = brushScrub.getBoundingClientRect();
+  scrubStartX = event.clientX;
+  scrubStartSize = brushSize;
+  scrubPointerId = event.pointerId;
+  brushScrub.classList.add('is-dragging');
+  brushScrub.style.setProperty('--scrub-offset', '0%');
+  try { brushScrub.setPointerCapture(event.pointerId); } catch {}
+  event.preventDefault();
+});
+brushScrub.addEventListener('pointermove', event => {
+  if (scrubPointerId !== event.pointerId) return;
+  const rect = brushScrub.getBoundingClientRect();
+  const travel = Math.max(1, rect.width * 0.34);
+  const displacement = Math.max(-1, Math.min(1, (event.clientX - scrubStartX) / travel));
+  const eased = Math.pow(Math.abs(displacement), 1.8);
+  const nextSize = displacement < 0
+    ? scrubStartSize + (32 - scrubStartSize) * eased
+    : scrubStartSize - (scrubStartSize - 1) * eased;
+  syncBrushSize(nextSize);
+  brushScrub.style.setProperty('--scrub-offset', `${displacement * 34}%`);
+});
+function finishBrushScrub(event) {
+  if (scrubPointerId === null || (event?.pointerId !== undefined && event.pointerId !== scrubPointerId)) return;
+  resetBrushScrub();
+}
+brushScrub.addEventListener('pointerup', finishBrushScrub);
+brushScrub.addEventListener('pointercancel', finishBrushScrub);
+brushScrub.addEventListener('lostpointercapture', finishBrushScrub);
+brushScrub.addEventListener('keydown', event => {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { syncBrushSize(brushSize + 1); event.preventDefault(); }
+  else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { syncBrushSize(brushSize - 1); event.preventDefault(); }
+  else if (event.key === 'Home') { syncBrushSize(1); event.preventDefault(); }
+  else if (event.key === 'End') { syncBrushSize(32); event.preventDefault(); }
+});
+
 $('#undo').addEventListener('click', () => { if (doc.undo()) { changed(); renderLayers(); } });
 $('#redo').addEventListener('click', () => { if (doc.redo()) { changed(); renderLayers(); } });
 $('#fit').addEventListener('click', fitCanvas);
