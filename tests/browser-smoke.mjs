@@ -359,7 +359,10 @@ try {
   };
   const startX = mobileBox.x + mobileBox.width / 2, startY = mobileBox.y + mobileBox.height / 2;
   await touchDrag(startX, startY, startX + 18, startY + 8);
-  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'touch cursor movement without the hold control must not paint');
+  await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
+  assert.equal(await mobile.locator('#undo').isEnabled(), true, 'dragging on the canvas with the pencil must draw immediately without a separate hold button');
+  await mobile.locator('#undo').click();
+  assert.equal(await mobile.locator('#undo').isEnabled(), false, 'the direct touch stroke should undo as one action');
   const drawHoldBounds = await mobile.locator('#draw-hold').boundingBox();
   assert.ok(drawHoldBounds && drawHoldBounds.width > 70, 'mobile draw-hold control must be reachable');
   const holdX = drawHoldBounds.x + drawHoldBounds.width / 2, holdY = drawHoldBounds.y + drawHoldBounds.height / 2;
@@ -391,7 +394,7 @@ try {
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'Escape must cancel an in-progress touch stroke without history');
   assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'Escape must release the draw-hold state');
   assert.deepEqual(failures, [], 'no uncaught browser JavaScript errors should occur');
-  console.log('Browser smoke checks passed: legacy IndexedDB migration; PNG/JPEG/WebP/GIF imports; drawing, undo/redo and layers; transparent PNG export; safe project-copy import; oversized-image rejection; save during stroke; keyboard controls; mobile touch/hold/cancellation.');
+  console.log('Browser smoke checks passed: legacy IndexedDB migration; PNG/JPEG/WebP/GIF imports; drawing, undo/redo and layers; transparent PNG export; safe project-copy import; oversized-image rejection; save during stroke; keyboard controls; mobile direct touch drawing, virtual cursor/hold compatibility and cancellation.');
 } finally {
   if (browser) await browser.close();
   await new Promise(resolve => server.close(resolve));
