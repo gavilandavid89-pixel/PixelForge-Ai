@@ -803,6 +803,27 @@ function modifyCurrentSelection(operation) {
 $('#selection-invert').addEventListener('click', () => modifyCurrentSelection('invert'));
 $('#selection-expand').addEventListener('click', () => modifyCurrentSelection('expand'));
 $('#selection-contract').addEventListener('click', () => modifyCurrentSelection('contract'));
+const selectionTransformActions = document.createElement('div');
+selectionTransformActions.className = 'transform-actions selection-transform-actions';
+selectionTransformActions.setAttribute('aria-label', 'Move or rotate selected pixels');
+selectionTransformActions.innerHTML = '<button type="button" data-transform="left" title="Move selected pixels one pixel left">←</button><button type="button" data-transform="right" title="Move selected pixels one pixel right">→</button><button type="button" data-transform="up" title="Move selected pixels one pixel up">↑</button><button type="button" data-transform="down" title="Move selected pixels one pixel down">↓</button><button type="button" data-transform="rotate-left" title="Rotate selected pixels 90 degrees counter-clockwise">↶ 90°</button><button type="button" data-transform="rotate-right" title="Rotate selected pixels 90 degrees clockwise">↷ 90°</button>';
+$('#selection-settings').append(selectionTransformActions);
+selectionTransformActions.addEventListener('click', event => {
+  const button = event.target.closest('button[data-transform]');
+  if (!button || !selection) return;
+  const action = button.dataset.transform;
+  const options = action === 'left' ? { dx: -1 } : action === 'right' ? { dx: 1 } :
+    action === 'up' ? { dy: -1 } : action === 'down' ? { dy: 1 } :
+    action === 'rotate-left' ? { rotate: 270 } : { rotate: 90 };
+  try {
+    const result = doc.transformRect(selection.x, selection.y, selection.width, selection.height, options);
+    if (!result.selectedPixels || !result.bounds) { status('No selected pixels to transform', 'neutral'); return; }
+    selection = { ...result.bounds, shape: 'rect', customMask: result.selectionMask };
+    syncSelectionMask();
+    changed();
+    status(result.changedPixels ? `Transformed selection · ${result.changedPixels.toLocaleString()} pixels changed` : 'Selection moved without changing visible pixels', 'success');
+  } catch (error) { status(error.message, 'error'); }
+});
 $('#line-tool').addEventListener('click', () => setTool('shape-line'));
 $('#rectangle-tool').addEventListener('click', () => setTool('shape-rect'));
 $('#ellipse-tool').addEventListener('click', () => setTool('shape-ellipse'));
