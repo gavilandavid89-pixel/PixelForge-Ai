@@ -343,8 +343,9 @@ function updateDrawHoldUI() {
   if (!drawHoldButton) return;
   drawHoldButton.classList.toggle('held', drawHeld);
   drawHoldButton.setAttribute('aria-pressed', String(drawHeld));
-  drawHoldButton.disabled = !['draw', 'erase'].includes(tool);
-  drawHoldButton.querySelector('small').textContent = tool === 'erase' ? 'Hold to erase' : tool === 'pan' ? 'Pan selected' : tool === 'select' ? 'Select area' : tool === 'fill' ? 'Fill selected' : tool === 'eyedropper' ? 'Sample color' : 'Hold to draw';
+  drawHoldButton.disabled = cursorMode || !['draw', 'erase'].includes(tool);
+  drawHoldButton.style.display = cursorMode ? 'none' : '';
+  drawHoldButton.querySelector('small').textContent = cursorMode ? 'Cursor active' : tool === 'erase' ? 'Hold to erase' : tool === 'pan' ? 'Pan selected' : tool === 'select' ? 'Select area' : tool === 'fill' ? 'Fill selected' : tool === 'eyedropper' ? 'Sample color' : 'Hold to draw';
 }
 drawHoldButton?.addEventListener('pointerdown', event => {
   if (!['draw', 'erase'].includes(tool) || flushInProgress || drawHeld) { event.preventDefault(); return; }
@@ -395,6 +396,7 @@ function setCursorMode(enabled) {
   cursorModeButton.setAttribute('aria-pressed', String(cursorMode));
   canvas.dataset.cursorMode = String(cursorMode);
   cursorGesturePointerId = null; cursorGestureLast = null;
+  updateDrawHoldUI();
   if (cursorMode) {
     virtualCursorScreen ??= { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 };
     virtualCursorPoint = documentPointFromScreen(virtualCursorScreen); virtualCursorVisible = true;
