@@ -46,7 +46,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Integer Bresenham line rasterization and connected pixel-stepped rectangle/ellipse outlines; selection masks constrain shape commits.
 - [ ] Dedicated curve algorithms and pixel-perfect ellipse midpoint rasterization.
 - [x] Selection-constrained pencil, eraser, bucket fill, clear operations and geometric shape commits.
-- [ ] Selection-constrained rotate, scale, skew and crop previews.
+- [x] Selection-constrained pixel move and 90°/180°/270° rotation with centered quarter-turn bounds, mask preservation, clipping, and one-step undo/redo.\n- [ ] Selection-constrained scale, skew and crop previews.
 - [x] Exact opaque-pixel color replacement on the active layer, preserving alpha, respecting selection masks and supporting atomic undo.
 - [x] One-pixel sprite outline on transparent neighbors, with selection-mask support and one-step undo.
 - [x] Checker dither fill using foreground/background colors, with adjustable 1–16 pixel pattern scale, connected/global fill modes, selection-mask support and atomic undo.
@@ -63,7 +63,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Internal active-layer pixel copy/cut/paste with clipped bounds, selection-aware paste, and atomic undo for cut/paste.
 - [ ] Move/duplicate pasted pixels independently, system clipboard interoperability, and copy merged composite.
 - [x] Horizontal/vertical flip of the selected rectangle or whole active layer, selection-aware and one-step undoable.
-- [ ] Move pixels vs move selection; rotate, scale, skew, crop and transform previews.
+- [x] Move selected pixels independently from the selection outline; preserve irregular selection masks through translation and quarter-turn rotation.\n- [ ] Move selection without pixels; scale, skew, crop and non-destructive transform previews.
 - [ ] Preview/cancel/commit, interpolation choices, clipping and single-step undo.
 ### Palettes and sprite animation
 - [x] Foreground/background color swap and eight-color recent history with keyboard shortcut.
