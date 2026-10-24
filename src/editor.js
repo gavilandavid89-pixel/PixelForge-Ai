@@ -262,6 +262,10 @@ function syncSelectionMask() {
   for (let y = top; y < bottom; y++) mask.fill(1, y * doc.width + left, y * doc.width + right);
   doc.setSelectionMask(mask);
 }
+function clearSelectionState() {
+  selection = null; selectionStart = null; selectionPointerId = null;
+  doc.setSelectionMask(null);
+}
 function symmetryPoints(point, mode = symmetryMode) {
   const w = doc.width, h = doc.height;
   const cx = (w - 1) / 2, cy = (h - 1) / 2;
@@ -884,7 +888,7 @@ async function renderProjects() {
         await flushAutosave();
         const saved = await loadProjectById(project.id);
         if (!saved) throw new Error('That saved project no longer exists.');
-        doc = RasterDocument.fromJSON(saved);
+        doc = RasterDocument.fromJSON(saved); clearSelectionState();
         $('#projects-dialog').close(); fitCanvas(); updateTitle(); renderLayers();
         status('Opened saved project', 'success');
       } catch (error) { status(`Could not open project: ${error.message}`, 'error'); }
@@ -899,7 +903,7 @@ $('#create-new').addEventListener('click', async () => {
   const width = Number($('#new-width').value), height = Number($('#new-height').value);
   try {
     validateDimensions(width, height); await flushAutosave();
-    doc = new RasterDocument(width, height, $('#new-name').value.trim() || 'Untitled artwork');
+    doc = new RasterDocument(width, height, $('#new-name').value.trim() || 'Untitled artwork'); clearSelectionState();
     $('#new-dialog').close(); fitCanvas(); updateTitle(); renderLayers(); scheduleAutosave();
     status('New document created', 'success');
   } catch (error) { $('#new-error').textContent = error.message; status(`Could not switch documents: ${error.message}`, 'error'); }
@@ -972,7 +976,7 @@ $('#import-file').addEventListener('change', async event => {
         importedDoc.activeLayer.pixels.set(tctx.getImageData(0, 0, bitmap.width, bitmap.height).data);
       } finally { bitmap.close?.(); }
     }
-    await flushAutosave(); await saveProject(importedDoc.toJSON()); doc = importedDoc;
+    await flushAutosave(); await saveProject(importedDoc.toJSON()); doc = importedDoc; clearSelectionState();
     fitCanvas(); updateTitle(); renderLayers(); status('Import complete and saved locally', 'success');
   } catch (error) { status(`Import failed: ${error.message}`, 'error'); }
   finally { event.target.value = ''; }
@@ -1145,7 +1149,7 @@ async function boot() {
   resizeCanvas();
   try {
     const saved = await loadMostRecentProject();
-    if (saved) { doc = RasterDocument.fromJSON(saved); status('Recovered latest local project', 'success'); }
+    if (saved) { doc = RasterDocument.fromJSON(saved); clearSelectionState(); status('Recovered latest local project', 'success'); }
     else status('Ready · saved locally on this device', 'success');
   } catch (error) { status(`Local recovery unavailable: ${error.message}`, 'warning'); }
   fitCanvas(); updateTitle(); renderLayers();
