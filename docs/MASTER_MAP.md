@@ -52,7 +52,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Delete/Backspace clears selected active-layer pixels as one undoable operation; locked layers reject the edit.
 - [ ] Persistent mask, ellipse/lasso/polygon/magic-wand/color-range selections.
 - [ ] Add/subtract/intersect/invert/feather/expand/contract and saved selections.
-- [ ] Copy/cut/paste/paste-in-place/duplicate with safe clipboard behavior.
+- [x] Internal active-layer pixel copy/cut/paste with clipped bounds, selection-aware paste, and atomic undo for cut/paste.\n- [ ] Move/duplicate pasted pixels independently, system clipboard interoperability, and copy merged composite.
 - [ ] Move pixels vs move selection; flip, rotate, scale, skew, crop and transforms.
 - [ ] Preview/cancel/commit, interpolation choices, clipping and single-step undo.
 ### Palettes and sprite animation
