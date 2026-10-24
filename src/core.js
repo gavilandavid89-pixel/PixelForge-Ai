@@ -22,6 +22,38 @@ export function rasterLinePoints(x0, y0, x1, y1) {
   return points;
 }
 
+export function createColorSelectionMask(width, height, pixels, x, y, { tolerance = 0, contiguous = true } = {}) {
+  validateDimensions(width, height);
+  if (!(pixels instanceof Uint8ClampedArray) || pixels.length !== width * height * 4) throw new TypeError('Color selection pixels must match document dimensions.');
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) throw new RangeError('Color selection point is outside document bounds.');
+  if (!Number.isInteger(tolerance) || tolerance < 0 || tolerance > 255 || typeof contiguous !== 'boolean') throw new RangeError('Color selection tolerance/mode is invalid.');
+  const offset = (y * width + x) * 4, seed = [...pixels.subarray(offset, offset + 4)];
+  const matches = index => {
+    if (seed[3] === 0 && pixels[index + 3] === 0) return true;
+    for (let channel = 0; channel < 4; channel++) if (Math.abs(pixels[index + channel] - seed[channel]) > tolerance) return false;
+    return true;
+  };
+  const mask = new Uint8Array(width * height);
+  if (!contiguous) {
+    for (let pixel = 0; pixel < mask.length; pixel++) if (matches(pixel * 4)) mask[pixel] = 1;
+    return mask;
+  }
+  const queue = new Int32Array(width * height); let head = 0, tail = 0;
+  const start = y * width + x; queue[tail++] = start; mask[start] = 1;
+  while (head < tail) {
+    const pixel = queue[head++], px = pixel % width, py = Math.floor(pixel / width);
+    const add = next => {
+      if (next < 0 || next >= mask.length || mask[next] || !matches(next * 4)) return;
+      mask[next] = 1; queue[tail++] = next;
+    };
+    if (px > 0) add(pixel - 1);
+    if (px + 1 < width) add(pixel + 1);
+    if (py > 0) add(pixel - width);
+    if (py + 1 < height) add(pixel + width);
+  }
+  return mask;
+}
+
 export function createSelectionMask(width, height, selection) {
   validateDimensions(width, height);
   if (selection === null) return null;
