@@ -543,6 +543,7 @@ function setTool(next) {
   if (tool !== 'select') { selectionStart = null; selectionPointerId = null; }
   canvas.dataset.tool = tool;
   updateDrawHoldUI();
+  render();
 }
 $('#color').addEventListener('input', event => {
   color = event.target.value; $('#color-value').textContent = color.toUpperCase();
