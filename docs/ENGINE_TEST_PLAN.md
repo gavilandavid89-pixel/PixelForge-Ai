@@ -197,8 +197,8 @@ Next test milestone: expand browser coverage for image import, malformed files, 
 ### Post-run bucket-fill extension — pending fresh verification
 
 - Added the connected/global bucket-fill command, color tolerance, transparent-pixel equivalence, active-layer lock checks and single-command tile-patch undo/redo.
-- Added four Node regression tests and a headless-browser smoke scenario for tool selection, settings visibility, fill execution and undo.
-- These additions are present in the current source, but the last confirmed CI record below is from before these changes. Do not count the new cases as passed until a fresh CI run confirms them.
+- Added five Node regression tests across bucket fill and color sampling, plus headless-browser smoke scenarios for fill execution/undo and eyedropper sampling/return-to-tool.
+- These additions are present in the current source, but the last confirmed CI record below is from before these changes. Five Node regression cases and two browser-smoke scenarios have been added since that baseline; do not count them as passed until a fresh CI run confirms them.
 
 ### Browser smoke checks — GitHub Actions run #149
 
