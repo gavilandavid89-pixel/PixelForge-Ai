@@ -132,6 +132,7 @@ function cloneLayer(layer) { return { ...layer, pixels: clonePixels(layer.pixels
 const TILE_SIZE = 64;
 function entryBytes(entry) {
   if (entry.type === 'pixels') return entry.tiles.reduce((sum, tile) => sum + tile.before.byteLength + tile.after.byteLength, 64);
+  if (entry.type === 'document-crop') return entry.before.layers.reduce((sum, layer) => sum + layer.pixels.byteLength, 256);
   if (entry.type === 'pixels-batch') return entry.layers.reduce((sum, layer) => sum + layer.tiles.reduce((tileSum, tile) => tileSum + tile.before.byteLength + tile.after.byteLength, 0), 64);
   if (entry.type === 'layer-add') return (entry.addedLayer?.pixels.byteLength ?? 0) + 128;
   if (entry.type === 'layer-delete') return (entry.removedLayer?.pixels.byteLength ?? 0) + 128;
@@ -429,78 +430,173 @@ export class RasterDocument {
     }
     return changedPixels;
   }
-  transformRect(x, y, width, height, { dx = 0, dy = 0, rotate = 0 } = {}) {
-    if (![x, y, width, height, dx, dy, rotate].every(Number.isInteger) || width < 1 || height < 1 ||
-        ![0, 90, 180, 270].includes(rotate)) {
-      throw new TypeError('Transform requires integer bounds/offsets and rotation of 0, 90, 180, or 270 degrees.');
+  previewTransformRect(x, y, width, height, { dx = 0, dy = 0, rotate = 0, scaleX = 1, scaleY = 1, skewX = 0, skewY = 0, interpolation = 'nearest' } = {}) {
+    if (![x, y, width, height, dx, dy, rotate, scaleX, scaleY, skewX, skewY].every(Number.isFinite) ||
+        ![x, y, width, height, dx, dy, rotate].every(Number.isInteger) || width < 1 || height < 1 ||
+        ![0, 90, 180, 270].includes(rotate) || scaleX < 0.1 || scaleX > 8 || scaleY < 0.1 || scaleY > 8 ||
+        Math.abs(skewX) > 4 || Math.abs(skewY) > 4 || !['nearest', 'bilinear'].includes(interpolation)) {
+      throw new TypeError('Transform bounds/offsets must be integers; rotation 0/90/180/270; scale 0.1–8; skew -4–4; interpolation nearest/bilinear.');
     }
     const layer = this.activeLayer;
     if (layer.locked) throw new Error('The active layer is locked.');
     const left = Math.max(0, x), top = Math.max(0, y);
     const right = Math.min(this.width, x + width), bottom = Math.min(this.height, y + height);
     if (left >= right || top >= bottom) throw new RangeError('Transform rectangle is outside document bounds.');
-
+    const sourceMask = this.selectionMask;
     const selected = [];
     for (let sy = top; sy < bottom; sy++) for (let sx = left; sx < right; sx++) {
       const sourceIndex = sy * this.width + sx;
-      if (this.selectionMask && !this.selectionMask[sourceIndex]) continue;
-      const offset = sourceIndex * 4;
-      selected.push({ x: sx, y: sy, rx: sx - x, ry: sy - y, pixel: new Uint8ClampedArray(layer.pixels.subarray(offset, offset + 4)) });
+      if (sourceMask && !sourceMask[sourceIndex]) continue;
+      selected.push({ x: sx, y: sy, rx: sx - x, ry: sy - y });
     }
-    if (!selected.length) return { changedPixels: 0, selectedPixels: 0, selectionMask: new Uint8Array(this.width * this.height), bounds: null };
-
-    const outWidth = rotate % 180 === 0 ? width : height;
-    const outHeight = rotate % 180 === 0 ? height : width;
-    const targetLeft = x + dx + Math.floor((width - outWidth) / 2);
-    const targetTop = y + dy + Math.floor((height - outHeight) / 2);
-    const transformed = selected.map(item => {
-      let tx, ty;
-      if (rotate === 90) { tx = height - 1 - item.ry; ty = item.rx; }
-      else if (rotate === 180) { tx = width - 1 - item.rx; ty = height - 1 - item.ry; }
-      else if (rotate === 270) { tx = item.ry; ty = width - 1 - item.rx; }
-      else { tx = item.rx; ty = item.ry; }
-      return { x: targetLeft + tx, y: targetTop + ty, pixel: item.pixel };
-    });
-
-    const tilesBefore = new Map();
+    const empty = { changedPixels: 0, selectedPixels: 0, pixels: new Uint8ClampedArray(this.width * this.height * 4), selectionMask: new Uint8Array(this.width * this.height), bounds: null, rect: { x, y, width, height }, options: { dx, dy, rotate, scaleX, scaleY, skewX, skewY, interpolation } };
+    if (!selected.length) return empty;
+    const theta = rotate * Math.PI / 180, cos = Math.round(Math.cos(theta)), sin = Math.round(Math.sin(theta));
+    // Compose rotation with scale + skew around the center of the source rectangle.
+    const a = cos * scaleX - sin * skewY;
+    const b = cos * skewX - sin * scaleY;
+    const c = sin * scaleX + cos * skewY;
+    const d = sin * skewX + cos * scaleY;
+    const determinant = a * d - b * c;
+    if (!Number.isFinite(determinant) || Math.abs(determinant) < 0.01) throw new RangeError('Transform matrix is not invertible.');
+    const cx = (width - 1) / 2, cy = (height - 1) / 2;
+    const txCenter = x + cx + dx, tyCenter = y + cy + dy;
+    const corners = [[-.5,-.5],[width-.5,-.5],[-.5,height-.5],[width-.5,height-.5]].map(([px,py]) => ({
+      x: txCenter + a * (px - cx) + b * (py - cy),
+      y: tyCenter + c * (px - cx) + d * (py - cy),
+    }));
+    const minX = Math.max(0, Math.floor(Math.min(...corners.map(p => p.x)) + .5));
+    const minY = Math.max(0, Math.floor(Math.min(...corners.map(p => p.y)) + .5));
+    const maxX = Math.min(this.width - 1, Math.ceil(Math.max(...corners.map(p => p.x)) - .5));
+    const maxY = Math.min(this.height - 1, Math.ceil(Math.max(...corners.map(p => p.y)) - .5));
+    const pixels = new Uint8ClampedArray(this.width * this.height * 4);
+    const nextMask = new Uint8Array(this.width * this.height);
+    const selectedAt = (sx, sy) => {
+      if (sx < x || sy < y || sx >= x + width || sy >= y + height || sx < 0 || sy < 0 || sx >= this.width || sy >= this.height) return false;
+      return !sourceMask || sourceMask[sy * this.width + sx] === 1;
+    };
+    const sourcePixel = (sx, sy) => {
+      if (!selectedAt(sx, sy)) return [0, 0, 0, 0];
+      const i = (sy * this.width + sx) * 4;
+      return [layer.pixels[i], layer.pixels[i+1], layer.pixels[i+2], layer.pixels[i+3]];
+    };
+    let count = 0, outLeft = this.width, outTop = this.height, outRight = -1, outBottom = -1;
+    for (let py = minY; py <= maxY; py++) for (let px = minX; px <= maxX; px++) {
+      const vx = px - txCenter, vy = py - tyCenter;
+      const u = (d * vx - b * vy) / determinant + cx + x;
+      const v = (-c * vx + a * vy) / determinant + cy + y;
+      const sx = Math.round(u), sy = Math.round(v);
+      if (!selectedAt(sx, sy)) continue;
+      const targetIndex = py * this.width + px, targetOffset = targetIndex * 4;
+      if (interpolation === 'nearest') {
+        pixels.set(sourcePixel(sx, sy), targetOffset);
+      } else {
+        const x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0;
+        const samples = [
+          [x0,y0,(1-fx)*(1-fy)], [x0+1,y0,fx*(1-fy)],
+          [x0,y0+1,(1-fx)*fy], [x0+1,y0+1,fx*fy],
+        ];
+        let alpha = 0, premulR = 0, premulG = 0, premulB = 0;
+        for (const [ix,iy,weight] of samples) {
+          if (!selectedAt(ix,iy)) continue;
+          const si = (iy * this.width + ix) * 4, sa = layer.pixels[si+3] / 255 * weight;
+          alpha += sa; premulR += layer.pixels[si] * sa; premulG += layer.pixels[si+1] * sa; premulB += layer.pixels[si+2] * sa;
+        }
+        pixels[targetOffset+3] = Math.round(alpha * 255);
+        if (alpha > 0) {
+          pixels[targetOffset] = Math.round(premulR / alpha);
+          pixels[targetOffset+1] = Math.round(premulG / alpha);
+          pixels[targetOffset+2] = Math.round(premulB / alpha);
+        }
+      }
+      nextMask[targetIndex] = 1; count++;
+      outLeft = Math.min(outLeft, px); outTop = Math.min(outTop, py); outRight = Math.max(outRight, px); outBottom = Math.max(outBottom, py);
+    }
+    let changedPixels = 0;
+    for (let i = 0; i < pixels.length; i += 4) if (nextMask[i / 4]) {
+      const source = i / 4, sx = source % this.width, sy = Math.floor(source / this.width);
+      if (!selectedAt(sx, sy)) continue;
+      const oldOffset = i;
+      if (layer.pixels[oldOffset] !== pixels[oldOffset] || layer.pixels[oldOffset+1] !== pixels[oldOffset+1] ||
+          layer.pixels[oldOffset+2] !== pixels[oldOffset+2] || layer.pixels[oldOffset+3] !== pixels[oldOffset+3]) changedPixels++;
+    }
+    return {
+      changedPixels, selectedPixels: count, pixels, selectionMask: nextMask,
+      bounds: outRight < 0 ? null : { x: outLeft, y: outTop, width: outRight - outLeft + 1, height: outBottom - outTop + 1 },
+      rect: { x, y, width, height }, options: { dx, dy, rotate, scaleX, scaleY, skewX, skewY, interpolation },
+    };
+  }
+  transformRect(x, y, width, height, options = {}) {
+    const preview = this.previewTransformRect(x, y, width, height, options);
+    if (!preview.selectedPixels) return preview;
+    const layer = this.activeLayer;
+    const beforeTiles = new Map();
     const touch = (px, py) => {
       const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
-      if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
+      if (!beforeTiles.has(key)) beforeTiles.set(key, this.#captureTile(layer, tileX, tileY));
       this.compositeDirtyTiles.add(key);
     };
-    for (const item of selected) {
-      touch(item.x, item.y);
-      layer.pixels.fill(0, (item.y * this.width + item.x) * 4, (item.y * this.width + item.x) * 4 + 4);
+    // Snapshot all source pixels before clearing so overlapping transforms are safe.
+    for (let sy = Math.max(0, y); sy < Math.min(this.height, y + height); sy++) for (let sx = Math.max(0, x); sx < Math.min(this.width, x + width); sx++) {
+      const index = sy * this.width + sx;
+      if (this.selectionMask && !this.selectionMask[index]) continue;
+      touch(sx, sy);
+      layer.pixels.fill(0, index * 4, index * 4 + 4);
     }
-    const nextMask = new Uint8Array(this.width * this.height);
-    let minX = this.width, minY = this.height, maxX = -1, maxY = -1;
-    for (const item of transformed) {
-      if (item.x < 0 || item.y < 0 || item.x >= this.width || item.y >= this.height) continue;
-      const pixelIndex = item.y * this.width + item.x, offset = pixelIndex * 4;
-      touch(item.x, item.y);
-      layer.pixels.set(item.pixel, offset);
-      nextMask[pixelIndex] = 1;
-      minX = Math.min(minX, item.x); minY = Math.min(minY, item.y);
-      maxX = Math.max(maxX, item.x); maxY = Math.max(maxY, item.y);
+    for (let index = 0; index < preview.selectionMask.length; index++) {
+      if (!preview.selectionMask[index]) continue;
+      const x2 = index % this.width, y2 = Math.floor(index / this.width);
+      touch(x2, y2);
+      layer.pixels.set(preview.pixels.subarray(index * 4, index * 4 + 4), index * 4);
     }
-
     const changedTiles = [];
     let changedPixels = 0;
-    for (const [key, before] of tilesBefore) {
+    for (const [key, before] of beforeTiles) {
       const [tileX, tileY] = key.split(':').map(Number), after = this.#captureTile(layer, tileX, tileY);
       let tileChanged = 0;
-      for (let i = 0; i < before.length; i += 4) {
-        if (before[i] !== after[i] || before[i + 1] !== after[i + 1] || before[i + 2] !== after[i + 2] || before[i + 3] !== after[i + 3]) tileChanged++;
-      }
+      for (let i = 0; i < before.length; i += 4) if (before[i] !== after[i] || before[i+1] !== after[i+1] || before[i+2] !== after[i+2] || before[i+3] !== after[i+3]) tileChanged++;
       if (tileChanged) { changedTiles.push({ tileX, tileY, before, after }); changedPixels += tileChanged; }
     }
     if (changedTiles.length) this.#record({ type: 'pixels', layerId: layer.id, tiles: changedTiles });
-    return {
-      changedPixels,
-      selectedPixels: transformed.length,
-      selectionMask: nextMask,
-      bounds: maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
-    };
+    return { ...preview, changedPixels, selectionMask: preview.selectionMask };
+  }
+  cropCanvas(x, y, width, height) {
+    if (![x, y, width, height].every(Number.isInteger) || width < 1 || height < 1 ||
+        x < 0 || y < 0 || x + width > this.width || y + height > this.height) {
+      throw new RangeError('Crop bounds must be positive integer dimensions fully inside the canvas.');
+    }
+    if (x === 0 && y === 0 && width === this.width && height === this.height) return false;
+    const snapshot = { width: this.width, height: this.height, activeLayerId: this.activeLayerId, layers: this.layers.map(cloneLayer) };
+    this.#cropTo(x, y, width, height);
+    this.selectionMask = null;
+    this.#record({ type: 'document-crop', before: snapshot, x, y, width, height });
+    return true;
+  }
+  #cropTo(x, y, width, height) {
+    validateDimensions(width, height);
+    if (width * height * 4 * this.layers.length > MAX_DOCUMENT_BYTES) throw new RangeError('Crop exceeds the document pixel-memory budget.');
+    this.layers = this.layers.map(layer => {
+      const pixels = new Uint8ClampedArray(width * height * 4);
+      for (let row = 0; row < height; row++) {
+        const from = ((y + row) * this.width + x) * 4;
+        pixels.set(layer.pixels.subarray(from, from + width * 4), row * width * 4);
+      }
+      return { ...layer, pixels };
+    });
+    this.width = width; this.height = height;
+    if (!this.layers.some(layer => layer.id === this.activeLayerId)) this.activeLayerId = this.layers[0].id;
+    this.compositeCache = new Uint8ClampedArray(width * height * 4);
+    this.compositeDirtyTiles = new Set();
+    this.#markAllCompositeDirty();
+  }
+  #restoreDocument(snapshot) {
+    this.width = snapshot.width; this.height = snapshot.height;
+    this.layers = snapshot.layers.map(cloneLayer);
+    this.activeLayerId = snapshot.activeLayerId;
+    this.selectionMask = null;
+    this.compositeCache = new Uint8ClampedArray(this.width * this.height * 4);
+    this.compositeDirtyTiles = new Set();
+    this.#markAllCompositeDirty();
   }
   replaceLayerPixelsBatch(replacements) {
     if (!Array.isArray(replacements) || replacements.length < 1 || replacements.length > 64) {
@@ -873,7 +969,10 @@ export class RasterDocument {
     }
   }
   #applyEntry(entry, forward) {
-    if (entry.type === 'pixels-batch') {
+    if (entry.type === 'document-crop') {
+      if (forward) this.#cropTo(entry.x, entry.y, entry.width, entry.height);
+      else this.#restoreDocument(entry.before);
+    } else if (entry.type === 'pixels-batch') {
       for (const change of entry.layers) {
         const layer = this.layers.find(item => item.id === change.layerId);
         if (layer) for (const tile of change.tiles) this.#writeTile(layer, tile.tileX, tile.tileY, forward ? tile.after : tile.before);
