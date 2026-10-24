@@ -219,7 +219,7 @@ try {
   assert.equal(await desktop.locator('#user-palette .palette-item').count(), paletteCountBefore + 1);
   await desktop.locator('#palette-file').setInputFiles({
     name: 'smoke.gpl', mimeType: 'text/plain',
-    buffer: Buffer.from('GIMP Palette\\nName: smoke\\nColumns: 2\\n#\\n255 0 0 Red\\n0 255 0 Green\\n')
+    buffer: Buffer.from('GIMP Palette\nName: smoke\nColumns: 2\n#\n255 0 0 Red\n0 255 0 Green\n')
   });
   await desktop.waitForFunction(() => /Imported 2 palette colors/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.ok(await desktop.locator('#user-palette .palette-item').count() >= paletteCountBefore + 3, 'palette import should add unique parsed colors');
