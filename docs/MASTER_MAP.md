@@ -125,7 +125,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Proposal snapshots with stale-source and stale-sandbox checks; accepted pixel edits apply as one undoable transaction, while unsubmitted drafts cannot be silently overwritten by sync.
 - [x] Incremental tile synchronization mirrors user pixel edits into reusable sandbox buffers to reduce allocation pressure.
 - [x] Provider-independent edit coordinator and OpenAI-compatible endpoint adapter with structured plans, explicit artwork consent, stale-source rejection and rollback on failed plans.
-- [ ] Connect provider configuration and prompt submission to the UI; no provider is configured by default.
+- [x] Connect provider configuration and prompt submission to the UI with in-memory credentials, explicit artwork-sharing consent and request cancellation; no provider is configured by default.
 - [ ] Visual partial-acceptance UI, safe merge of layer-structure edits, AI task queue with progress/cancel/retries and recoverable failure.
 - [ ] Mask-aware edits, side-by-side variations and explicit apply transaction.
 - [ ] AI orchestration must use implemented editor operations and shared history, never bypass it.
