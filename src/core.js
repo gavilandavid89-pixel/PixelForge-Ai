@@ -431,15 +431,16 @@ export class RasterDocument {
   flipRect(x, y, width, height, axis = 'horizontal') {
     if (!['horizontal', 'vertical'].includes(axis)) throw new TypeError('Flip axis must be horizontal or vertical.');
     const clipboard = this.copyRect(x, y, width, height);
-    const pixels = new Uint8ClampedArray(clipboard.pixels.length);
+    const pixels = new Uint8ClampedArray(clipboard.pixels.length), mask = new Uint8Array(clipboard.mask.length);
     for (let dy = 0; dy < clipboard.height; dy++) for (let dx = 0; dx < clipboard.width; dx++) {
       const sourceX = axis === 'horizontal' ? clipboard.width - 1 - dx : dx;
       const sourceY = axis === 'vertical' ? clipboard.height - 1 - dy : dy;
-      const sourceOffset = (sourceY * clipboard.width + sourceX) * 4;
-      const targetOffset = (dy * clipboard.width + dx) * 4;
+      const sourcePixel = sourceY * clipboard.width + sourceX, targetPixel = dy * clipboard.width + dx;
+      const sourceOffset = sourcePixel * 4, targetOffset = targetPixel * 4;
       pixels.set(clipboard.pixels.subarray(sourceOffset, sourceOffset + 4), targetOffset);
+      mask[targetPixel] = clipboard.mask[sourcePixel];
     }
-    return this.pasteRect({ ...clipboard, pixels }, { x: clipboard.x, y: clipboard.y });
+    return this.pasteRect({ ...clipboard, pixels, mask }, { x: clipboard.x, y: clipboard.y });
   }
   fillGradient(x0, y0, x1, y1, { startColor = '#20202a', endColor = '#ffffff', opacity = 1 } = {}) {
     if (![x0, y0, x1, y1].every(Number.isInteger) || x0 < 0 || y0 < 0 || x1 < 0 || y1 < 0 ||
