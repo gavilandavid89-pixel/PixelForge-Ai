@@ -232,7 +232,21 @@ function render() {
       const sw = selection.width * zoom, sh = selection.height * zoom;
       const traceSelection = () => {
         ctx.beginPath();
-        if (selection.shape === 'ellipse') ctx.ellipse(sx + sw / 2, sy + sh / 2, Math.max(.5, sw / 2), Math.max(.5, sh / 2), 0, 0, Math.PI * 2);
+        if (selection.customMask && zoom >= 2) {
+          const left = Math.max(selection.x, Math.floor(-panX / zoom)), top = Math.max(selection.y, Math.floor(-panY / zoom));
+          const right = Math.min(selection.x + selection.width, Math.ceil((canvas.clientWidth - panX) / zoom));
+          const bottom = Math.min(selection.y + selection.height, Math.ceil((canvas.clientHeight - panY) / zoom));
+          const mask = selection.customMask;
+          const selected = (x, y) => x >= 0 && y >= 0 && x < doc.width && y < doc.height && Boolean(mask[y * doc.width + x]);
+          for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
+            if (!selected(x, y)) continue;
+            const x0 = panX + x * zoom, y0 = panY + y * zoom, x1 = x0 + zoom, y1 = y0 + zoom;
+            if (!selected(x, y - 1)) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); }
+            if (!selected(x + 1, y)) { ctx.moveTo(x1, y0); ctx.lineTo(x1, y1); }
+            if (!selected(x, y + 1)) { ctx.moveTo(x1, y1); ctx.lineTo(x0, y1); }
+            if (!selected(x - 1, y)) { ctx.moveTo(x0, y1); ctx.lineTo(x0, y0); }
+          }
+        } else if (selection.shape === 'ellipse') ctx.ellipse(sx + sw / 2, sy + sh / 2, Math.max(.5, sw / 2), Math.max(.5, sh / 2), 0, 0, Math.PI * 2);
         else if (selection.shape === 'polygon' && selection.points?.length) {
           selection.points.forEach((point, index) => {
             const px = panX + (point.x + .5) * zoom, py = panY + (point.y + .5) * zoom;
