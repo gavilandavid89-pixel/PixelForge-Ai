@@ -61,17 +61,18 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Magic-wand selection by connected or global matching colors, with RGBA-aware transparency and tolerance.
 - [x] Invert, expand and contract selection masks with bounded Manhattan-distance radius and visible pixel contours for custom masks.
 - [ ] Click-to-place polygon selection, feathering, add/subtract/intersect selection modes and saved selection sets.
-- [ ] Add/subtract/intersect, feathering and saved selection sets.
 - [x] Internal active-layer pixel copy/cut/paste with clipped bounds, selection-aware paste, and atomic undo for cut/paste.
 - [ ] Move/duplicate pasted pixels independently, system clipboard interoperability, and copy merged composite.
 - [x] Horizontal/vertical flip of the selected rectangle or whole active layer, selection-aware and one-step undoable.
-- [x] Move selected pixels independently from the selection outline; preserve irregular selection masks through translation and quarter-turn rotation; core regression tests pass.\n- [ ] Move selection without pixels; scale, skew, crop and non-destructive transform previews.
+- [x] Move selected pixels independently from the selection outline; preserve irregular selection masks through translation and quarter-turn rotation; core regression tests pass.
+- [ ] Move the selection outline without moving pixels.
+- [x] Scale, skew and rotate selected pixels with a non-destructive preview, cancel/apply, interpolation choices, clipping and one-step undo/redo.
+- [x] Crop the full canvas to selection bounds through a preview; all layers resize together and undo/redo restores exact dimensions and pixels.
 - [x] Preview/cancel/commit, interpolation choices, clipping and single-step undo for selection transforms and canvas crop.
 ### Palettes and sprite animation
 - [x] Foreground/background color swap and eight-color recent history with keyboard shortcut.
 - [ ] Named palette sets, reorder/lock/tags/favorites, PAL/PNG export and palette-from-image.
 - [x] Local editable palette swatches with browser persistence and GPL/hex/RGB-list import plus GPL export.
-- [ ] Named palette sets, reorder/lock/tags/favorites, PAL/PNG export and palette-from-image.
 - [ ] Frame/cel timeline, duration, duplicate/reorder/delete, playback and loops.
 - [ ] Onion skin, frame tags, named animations, linked cels and frame-range selection.
 - [ ] Sprite sheets and PNG/GIF/APNG/WebP outputs only after decoder/encoder tests.
