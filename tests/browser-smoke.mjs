@@ -149,6 +149,13 @@ try {
 
   await desktop.locator('#add-layer').click();
   assert.match(await desktop.locator('#layer-count').textContent(), /2 layers/);
+  assert.equal(await desktop.locator('.layer-select').first().textContent(), 'Layer 2');
+  await desktop.locator('.layer-row').first().getByRole('button', { name: 'Lower layer' }).click();
+  assert.equal(await desktop.locator('.layer-select').first().textContent(), 'Layer 1', 'layer order control should change the stack');
+  await desktop.locator('#undo').click();
+  assert.equal(await desktop.locator('.layer-select').first().textContent(), 'Layer 2', 'layer reorder should undo with the document history');
+  await desktop.locator('#redo').click();
+  assert.equal(await desktop.locator('.layer-select').first().textContent(), 'Layer 1', 'layer reorder should redo with the document history');
   await desktop.getByRole('button', { name: 'Lock layer against edits' }).last().click();
   assert.equal(await desktop.getByRole('button', { name: 'Unlock layer' }).count(), 1, 'layer lock should update the layer control');
   await desktop.locator('#undo').click();
