@@ -1,4 +1,4 @@
-import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints } from './core.js';
+import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints, createSelectionMask } from './core.js';
 import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
 import { preflightImageFile } from './image-import.js';
 import { createSpriteSheetLayout } from './asset-export.js';
@@ -257,23 +257,7 @@ function eventPoint(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
-function syncSelectionMask() {
-  if (!selection) { doc.setSelectionMask(null); return; }
-  const mask = new Uint8Array(doc.width * doc.height);
-  const left = Math.max(0, selection.x), top = Math.max(0, selection.y);
-  const right = Math.min(doc.width, selection.x + selection.width), bottom = Math.min(doc.height, selection.y + selection.height);
-  if (selection.shape !== 'ellipse') {
-    for (let y = top; y < bottom; y++) mask.fill(1, y * doc.width + left, y * doc.width + right);
-  } else {
-    const cx = selection.x + (selection.width - 1) / 2, cy = selection.y + (selection.height - 1) / 2;
-    const rx = Math.max(.5, selection.width / 2), ry = Math.max(.5, selection.height / 2);
-    for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
-      const dx = (x - cx) / rx, dy = (y - cy) / ry;
-      if (dx * dx + dy * dy <= 1) mask[y * doc.width + x] = 1;
-    }
-  }
-  doc.setSelectionMask(mask);
-}
+function syncSelectionMask() { doc.setSelectionMask(createSelectionMask(doc.width, doc.height, selection)); }
 function clearSelectionState() {
   selection = null; selectionStart = null; selectionPointerId = null;
   doc.setSelectionMask(null);
