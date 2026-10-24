@@ -25,3 +25,7 @@
 .saved-project-open:disabled{opacity:.75}
 .project-empty{padding:15px;border:1px dashed #3a3d4b;border-radius:8px;color:#9298aa;font-size:11px;line-height:1.6}
 @media(max-width:760px){.projects-button{padding:4px 6px;font-size:9px}.context-right{gap:6px}}
+
+/* Bucket fill controls share the editor's compact inspector styling. */
+.fill-select{width:100%;min-height:32px;padding:0 8px;border:1px solid #3b3e4c;border-radius:7px;background:#20222c;color:#d8dbe7;font-size:10px;}
+.fill-select:focus-visible{outline:2px solid #9b8afb;outline-offset:2px;}
