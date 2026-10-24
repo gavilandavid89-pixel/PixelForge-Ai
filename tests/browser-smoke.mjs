@@ -369,8 +369,7 @@ try {
   const cursorStart = await mobile.locator('#canvas').boundingBox();
   await touchDrag(cursorStart.x + cursorStart.width * 0.25, cursorStart.y + cursorStart.height * 0.25, cursorStart.x + cursorStart.width * 0.25 + 30, cursorStart.y + cursorStart.height * 0.25 + 14);
   assert.equal(await mobile.locator('#undo').isEnabled(), undoBeforeCursorSwipe, 'swiping anywhere in cursor mode must move the cursor without painting');
-  const scrubBoxForCursor = await mobile.locator('#brush-scrub').boundingBox();
-  await touchDrag(scrubBoxForCursor.x + scrubBoxForCursor.width / 2, scrubBoxForCursor.y + scrubBoxForCursor.height / 2, scrubBoxForCursor.x + scrubBoxForCursor.width / 2, scrubBoxForCursor.y + scrubBoxForCursor.height / 2);
+  await mobile.locator('#brush-scrub').tap();
   assert.equal(await mobile.locator('#undo').isEnabled(), true, 'touching the size gesture bar in cursor mode must draw at the cursor position');
   await mobile.locator('#undo').click();
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'the cursor-mode dab must be one undoable action');
