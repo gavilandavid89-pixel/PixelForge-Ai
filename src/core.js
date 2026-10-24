@@ -377,8 +377,12 @@ export class RasterDocument {
     if (left >= right || top >= bottom) throw new RangeError('Copy rectangle is outside document bounds.');
     const layer = this.activeLayer, pixels = new Uint8ClampedArray((right - left) * (bottom - top) * 4);
     for (let row = 0; row < bottom - top; row++) {
-      const start = ((top + row) * this.width + left) * 4;
-      pixels.set(layer.pixels.subarray(start, start + (right - left) * 4), row * (right - left) * 4);
+      for (let col = 0; col < right - left; col++) {
+        const sourcePixel = (top + row) * this.width + left + col;
+        if (this.selectionMask && !this.selectionMask[sourcePixel]) continue;
+        const sourceOffset = sourcePixel * 4, targetOffset = (row * (right - left) + col) * 4;
+        pixels.set(layer.pixels.subarray(sourceOffset, sourceOffset + 4), targetOffset);
+      }
     }
     return { x: left, y: top, width: right - left, height: bottom - top, pixels };
   }
