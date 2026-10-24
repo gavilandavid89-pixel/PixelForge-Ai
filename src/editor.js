@@ -567,7 +567,9 @@ $('#fill-mode').addEventListener('change', event => { fillContiguous = event.tar
 const mobileInspector = window.matchMedia('(max-width: 760px)');
 function setInspectorPanel(panel) {
   const layersVisible = panel === 'layers' && mobileInspector.matches;
-  document.querySelector('.inspector').classList.toggle('show-layers', layersVisible);
+  const inspector = document.querySelector('.inspector');
+  if (mobileInspector.matches) inspector.scrollTop = 0;
+  inspector.classList.toggle('show-layers', layersVisible);
   $('#properties-tab').classList.toggle('active', !layersVisible);
   $('#layers-tab').classList.toggle('active', layersVisible);
   $('#properties-tab').setAttribute('aria-selected', String(!layersVisible));
