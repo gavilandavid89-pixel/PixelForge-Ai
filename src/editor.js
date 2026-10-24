@@ -79,7 +79,7 @@ $('#palette-export').addEventListener('click', () => {
     const rgb = value.slice(1).match(/../g).map(part => parseInt(part, 16));
     lines.push(`${rgb[0]} ${rgb[1]} ${rgb[2]} ${value}`);
   }
-  const url = URL.createObjectURL(new Blob([lines.join('\\n') + '\\n'], { type: 'text/plain;charset=utf-8' }));
+  const url = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' }));
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'pixelforge-palette.gpl'; anchor.click();
   URL.revokeObjectURL(url); status('Palette exported as GPL', 'success');
 });
