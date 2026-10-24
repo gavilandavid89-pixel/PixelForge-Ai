@@ -366,8 +366,8 @@ try {
   await mobile.locator('#cursor-mode').click();
   assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'true');
   const undoBeforeCursorSwipe = await mobile.locator('#undo').isEnabled();
-  const cursorStart = await mobile.locator('.bottom-bar').boundingBox();
-  await touchDrag(cursorStart.x + 12, cursorStart.y + 10, cursorStart.x + 42, cursorStart.y + 24);
+  const cursorStart = await mobile.locator('#canvas').boundingBox();
+  await touchDrag(cursorStart.x + cursorStart.width * 0.25, cursorStart.y + cursorStart.height * 0.25, cursorStart.x + cursorStart.width * 0.25 + 30, cursorStart.y + cursorStart.height * 0.25 + 14);
   assert.equal(await mobile.locator('#undo').isEnabled(), undoBeforeCursorSwipe, 'swiping anywhere in cursor mode must move the cursor without painting');
   const scrubBoxForCursor = await mobile.locator('#brush-scrub').boundingBox();
   await touchDrag(scrubBoxForCursor.x + scrubBoxForCursor.width / 2, scrubBoxForCursor.y + scrubBoxForCursor.height / 2, scrubBoxForCursor.x + scrubBoxForCursor.width / 2, scrubBoxForCursor.y + scrubBoxForCursor.height / 2);
