@@ -293,6 +293,19 @@ export class RasterDocument {
     }
     return changedPixels;
   }
+  flipRect(x, y, width, height, axis = 'horizontal') {
+    if (!['horizontal', 'vertical'].includes(axis)) throw new TypeError('Flip axis must be horizontal or vertical.');
+    const clipboard = this.copyRect(x, y, width, height);
+    const pixels = new Uint8ClampedArray(clipboard.pixels.length);
+    for (let dy = 0; dy < clipboard.height; dy++) for (let dx = 0; dx < clipboard.width; dx++) {
+      const sourceX = axis === 'horizontal' ? clipboard.width - 1 - dx : dx;
+      const sourceY = axis === 'vertical' ? clipboard.height - 1 - dy : dy;
+      const sourceOffset = (sourceY * clipboard.width + sourceX) * 4;
+      const targetOffset = (dy * clipboard.width + dx) * 4;
+      pixels.set(clipboard.pixels.subarray(sourceOffset, sourceOffset + 4), targetOffset);
+    }
+    return this.pasteRect({ ...clipboard, pixels }, { x: clipboard.x, y: clipboard.y });
+  }
   replaceColor(sourceColor, targetColor, tolerance = 0) {
     if (!Number.isInteger(tolerance) || tolerance < 0 || tolerance > 255) throw new RangeError('Color replacement tolerance must be an integer from 0 to 255.');
     const source = parseHexColor(sourceColor), target = parseHexColor(targetColor), layer = this.activeLayer;
