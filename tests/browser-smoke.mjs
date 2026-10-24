@@ -578,6 +578,7 @@ try {
   const afterTransformApply = await settledCanvasData();
   assert.notEqual(afterTransformApply, beforeTransformApply, 'applied scale/rotation should change the visible artwork');
   await desktop.locator('#undo').click();
+  await desktop.keyboard.press('Escape');
   assert.equal(await settledCanvasData(), beforeTransformApply, 'one undo must restore the exact pre-transform image');
   await desktop.locator('#redo').click();
   await desktop.keyboard.press('Escape');
