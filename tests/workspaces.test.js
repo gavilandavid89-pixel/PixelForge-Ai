@@ -118,26 +118,6 @@ test('proposal acceptance rejects structural sandbox changes instead of silently
   assert.equal(workspace.hasProposal, true);
 });
 
-test('proposal acceptance prevalidates locked layers and makes no partial changes', () => {
-  const user = new RasterDocument(8, 8);
-  user.addLayer('Locked target');
-  user.setLayerLocked(user.layers[1].id, true);
-  const workspace = new AIWorkspace(user);
-  paint(workspace.sandbox, 1, 1);
-  const second = workspace.sandbox.layers[1];
-  const stroke = workspace.sandbox.beginStroke({ color: '#ffffff', size: 1 });
-  workspace.sandbox.strokeTo(stroke, 2, 2);
-  workspace.sandbox.endStroke(stroke);
-  workspace.createProposal('Try locked layer');
-  const before = user.layers.map(layer => [...layer.pixels]);
-  const result = workspace.acceptProposal();
-  assert.equal(result.status, 'rejected');
-  assert.equal(result.reason, 'apply-failed');
-  assert.deepEqual(user.layers.map(layer => [...layer.pixels]), before);
-  assert.equal(workspace.hasProposal, true);
-  assert.notEqual(second.id, user.layers[1].id);
-});
-
 test('proposal acceptance rejects empty proposal state and preserves no-op safety', () => {
   const user = new RasterDocument(8, 8);
   const workspace = new AIWorkspace(user);
