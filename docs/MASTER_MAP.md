@@ -21,7 +21,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Pencil, eraser, connected/global fill with tolerance and merged/active-layer eyedropper.
 - [x] Tile-patch undo/redo for strokes and fill.
 - [x] Versioned project serialization, validated import and local autosave.
-- [ ] Layer rename, duplicate, delete and opacity with undo/redo.
+- [x] Layer rename, duplicate, delete and opacity with undo/redo, including memory limits and last-layer protection.
 - [ ] Persistent selection masks shared by drawing, fill, copy/cut/paste and transforms.
 - [ ] Unified command/transaction API for tools, filters, selections and AI edits.
 - [ ] Schema migrations, checksums, recovery snapshots and storage-quota UX.
@@ -49,6 +49,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [ ] Indexed palette mode, nearest-color mapping and palette-safe operations.
 ### Selections and transforms
 - [x] Rectangular marquee visual overlay.
+- [x] Delete/Backspace clears selected active-layer pixels as one undoable operation; locked layers reject the edit.
 - [ ] Persistent mask, ellipse/lasso/polygon/magic-wand/color-range selections.
 - [ ] Add/subtract/intersect/invert/feather/expand/contract and saved selections.
 - [ ] Copy/cut/paste/paste-in-place/duplicate with safe clipboard behavior.
