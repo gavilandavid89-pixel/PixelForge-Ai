@@ -290,6 +290,15 @@ try {
   await desktop.locator('#export-png').click();
   const download = await downloadPromise;
   assert.match(download.suggestedFilename(), /\.png$/i);
+  const sheetDownloads = [];
+  const onSheetDownload = item => sheetDownloads.push(item.suggestedFilename());
+  desktop.on('download', onSheetDownload);
+  await desktop.locator('#export-sprite-sheet').click();
+  await desktop.waitForFunction(() => /Sprite sheet exported:/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.waitForTimeout(100);
+  desktop.off('download', onSheetDownload);
+  assert.ok(sheetDownloads.some(name => name.endsWith('-spritesheet.png')), 'sprite sheet export must produce a PNG');
+  assert.ok(sheetDownloads.some(name => name.endsWith('-spritesheet.json')), 'sprite sheet export must produce frame metadata');
   const exportedPath = await download.path();
   const pngHeader = await readFile(exportedPath);
   assert.deepEqual([...pngHeader.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10], 'export must be a real PNG file');
