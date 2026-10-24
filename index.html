@@ -26,7 +26,8 @@
   <aside class="tool-rail" aria-label="Drawing tools">
     <div class="rail-section-label">TOOLS</div>
     <button id="brush-tool" class="tool-button active" aria-label="Pencil tool" title="Pencil (B)"><span class="tool-glyph">✎</span><small>Pencil</small></button>
-    <button id="eraser-tool" class="tool-button" aria-label="Eraser tool" title="Eraser (E)"><span class="tool-glyph">▱</span><small>Eraser</small></button>\n    <button id="fill-tool" class="tool-button" aria-label="Bucket fill tool" title="Bucket fill (G)"><span class="tool-glyph">▧</span><small>Fill</small></button>
+    <button id="eraser-tool" class="tool-button" aria-label="Eraser tool" title="Eraser (E)"><span class="tool-glyph">▱</span><small>Eraser</small></button>
+    <button id="fill-tool" class="tool-button" aria-label="Bucket fill tool" title="Bucket fill (G)"><span class="tool-glyph">▧</span><small>Fill</small></button>
     <button id="pan-tool" class="tool-button" aria-label="Pan canvas tool" title="Pan canvas"><span class="tool-glyph">✥</span><small>Pan</small></button>
     <div class="rail-spacer"></div>
     <button id="fit" class="tool-button" aria-label="Fit canvas" title="Fit canvas"><span class="tool-glyph">⛶</span><small>Fit</small></button>
@@ -54,7 +55,8 @@
         </div></div>
       </div>
       <div class="control-block"><div class="control-heading"><label for="brush-size">Size</label><span id="brush-size-value">1 px</span></div><input id="brush-size" class="range-input" type="range" min="1" max="32" value="1"><div class="range-labels"><span>1 px</span><span>32 px</span></div></div>
-      <div id="fill-settings" class="control-block" hidden><div class="control-heading"><label for="fill-mode">Bucket mode</label><span class="tiny-tag">FILL</span></div><select id="fill-mode" class="fill-select" aria-label="Bucket fill mode"><option value="contiguous">Connected area</option><option value="global">Matching color · whole layer</option></select><div class="control-heading" style="margin-top:12px"><label for="fill-tolerance">Color tolerance</label><span id="fill-tolerance-value">0</span></div><input id="fill-tolerance" class="range-input" type="range" min="0" max="128" value="0"><div class="range-labels"><span>Exact</span><span>Similar colors</span></div></div>\n      <div class="control-block"><div class="control-heading"><span>Stroke behavior</span><span class="tiny-tag">PIXEL</span></div><div class="setting-row"><span>Hard edge</span><span class="setting-value"><span class="toggle on"></span> On</span></div><div class="setting-row"><span>Pressure</span><span class="setting-value muted">Not in this build</span></div></div>
+      <div id="fill-settings" class="control-block" hidden><div class="control-heading"><label for="fill-mode">Bucket mode</label><span class="tiny-tag">FILL</span></div><select id="fill-mode" class="fill-select" aria-label="Bucket fill mode"><option value="contiguous">Connected area</option><option value="global">Matching color · whole layer</option></select><div class="control-heading" style="margin-top:12px"><label for="fill-tolerance">Color tolerance</label><span id="fill-tolerance-value">0</span></div><input id="fill-tolerance" class="range-input" type="range" min="0" max="128" value="0"><div class="range-labels"><span>Exact</span><span>Similar colors</span></div></div>
+      <div class="control-block"><div class="control-heading"><span>Stroke behavior</span><span class="tiny-tag">PIXEL</span></div><div class="setting-row"><span>Hard edge</span><span class="setting-value"><span class="toggle on"></span> On</span></div><div class="setting-row"><span>Pressure</span><span class="setting-value muted">Not in this build</span></div></div>
     </section>
     <section class="inspector-section layer-section">
       <div class="section-heading"><span class="section-icon">▤</span><h2>Layers</h2><button id="add-layer" class="icon-add" aria-label="Add layer" title="Add layer">＋</button></div>
