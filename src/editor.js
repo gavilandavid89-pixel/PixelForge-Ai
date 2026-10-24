@@ -127,12 +127,21 @@ function updateAIWorkspaceUI() {
         : summary.summary;
     $('#ai-accept-proposal').disabled = sourceStale || summary.sandboxStale;
     $('#ai-discard-proposal').disabled = false;
+    $('#ai-discard-proposal').textContent = '× Discard proposal';
     state.textContent = sourceStale ? 'Proposal is out of date' : summary.sandboxStale ? 'Proposal snapshot changed' : 'Proposal ready for review';
     dot.dataset.kind = sourceStale || summary.sandboxStale ? 'warning' : 'success';
+  } else if (aiWorkspace.hasSandboxChanges) {
+    $('#ai-proposal-summary').textContent = 'The isolated AI canvas contains edits that have not been captured as a proposal. Keep working or discard this draft before syncing.';
+    $('#ai-accept-proposal').disabled = true;
+    $('#ai-discard-proposal').disabled = false;
+    $('#ai-discard-proposal').textContent = '× Discard AI draft';
+    state.textContent = 'AI draft needs review';
+    dot.dataset.kind = 'warning';
   } else {
     $('#ai-proposal-summary').textContent = 'No proposal to review yet.';
     $('#ai-accept-proposal').disabled = true;
     $('#ai-discard-proposal').disabled = true;
+    $('#ai-discard-proposal').textContent = '× Discard proposal';
     state.textContent = 'Mirroring your canvas';
     dot.dataset.kind = 'success';
   }
@@ -937,14 +946,15 @@ $('#ai-tab').addEventListener('click', () => {
 $('#ai-sync').addEventListener('click', () => {
   const result = aiWorkspace.syncFromUser();
   if (result.status === 'synced') status('AI canvas synchronized from the original', 'success');
-  else status('A proposal is pending. Discard it before synchronizing.', 'warning');
+  else status(result.status === 'sandbox-pending' ? 'AI draft pending. Discard it before synchronizing.' : 'A proposal is pending. Discard it before synchronizing.', 'warning');
   renderAIWorkspacePreview();
 });
 $('#ai-preview-mode').addEventListener('change', renderAIWorkspacePreview);
 $('#ai-refresh-preview').addEventListener('click', () => { renderAIWorkspacePreview(); status('AI canvas preview refreshed', 'success'); });
 $('#ai-discard-proposal').addEventListener('click', () => {
-  if (!aiWorkspace.discardProposal()) { status('There is no proposal to discard', 'neutral'); return; }
-  renderAIWorkspacePreview(); status('Proposal discarded; original artwork is unchanged', 'success');
+  const discarded = aiWorkspace.hasProposal ? aiWorkspace.discardProposal() : aiWorkspace.discardSandboxChanges();
+  if (!discarded) { status('There is no proposal or AI draft to discard', 'neutral'); return; }
+  renderAIWorkspacePreview(); status('AI suggestion discarded; original artwork is unchanged', 'success');
 });
 $('#ai-accept-proposal').addEventListener('click', () => {
   const result = aiWorkspace.acceptProposal();
