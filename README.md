@@ -48,7 +48,7 @@ Use these labels consistently:
 
 ### Current functional slice
 
-- Dedicated artwork canvas with fit, zoom, pan, pixel-aligned pencil and eraser.
+- Dedicated artwork canvas with fit, zoom, pan, pixel-aligned pencil and eraser, plus a bucket-fill tool with connected/global modes and color tolerance.
 - Mobile virtual cursor: touch movement is view-only; a separate hold-to-draw/erase control is required to modify pixels.
 - Color selection, brush-size control, multiple layers and visibility toggles.
 - Undo/redo with tile-based pixel history and a bounded history-memory budget.
@@ -57,7 +57,7 @@ Use these labels consistently:
 - Canvas-size, per-document pixel-memory and file-size safety limits.
 - Automated engine tests run with `npm test`; syntax checks run with `npm run check`.
 
-**Verification boundary:** GitHub Actions run [#149](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/40042218676) passes the core test job and a headless-Chromium smoke path covering startup, drawing, undo/redo, layers, PNG/project export, safe project-copy import, version-1 IndexedDB migration, saved-project switching, last-opened recovery, successful PNG/JPEG/WebP/GIF image imports plus oversized-image rejection before decode, transparent PNG export, save during a live stroke, focused-button keyboard activation, keyboard-held draw control press/release/focus-loss cancellation and deterministic pointer/keyboard hold ownership, keyboard save and the mobile virtual-cursor/hold-to-draw/cancellation contract. The core job includes 30 tests covering the document engine and PNG/JPEG/WebP/GIF header preflight, including lossy and lossless WebP variants. This does not yet establish real Android/stylus support, accessibility conformance, visual regression or performance under stress. See `docs/ENGINE_TEST_PLAN.md`. The first release remains a small end-to-end raster-editor slice; the broad feature specification is the long-term vision, not a claim that every feature is implemented.
+**Verification boundary:** GitHub Actions run [#149](https://github.com/gavilandavid89-pixel/PixelForge-Ai/actions/runs/40042218676) passes the core test job and a headless-Chromium smoke path covering startup, drawing, undo/redo, layers, PNG/project export, safe project-copy import, version-1 IndexedDB migration, saved-project switching, last-opened recovery, successful PNG/JPEG/WebP/GIF image imports plus oversized-image rejection before decode, transparent PNG export, save during a live stroke, focused-button keyboard activation, keyboard-held draw control press/release/focus-loss cancellation and deterministic pointer/keyboard hold ownership, keyboard save and the mobile virtual-cursor/hold-to-draw/cancellation contract. The core job includes 33 tests covering the document engine and PNG/JPEG/WebP/GIF header preflight, including lossy and lossless WebP variants. This does not yet establish real Android/stylus support, accessibility conformance, visual regression or performance under stress. See `docs/ENGINE_TEST_PLAN.md`. The first release remains a small end-to-end raster-editor slice; the broad feature specification is the long-term vision, not a claim that every feature is implemented.
 
 
 ## Licensing status
