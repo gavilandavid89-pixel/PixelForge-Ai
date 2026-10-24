@@ -658,3 +658,50 @@ test('masked pixel clipboard preserves unselected destination pixels when pasted
   assert.deepEqual(pixel(4, 1), [0, 0, 255, 255], 'paste should undo as one action');
   assert.throws(() => doc.pasteRect({ ...clip, mask: new Uint8Array(1) }), /Invalid internal pixel clipboard/);
 });
+
+
+test('selection transform moves pixels and its mask as one reversible operation', () => {
+  const doc = new RasterDocument(6, 4);
+  const stroke = doc.beginStroke({ color: '#ff0000', size: 1 });
+  doc.strokeTo(stroke, 1, 1); doc.strokeTo(stroke, 2, 1); doc.endStroke(stroke);
+  const mask = new Uint8Array(24); mask[1 * 6 + 1] = 1; mask[1 * 6 + 2] = 1;
+  doc.setSelectionMask(mask);
+  const before = new Uint8ClampedArray(doc.activeLayer.pixels);
+  const historyBefore = doc.history.length;
+  const result = doc.transformRect(1, 1, 2, 1, { dx: 2, dy: 1 });
+  assert.equal(result.selectedPixels, 2);
+  assert.equal(result.bounds.x, 3); assert.equal(result.bounds.y, 2);
+  assert.equal(result.selectionMask[2 * 6 + 3], 1);
+  assert.equal(result.selectionMask[2 * 6 + 4], 1);
+  assert.equal(doc.history.length, historyBefore + 1);
+  assert.deepEqual([...doc.activeLayer.pixels.slice((1 * 6 + 1) * 4, (1 * 6 + 1) * 4 + 4)], [0,0,0,0]);
+  assert.deepEqual([...doc.activeLayer.pixels.slice((2 * 6 + 3) * 4, (2 * 6 + 3) * 4 + 4)], [255,0,0,255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual(doc.activeLayer.pixels, before);
+  assert.equal(doc.redo(), true);
+  assert.deepEqual([...doc.activeLayer.pixels.slice((2 * 6 + 4) * 4, (2 * 6 + 4) * 4 + 4)], [255,0,0,255]);
+});
+
+test('selection quarter-turn rotates irregular masks around their bounds and clips safely', () => {
+  const doc = new RasterDocument(6, 6);
+  const stroke = doc.beginStroke({ color: '#00ff00', size: 1 });
+  doc.strokeTo(stroke, 1, 1); doc.strokeTo(stroke, 2, 1); doc.strokeTo(stroke, 1, 2); doc.endStroke(stroke);
+  const mask = new Uint8Array(36); mask[7] = 1; mask[8] = 1; mask[13] = 1;
+  doc.setSelectionMask(mask);
+  const result = doc.transformRect(1, 1, 2, 2, { rotate: 90 });
+  assert.equal(result.selectedPixels, 3);
+  assert.equal(result.bounds.width, 2); assert.equal(result.bounds.height, 2);
+  assert.equal(result.selectionMask[7], 1);
+  assert.equal(result.selectionMask[8], 1);
+  assert.equal(result.selectionMask[14], 1);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual([...doc.activeLayer.pixels.slice((1 * 6 + 1) * 4, (1 * 6 + 1) * 4 + 4)], [0,255,0,255]);
+});
+
+test('selection transform validates parameters and respects layer locks', () => {
+  const doc = new RasterDocument(4, 4);
+  assert.throws(() => doc.transformRect(0, 0, 2, 2, { rotate: 45 }), /rotation/);
+  assert.throws(() => doc.transformRect(0, 0, 2, 2, { dx: 0.5 }), /integer/);
+  doc.setLayerLocked(doc.activeLayer.id, true);
+  assert.throws(() => doc.transformRect(0, 0, 2, 2, { dx: 1 }), /locked/);
+});
