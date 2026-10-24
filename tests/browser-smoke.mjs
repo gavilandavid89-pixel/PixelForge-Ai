@@ -592,6 +592,21 @@ try {
   assert.notEqual(rectangularAfter, rectangularBefore, 'eight-way symmetry should draw on a non-square canvas');
   await desktop.locator('#undo').click();
   assert.equal(await settledCanvasData(), rectangularBefore, 'rectangular symmetric stroke must undo atomically');
+
+  // Linear gradient preview must not mutate pixels until release, then commit as one undoable edit.
+  await desktop.locator('#gradient-tool').click();
+  assert.equal(await desktop.locator('#gradient-tool').evaluate(element => element.classList.contains('active')), true);
+  const gradientBox = await desktop.locator('#canvas').boundingBox();
+  const gx1 = gradientBox.x + gradientBox.width * .2, gy = gradientBox.y + gradientBox.height * .5;
+  const gx2 = gradientBox.x + gradientBox.width * .8;
+  const beforeGradient = await settledCanvasData();
+  await desktop.mouse.move(gx1, gy); await desktop.mouse.down(); await desktop.mouse.move(gx2, gy, { steps: 4 });
+  assert.equal(await settledCanvasData(), beforeGradient, 'gradient preview must remain non-destructive before release');
+  await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Gradient applied to [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.notEqual(await settledCanvasData(), beforeGradient, 'gradient release must apply visible pixels');
+  await desktop.locator('#undo').click();
+  assert.equal(await settledCanvasData(), beforeGradient, 'gradient must undo as one action');
   await desktop.locator('#symmetry-mode').selectOption('0');
   assert.deepEqual(failures, [], 'no uncaught browser JavaScript errors should occur');
   console.log('Browser smoke checks passed: legacy IndexedDB migration; PNG/JPEG/WebP/GIF imports; drawing, undo/redo and layers; transparent PNG export; safe project-copy import; oversized-image rejection; save during stroke; keyboard controls; mobile direct touch drawing, virtual cursor/hold compatibility and cancellation.');
