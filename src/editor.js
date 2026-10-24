@@ -45,10 +45,10 @@ function renderUserPalette() {
 }
 function parsePaletteText(text) {
   const colors = [];
-  for (const line of text.split(/\\r?\\n/)) {
-    const hex = line.match(/#([0-9a-f]{6})\\b/i);
+  for (const line of text.split(/\r?\n/)) {
+    const hex = line.match(/#([0-9a-f]{6})\b/i);
     if (hex) { colors.push(`#${hex[1].toUpperCase()}`); continue; }
-    const rgb = line.trim().match(/^(\\d{1,3})\\s+(\\d{1,3})\\s+(\\d{1,3})(?:\\s|$)/);
+    const rgb = line.trim().match(/^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})(?:\s|$)/);
     if (rgb) {
       const values = rgb.slice(1, 4).map(Number);
       if (values.every(value => value >= 0 && value <= 255)) colors.push('#' + values.map(value => value.toString(16).padStart(2, '0')).join('').toUpperCase());
