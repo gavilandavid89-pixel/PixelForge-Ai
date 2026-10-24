@@ -578,7 +578,7 @@ test('magic-wand masks select connected or global colors with tolerance and alph
   assert.equal(connected.reduce((sum, value) => sum + value, 0), 3);
   assert.equal(connected[1], 1, 'tolerance should include near-matching adjacent color');
   assert.equal(connected[2], 0, 'connected selection must not cross a different color');
-  const global = createColorSelectionMask(width, height, pixels, 0, 0, { contiguous: false });
+  const global = createColorSelectionMask(width, height, pixels, 0, 0, { tolerance: 2, contiguous: false });
   assert.equal(global.reduce((sum, value) => sum + value, 0), 5);
   assert.equal(global[11], 1, 'global selection should include separated matching colors');
   const transparent = new Uint8ClampedArray(3 * 4);
