@@ -891,7 +891,7 @@ window.addEventListener('keydown', event => {
     updateDrawHoldUI(); render();
   }
   if (textEntry) return;
-  if (nativeControl && !modifiedShortcut && event.key !== 'Escape') return;
+  if (nativeControl && !modifiedShortcut && event.key !== 'Escape' && !((event.key === 'Delete' || event.key === 'Backspace') && selection)) return;
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
     event.preventDefault(); $('#save').click(); return;
   } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
