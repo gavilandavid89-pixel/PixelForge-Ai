@@ -46,7 +46,9 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Integer Bresenham line rasterization and connected pixel-stepped rectangle/ellipse outlines; selection masks constrain shape commits.
 - [ ] Dedicated curve algorithms and pixel-perfect ellipse midpoint rasterization.
 - [x] Selection-constrained pencil, eraser, bucket fill, clear operations and geometric shape commits.
-- [x] Selection-constrained pixel move and 90°/180°/270° rotation with centered quarter-turn bounds, mask preservation, clipping, and one-step undo/redo; core regression tests pass.\n- [ ] Selection-constrained scale, skew and crop previews.
+- [x] Selection-constrained pixel move and 90°/180°/270° rotation with centered quarter-turn bounds, mask preservation, clipping, and one-step undo/redo; core regression tests pass.
+- [x] Selection-constrained scale/skew/rotation previews with nearest-neighbor or alpha-aware bilinear sampling, clipped output bounds, explicit cancel/apply and one-step undo/redo.
+- [x] Canvas crop preview and crop-to-selection across every layer, preserving pixel offsets and dimensions through one-step undo/redo; crop is non-destructive until applied.
 - [x] Exact opaque-pixel color replacement on the active layer, preserving alpha, respecting selection masks and supporting atomic undo.
 - [x] One-pixel sprite outline on transparent neighbors, with selection-mask support and one-step undo.
 - [x] Checker dither fill using foreground/background colors, with adjustable 1–16 pixel pattern scale, connected/global fill modes, selection-mask support and atomic undo.
@@ -64,7 +66,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [ ] Move/duplicate pasted pixels independently, system clipboard interoperability, and copy merged composite.
 - [x] Horizontal/vertical flip of the selected rectangle or whole active layer, selection-aware and one-step undoable.
 - [x] Move selected pixels independently from the selection outline; preserve irregular selection masks through translation and quarter-turn rotation; core regression tests pass.\n- [ ] Move selection without pixels; scale, skew, crop and non-destructive transform previews.
-- [ ] Preview/cancel/commit, interpolation choices, clipping and single-step undo.
+- [x] Preview/cancel/commit, interpolation choices, clipping and single-step undo for selection transforms and canvas crop.
 ### Palettes and sprite animation
 - [x] Foreground/background color swap and eight-color recent history with keyboard shortcut.
 - [ ] Named palette sets, reorder/lock/tags/favorites, PAL/PNG export and palette-from-image.
@@ -134,7 +136,8 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 
 ## Validation and release gates
 - [x] Core unit tests and browser smoke tests run in GitHub Actions.
-- [ ] Unit tests cover layer commands, selection masks, compositing, transform bounds and undo/redo.
+- [x] Unit tests cover selection transform preview non-mutation, scaling, skew/rotation, interpolation validation, crop bounds, multi-layer crop and undo/redo.
+- [ ] Broader unit tests for all layer commands, compositing edge cases and malformed project data.
 - [ ] Browser tests cover desktop/mobile, shortcuts, pointer cancellation, import/export and recovery.
 - [ ] Pixel fixtures verify decoded PNG pixels, alpha, dimensions and project round trips.
 - [ ] Fuzz/malformed-file tests cover project/image import and memory limits.
@@ -155,5 +158,5 @@ Parallel work is allowed only when tasks do not conflict in files or shared APIs
 
 
 ## Selection verification gate
-Selection-only operations must not enter artwork undo history. Every selection-mask change must update the visible contour and constrain all applicable pixel-mutating tools. Browser tests must exercise selections on both transparent and opaque regions so the magic wand cannot accidentally assume the selected area is smaller than the canvas.
+Selection-only operations must not enter artwork undo history. Every selection-mask change must update the visible contour and constrain all applicable pixel-mutating tools. Browser tests must exercise selections on both transparent and opaque regions so the magic wand cannot accidentally assume the selected area is smaller than the canvas. Transform previews are read-only and revision/mask/layer-checked before commit; crop snapshots the original layer stack and is undoable as one document operation.
 
