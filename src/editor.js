@@ -431,7 +431,10 @@ window.addEventListener('pointermove', event => {
   const dx = event.clientX - cursorGestureLast.x, dy = event.clientY - cursorGestureLast.y;
   cursorGestureLast = { x: event.clientX, y: event.clientY };
   if (cursorGestureStartedOnControl && cursorGestureOrigin && Math.hypot(event.clientX - cursorGestureOrigin.x, event.clientY - cursorGestureOrigin.y) > 7) cursorGestureSuppressClick = true;
-  if (dx || dy) moveVirtualCursorBy(dx, dy);
+  if (dx || dy) {
+    event.preventDefault();
+    moveVirtualCursorBy(dx, dy);
+  }
 }, true);
 window.addEventListener('click', event => {
   if (!cursorGestureSuppressClick) return;
