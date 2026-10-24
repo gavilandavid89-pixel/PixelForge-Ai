@@ -241,6 +241,24 @@ try {
   assert.equal(await desktop.locator('#draw-hold').isDisabled(), false, 'undo should re-enable drawing on the active layer');
   await desktop.locator('#redo').click();
   assert.equal(await desktop.getByRole('button', { name: 'Unlock layer' }).count(), 1, 'redo should restore the locked layer state');
+  await desktop.getByRole('button', { name: 'Unlock layer' }).click();
+  await desktop.locator('#layer-opacity').evaluate(element => {
+    element.value = '50';
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  assert.equal(await desktop.locator('#layer-opacity-value').textContent(), '50%');
+  await desktop.locator('#undo').click();
+  assert.equal(await desktop.locator('#layer-opacity-value').textContent(), '100%', 'opacity change should undo');
+  await desktop.locator('#duplicate-layer').click();
+  assert.equal(await desktop.locator('#layer-count').textContent(), '3 layers', 'duplicate should create a new layer');
+  await desktop.locator('#undo').click();
+  assert.equal(await desktop.locator('#layer-count').textContent(), '2 layers', 'duplicate should undo cleanly');
+  desktop.once('dialog', dialog => dialog.accept());
+  await desktop.locator('#delete-layer').click();
+  assert.equal(await desktop.locator('#layer-count').textContent(), '1 layer', 'delete should remove the active layer');
+  await desktop.locator('#undo').click();
+  assert.equal(await desktop.locator('#layer-count').textContent(), '2 layers', 'deleted layer should be restored by undo');
   await desktop.keyboard.press('Control+s');
   await desktop.waitForFunction(() => /Saved on this device/.test(document.querySelector('#status')?.textContent ?? ''));
   const downloadPromise = desktop.waitForEvent('download');
@@ -331,6 +349,18 @@ try {
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
   assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeSelection, 'selection is a non-destructive overlay and must not add history');
   await desktop.locator('#brush-tool').click();
+  const selectedEditPoint = { x: selectCanvasBox.x + selectCanvasBox.width / 2, y: selectCanvasBox.y + selectCanvasBox.height / 2 };
+  await desktop.mouse.click(selectedEditPoint.x, selectedEditPoint.y);
+  const pixelsBeforeSelectionDelete = await settledCanvasData();
+  await desktop.locator('#select-tool').click();
+  await desktop.mouse.move(selectedEditPoint.x - 12, selectedEditPoint.y - 10);
+  await desktop.mouse.down();
+  await desktop.mouse.move(selectedEditPoint.x + 12, selectedEditPoint.y + 10);
+  await desktop.mouse.up();
+  await desktop.keyboard.press('Delete');
+  await desktop.waitForFunction(() => /Cleared [0-9,]+ pixels from selection/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.locator('#undo').click();
+  assert.equal(await settledCanvasData(), pixelsBeforeSelectionDelete, 'deleting a selection must be one reversible pixel operation');
 
   // Use an isolated context so desktop autosaved state cannot leak into the mobile smoke tests.
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
