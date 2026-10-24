@@ -164,21 +164,26 @@ function eventPoint(event) {
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
 function symmetryPoints(point, mode = symmetryMode) {
   const w = doc.width, h = doc.height;
-  const x = point.x / Math.max(1, w - 1), y = point.y / Math.max(1, h - 1);
-  let transforms = [[x, y]];
-  if (mode === 2) transforms = [[x, y], [1 - x, y]];
-  else if (mode === 4) transforms = [[x, y], [1 - x, y], [x, 1 - y], [1 - x, 1 - y]];
-  else if (mode === 8) transforms = [[x, y], [1 - y, x], [1 - x, 1 - y], [y, 1 - x], [1 - x, y], [1 - y, 1 - x], [x, 1 - y], [y, x]];
-  return transforms.map(([tx, ty]) => ({
-    x: Math.max(0, Math.min(w - 1, Math.round(tx * (w - 1)))),
-    y: Math.max(0, Math.min(h - 1, Math.round(ty * (h - 1))))
-  }));
+  const cx = (w - 1) / 2, cy = (h - 1) / 2;
+  const dx = point.x - cx, dy = point.y - cy;
+  let offsets = [[dx, dy]];
+  if (mode === 2) offsets = [[dx, dy], [-dx, dy]];
+  else if (mode === 4) offsets = [[dx, dy], [-dx, dy], [dx, -dy], [-dx, -dy]];
+  else if (mode === 8) offsets = [
+    [dx, dy], [-dy, dx], [-dx, -dy], [dy, -dx],
+    [-dx, dy], [-dy, -dx], [dx, -dy], [dy, dx]
+  ];
+  return offsets.map(([ox, oy]) => {
+    const x = Math.round(cx + ox), y = Math.round(cy + oy);
+    return x < 0 || y < 0 || x >= w || y >= h ? null : { x, y };
+  });
 }
 function strokeToWithSymmetry(stroke, x, y) {
   const mode = stroke.symmetryMode ?? symmetryMode;
   if (!mode) { doc.strokeTo(stroke, x, y); return; }
   const points = symmetryPoints({ x, y }, mode), previous = stroke.symmetryLastPoints ?? [], next = [];
   for (let i = 0; i < points.length; i++) {
+    if (!points[i]) { next[i] = null; continue; }
     stroke.last = previous[i] ?? null;
     doc.strokeTo(stroke, points[i].x, points[i].y);
     next[i] = stroke.last;
