@@ -203,6 +203,15 @@ try {
     element.value = '#DCE2F0';
     element.dispatchEvent(new Event('input', { bubbles: true }));
   });
+  // Foreground/background swap and recent colors are real controls, not decorative UI.
+  const foregroundBeforeSwap = (await desktop.locator('#color').inputValue()).toUpperCase();
+  const backgroundBeforeSwap = await desktop.locator('#background-swatch').evaluate(element => getComputedStyle(element).backgroundColor);
+  await desktop.locator('#swap-colors').click();
+  assert.equal((await desktop.locator('#color').inputValue()).toUpperCase(), '#242632');
+  assert.equal(await desktop.locator('#recent-colors button').count() > 0, true, 'recent color history should expose selectable swatches');
+  await desktop.locator('#swap-colors').click();
+  assert.equal((await desktop.locator('#color').inputValue()).toUpperCase(), foregroundBeforeSwap, 'swapping twice should restore the original foreground');
+  assert.notEqual(await desktop.locator('#background-swatch').evaluate(element => getComputedStyle(element).backgroundColor), backgroundBeforeSwap, 'background swatch should reflect the swapped color');
 
   await desktop.locator('#eraser-tool').focus();
   await desktop.keyboard.press('Space');
