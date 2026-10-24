@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints, createSelectionMask } from '../src/core.js';
+import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints, createSelectionMask, createColorSelectionMask } from '../src/core.js';
 
 test('layer reordering changes composite stacking and supports undo/redo', () => {
   const doc = new RasterDocument(2, 2);
@@ -565,4 +565,24 @@ test('copyRect copies only selected pixels and leaves unselected clipboard pixel
   assert.equal(clip.pixels[(0 * 3 + 0) * 4 + 3], 0);
   assert.equal(clip.pixels[(1 * 3 + 1) * 4 + 3], 255);
   assert.equal(clip.pixels[(0 * 3 + 1) * 4 + 3], 255);
+});
+
+
+test('magic-wand masks select connected or global colors with tolerance and alpha-aware transparency', () => {
+  const width = 4, height = 3, pixels = new Uint8ClampedArray(width * height * 4);
+  const set = (x, y, rgba) => pixels.set(rgba, (y * width + x) * 4);
+  set(0, 0, [255, 0, 0, 255]); set(1, 0, [255, 1, 0, 255]); set(2, 0, [0, 0, 255, 255]);
+  set(0, 1, [255, 0, 0, 255]); set(1, 1, [0, 0, 255, 255]); set(2, 1, [255, 0, 0, 255]);
+  set(3, 2, [255, 0, 0, 255]);
+  const connected = createColorSelectionMask(width, height, pixels, 0, 0, { tolerance: 2, contiguous: true });
+  assert.equal(connected.reduce((sum, value) => sum + value, 0), 3);
+  assert.equal(connected[1], 1, 'tolerance should include near-matching adjacent color');
+  assert.equal(connected[2], 0, 'connected selection must not cross a different color');
+  const global = createColorSelectionMask(width, height, pixels, 0, 0, { contiguous: false });
+  assert.equal(global.reduce((sum, value) => sum + value, 0), 5);
+  assert.equal(global[11], 1, 'global selection should include separated matching colors');
+  const transparent = new Uint8ClampedArray(3 * 4);
+  transparent.set([20, 30, 40, 0], 0); transparent.set([0, 0, 0, 0], 4); transparent.set([255, 0, 0, 255], 8);
+  assert.equal(createColorSelectionMask(3, 1, transparent, 0, 0).reduce((sum, value) => sum + value, 0), 2);
+  assert.throws(() => createColorSelectionMask(width, height, pixels, 9, 0), /outside document bounds/);
 });
