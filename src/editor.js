@@ -930,17 +930,25 @@ function setInspectorPanel(panel) {
   aiPanelVisible = panel === 'ai';
   if (aiPanelVisible) renderAIWorkspacePreview();
 }
+function scrollInspectorTo(selector) {
+  const inspector = document.querySelector('.inspector');
+  const target = $(selector);
+  if (!inspector || !target) return;
+  const inspectorTop = inspector.getBoundingClientRect().top;
+  const targetTop = target.getBoundingClientRect().top;
+  inspector.scrollTo({ top: inspector.scrollTop + targetTop - inspectorTop - 48, behavior: 'auto' });
+}
 $('#properties-tab').addEventListener('click', () => {
   setInspectorPanel('properties');
-  if (!mobileInspector.matches) $('.inspector-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!mobileInspector.matches) scrollInspectorTo('.inspector-section');
 });
 $('#layers-tab').addEventListener('click', () => {
   setInspectorPanel('layers');
-  if (!mobileInspector.matches) $('#layers').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (!mobileInspector.matches) scrollInspectorTo('#layers');
 });
 $('#ai-tab').addEventListener('click', () => {
   setInspectorPanel('ai');
-  if (!mobileInspector.matches) $('#ai-workspace-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (!mobileInspector.matches) scrollInspectorTo('#ai-workspace-panel');
   aiPanelVisible = true; renderAIWorkspacePreview();
 });
 $('#ai-sync').addEventListener('click', () => {
