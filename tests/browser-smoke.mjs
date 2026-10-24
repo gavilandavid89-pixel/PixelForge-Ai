@@ -372,6 +372,7 @@ try {
   await desktop.reload({ waitUntil: 'networkidle' });
   await desktop.waitForFunction(() => /Recovered latest local project/.test(document.querySelector('#status')?.textContent ?? ''), null, { timeout: 5000 });
   assert.equal(await desktop.locator('#layer-count').textContent(), '2 layers', 'IndexedDB recovery must preserve document layers');
+  assert.ok(await desktop.locator('#user-palette .palette-item').count() >= 3, 'local palette colors should persist across page reloads');
 
   // Rectangular marquee selection must work with a mouse and clear cleanly on Escape.
   const undoBeforeSelection = await desktop.locator('#undo').isEnabled();
