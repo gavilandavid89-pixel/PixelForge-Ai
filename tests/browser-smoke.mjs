@@ -213,6 +213,21 @@ try {
   assert.equal((await desktop.locator('#color').inputValue()).toUpperCase(), foregroundBeforeSwap, 'swapping twice should restore the original foreground');
   assert.notEqual(await desktop.locator('#background-swatch').evaluate(element => getComputedStyle(element).backgroundColor), backgroundBeforeSwap, 'background swatch should reflect the swapped color');
 
+  // User palettes are editable, parse GPL RGB lines, and export a valid GPL download.
+  const paletteCountBefore = await desktop.locator('#user-palette .palette-item').count();
+  await desktop.locator('#palette-add').click();
+  assert.equal(await desktop.locator('#user-palette .palette-item').count(), paletteCountBefore + 1);
+  await desktop.locator('#palette-file').setInputFiles({
+    name: 'smoke.gpl', mimeType: 'text/plain',
+    buffer: Buffer.from('GIMP Palette\\nName: smoke\\nColumns: 2\\n#\\n255 0 0 Red\\n0 255 0 Green\\n')
+  });
+  await desktop.waitForFunction(() => /Imported 2 palette colors/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.ok(await desktop.locator('#user-palette .palette-item').count() >= paletteCountBefore + 3, 'palette import should add unique parsed colors');
+  const paletteDownloadPromise = desktop.waitForEvent('download');
+  await desktop.locator('#palette-export').click();
+  const paletteDownload = await paletteDownloadPromise;
+  assert.equal(paletteDownload.suggestedFilename(), 'pixelforge-palette.gpl');
+
   await desktop.locator('#eraser-tool').focus();
   await desktop.keyboard.press('Space');
   assert.match(await desktop.locator('#eraser-tool').getAttribute('class'), /active/, 'Space must activate a focused tool button instead of being swallowed by the pan shortcut');
