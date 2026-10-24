@@ -406,8 +406,10 @@ try {
   await desktop.waitForFunction(() => /Color selection: [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeMagicSelection, 'magic-wand selection must not mutate artwork history');
   assert.equal(await desktop.locator('#selection-settings').isVisible(), true, 'selection mask operations should be visible for an active selection');
+  const magicStatusBeforeInvert = await desktop.locator('#status').textContent();
   await desktop.locator('#selection-invert').click();
-  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection inverted');
+  await desktop.waitForFunction(previous => document.querySelector('#status')?.textContent !== previous, magicStatusBeforeInvert);
+  assert.equal(await desktop.locator('#status').textContent(), 'Selection inverted', 'invert should apply the mask and report any unexpected operation error');
   await desktop.locator('#selection-expand').click();
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection expanded');
   await desktop.locator('#selection-contract').click();
