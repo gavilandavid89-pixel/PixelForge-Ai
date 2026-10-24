@@ -500,6 +500,26 @@ try {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'Escape must cancel an in-progress touch stroke without history');
   assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'false', 'Escape must release the draw-hold state');
+  // Eight-way symmetry must stay geometrically valid on a rectangular document.
+  await desktop.locator('#new-document').click();
+  await desktop.locator('#new-name').fill('Rectangular symmetry check');
+  await desktop.locator('#new-width').fill('96');
+  await desktop.locator('#new-height').fill('64');
+  await desktop.locator('#create-new').click();
+  await desktop.waitForFunction(() => document.querySelector('#document-size')?.textContent === '96 × 64');
+  await desktop.locator('#symmetry-mode').selectOption('8');
+  await desktop.locator('#brush-tool').click();
+  const rectangularCanvas = await desktop.locator('#canvas').boundingBox();
+  assert.ok(rectangularCanvas);
+  const rectangularBefore = await settledCanvasData();
+  await desktop.mouse.move(rectangularCanvas.x + rectangularCanvas.width / 2 + 20, rectangularCanvas.y + rectangularCanvas.height / 2 + 6);
+  await desktop.mouse.down();
+  await desktop.mouse.up();
+  const rectangularAfter = await settledCanvasData();
+  assert.notEqual(rectangularAfter, rectangularBefore, 'eight-way symmetry should draw on a non-square canvas');
+  await desktop.locator('#undo').click();
+  assert.equal(await settledCanvasData(), rectangularBefore, 'rectangular symmetric stroke must undo atomically');
+  await desktop.locator('#symmetry-mode').selectOption('0');
   assert.deepEqual(failures, [], 'no uncaught browser JavaScript errors should occur');
   console.log('Browser smoke checks passed: legacy IndexedDB migration; PNG/JPEG/WebP/GIF imports; drawing, undo/redo and layers; transparent PNG export; safe project-copy import; oversized-image rejection; save during stroke; keyboard controls; mobile direct touch drawing, virtual cursor/hold compatibility and cancellation.');
 } finally {
