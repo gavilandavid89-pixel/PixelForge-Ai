@@ -106,6 +106,23 @@ try {
   assert.equal(await desktop.locator('#redo').isEnabled(), true, 'undo must enable redo');
   await desktop.locator('#redo').click();
 
+  // Bucket fill is wired to the same document/history pipeline as brush strokes.
+  await desktop.locator('#color').evaluate(element => {
+    element.value = '#ff0000';
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await desktop.locator('#fill-tool').click();
+  assert.equal(await desktop.locator('#fill-settings').isVisible(), true, 'fill settings should follow the selected tool');
+  await desktop.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await desktop.waitForFunction(() => /Filled [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.equal(await desktop.locator('#undo').isEnabled(), true, 'a fill must create one undoable edit');
+  await desktop.locator('#undo').click();
+  await desktop.locator('#brush-tool').click();
+  await desktop.locator('#color').evaluate(element => {
+    element.value = '#DCE2F0';
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
   await desktop.locator('#eraser-tool').focus();
   await desktop.keyboard.press('Space');
   assert.match(await desktop.locator('#eraser-tool').getAttribute('class'), /active/, 'Space must activate a focused tool button instead of being swallowed by the pan shortcut');
