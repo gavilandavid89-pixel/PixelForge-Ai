@@ -395,6 +395,20 @@ try {
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
   assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeLassoSelection, 'lasso selection must not add artwork history');
 
+  // Magic-wand color selection creates a real mask without adding artwork history.
+  const undoBeforeMagicSelection = await desktop.locator('#undo').isEnabled();
+  await desktop.locator('#magic-select-tool').click();
+  assert.equal(await desktop.locator('#magic-settings').isVisible(), true, 'magic-wand settings should follow the selected tool');
+  await desktop.locator('#magic-tolerance').evaluate(element => { element.value = '12'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  assert.equal(await desktop.locator('#magic-tolerance-value').textContent(), '12');
+  const magicBox = await desktop.locator('#canvas').boundingBox();
+  await desktop.mouse.click(magicBox.x + magicBox.width / 2, magicBox.y + magicBox.height / 2);
+  await desktop.waitForFunction(() => /Color selection: [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeMagicSelection, 'magic-wand selection must not mutate artwork history');
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+  await desktop.locator('#magic-tolerance').evaluate(element => { element.value = '0'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+
   // Elliptical marquee selection is a view-only selection operation and clears without touching pixels.
   const undoBeforeEllipseSelection = await desktop.locator('#undo').isEnabled();
   await desktop.locator('#ellipse-select-tool').click();
