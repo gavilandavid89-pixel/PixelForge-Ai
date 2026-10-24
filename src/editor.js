@@ -343,7 +343,7 @@ function updateDrawHoldUI() {
   if (!drawHoldButton) return;
   drawHoldButton.classList.toggle('held', drawHeld);
   drawHoldButton.setAttribute('aria-pressed', String(drawHeld));
-  drawHoldButton.disabled = cursorMode || !['draw', 'erase'].includes(tool);
+  drawHoldButton.disabled = cursorMode || !['draw', 'erase'].includes(tool) || Boolean(doc.activeLayer?.locked);
   drawHoldButton.style.display = cursorMode ? 'none' : '';
   drawHoldButton.querySelector('small').textContent = cursorMode ? 'Cursor active' : tool === 'erase' ? 'Hold to erase' : tool === 'pan' ? 'Pan selected' : tool === 'select' ? 'Select area' : tool === 'fill' ? 'Fill selected' : tool === 'eyedropper' ? 'Sample color' : 'Hold to draw';
 }
