@@ -17,7 +17,7 @@ export function cloneRasterDocument(source, { name = source.name } = {}) {
   const layerMap = new Map(source.layers.map((layer, i) => [layer.id, copy.layers[i].id]));
   copy.activeLayerId = layerMap.get(source.activeLayerId) ?? copy.layers[0].id;
   copy.compositeCache = new Uint8ClampedArray(source.width * source.height * 4);
-  copy.compositeDirtyTiles = new Set();
+  // Keep the constructor's all-dirty marker so the first composite is rebuilt.
   copy.revision = source.revision;
   copy.saveVersion = source.saveVersion;
   copy.history = [];
