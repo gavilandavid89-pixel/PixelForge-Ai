@@ -100,6 +100,28 @@ export class AIWorkspace {
     return { valid: true, baseRevision: this.#baseRevision, sandboxRevision: this.#proposal.sandboxRevision };
   }
 
+  getVisualDiff() {
+    const sourcePixels = this.#source.composite();
+    const sandboxPixels = this.#sandbox.composite();
+    const pixels = new Uint8ClampedArray(this.#source.width * this.#source.height * 4);
+    let changedPixels = 0, minX = this.#source.width, minY = this.#source.height, maxX = -1, maxY = -1;
+    for (let y = 0; y < this.#source.height; y++) for (let x = 0; x < this.#source.width; x++) {
+      const offset = (y * this.#source.width + x) * 4;
+      if (sourcePixels[offset] === sandboxPixels[offset] && sourcePixels[offset + 1] === sandboxPixels[offset + 1] &&
+          sourcePixels[offset + 2] === sandboxPixels[offset + 2] && sourcePixels[offset + 3] === sandboxPixels[offset + 3]) continue;
+      pixels[offset] = 255; pixels[offset + 1] = 72; pixels[offset + 2] = 186; pixels[offset + 3] = 230;
+      changedPixels++;
+      minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+    }
+    return {
+      width: this.#source.width,
+      height: this.#source.height,
+      pixels,
+      changedPixels,
+      bounds: maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
+    };
+  }
+
   acceptProposal() {
     const validation = this.validateProposalBase();
     if (!validation.valid) return { status: 'rejected', ...validation };
