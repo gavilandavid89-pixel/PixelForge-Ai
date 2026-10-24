@@ -19,7 +19,7 @@ Research and define the editing engine before building the visual interface. Use
 - **Multi-part symmetry:** turn mirroring off or draw in 2, 4, or 8 linked parts. Pencil, eraser, and geometric tools share one gesture and one undo step. Eight-way rotations use real document-space geometry and clip to bounds on non-square canvases instead of stretching the artwork.
 - **Selection-aware pixel editing:** rectangular selections constrain pencil, eraser, fill, color replacement, clearing, paste and flips. Copy/cut/paste uses an internal active-layer clipboard; cut and paste are reversible document edits.
 - **Pixel transformations:** horizontal/vertical flips work on the selected rectangle or the full active layer. Line and rectangle tools use integer Bresenham rasterization; ellipse outlines are connected pixel-stepped paths.
-- **Color workflow:** foreground/background swap (X shortcut), eight recent colors, and exact active-layer color replacement that preserves alpha.
+- **Color workflow:** foreground/background swap (X shortcut), eight recent colors, a browser-persisted user palette with GPL import/export, and exact active-layer color replacement that preserves alpha.
 
 ## Documents
 
