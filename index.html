@@ -101,8 +101,10 @@
     <section class="inspector-section ai-workspace-section" id="ai-workspace-panel">
       <div class="section-heading"><span class="section-icon">✦</span><h2>AI workspace</h2><span class="tiny-tag">ISOLATED</span></div>
       <div class="ai-workspace-state"><span class="ai-state-dot"></span><span id="ai-workspace-state">Mirroring your canvas</span></div>
+      <div class="control-heading"><label for="ai-preview-mode">Preview</label><span class="tiny-tag">COMPARE</span></div>
+      <select id="ai-preview-mode" class="fill-select" aria-label="AI preview mode"><option value="ai">AI canvas</option><option value="changes">Changes only</option><option value="original">Original canvas</option></select>
       <div class="ai-preview-frame"><canvas id="ai-preview-canvas" aria-label="Isolated AI canvas preview"></canvas></div>
-      <div class="ai-preview-meta"><span id="ai-preview-size">128 × 128 px</span><span>Separate pixel buffer</span></div>
+      <div class="ai-preview-meta"><span id="ai-preview-size">128 × 128 px</span><span id="ai-diff-count">Choose Changes only to compare</span></div>
       <p class="small-note">Your drawing is mirrored into this workspace. Changes made here cannot reach the original unless you review and accept a proposal.</p>
       <div class="ai-workspace-actions">
         <button class="file-button" id="ai-sync" type="button">↻ Sync from user canvas</button>
