@@ -286,7 +286,7 @@ function syncSelectionMask() {
 }
 function clearSelectionState() {
   selection = null; selectionStart = null; selectionPointerId = null;
-  doc.setSelectionMask(null);
+  syncSelectionMask();
 }
 function symmetryPoints(point, mode = symmetryMode) {
   const w = doc.width, h = doc.height;
@@ -760,7 +760,7 @@ function modifyCurrentSelection(operation) {
     const bounds = selectionBounds(mask);
     selection = bounds ? { ...bounds, shape: 'mask', customMask: mask } : null;
     selectionStart = null; selectionPointerId = null; syncSelectionMask();
-    status(selection ? `Selection ${operation}d` : 'Selection is empty', 'success'); render();
+    status(selection ? ({ invert: 'Selection inverted', expand: 'Selection expanded', contract: 'Selection contracted' })[operation] : 'Selection is empty', 'success'); render();
   } catch (error) { status(error.message, 'error'); }
 }
 $('#selection-invert').addEventListener('click', () => modifyCurrentSelection('invert'));
