@@ -96,3 +96,7 @@
 .brush-scrub.is-dragging{border-color:#625a91;background:#242334}
 .brush-scrub.is-dragging .scrub-knob{background:#d4ccff;box-shadow:0 0 0 4px #a79aff33}
 @media(max-width:760px){.brush-scrub{grid-template-columns:48px minmax(0,1fr) 48px;min-height:44px;gap:6px}.scrub-direction{font-size:10px}}
+
+/* Compact, touch-friendly linked-canvas symmetry control. */
+.symmetry-control{display:inline-flex;align-items:center;gap:5px;color:#aeb5c8;font-size:10px;font-weight:700;white-space:nowrap}.symmetry-control select{max-width:84px;padding:5px 6px;border:1px solid #363947;border-radius:6px;background:#20222c;color:#e0e3ed;font:inherit;font-size:10px;min-height:30px}
+@media(max-width:760px){.context-right{gap:5px}.symmetry-control{gap:3px}.symmetry-control select{max-width:68px;padding:4px 3px}.context-right .mode-pill{display:none}}
