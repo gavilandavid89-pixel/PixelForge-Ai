@@ -76,6 +76,7 @@ test('accepting a valid proposal applies all sandbox layer pixels as one undoabl
   const workspace = new AIWorkspace(user);
   paint(workspace.sandbox, 4, 4, '#0000ff');
   const sandboxHighlights = workspace.sandbox.layers[1];
+  workspace.sandbox.setActiveLayer(sandboxHighlights.id);
   const highlightStroke = workspace.sandbox.beginStroke({ color: '#ffffff', size: 1 });
   workspace.sandbox.strokeTo(highlightStroke, 5, 5);
   workspace.sandbox.endStroke(highlightStroke);
