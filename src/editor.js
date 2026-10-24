@@ -11,7 +11,7 @@ let color = $('#color').value, backgroundColor = '#242632', recentColors = [], b
 let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 'draw';
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
 let drawHeld = false, drawHoldPointerId = null;
-let selection = null, selectionStart = null, selectionPointerId = null;
+let selection = null, selectionStart = null, selectionPointerId = null, pixelClipboard = null;
 let shapeGesture = null, symmetryMode = 0;
 let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorGestureOrigin = null, cursorGestureStartedOnControl = false, cursorGestureControlTarget = null, cursorGestureSuppressClick = false, cursorDrawPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
@@ -946,6 +946,28 @@ window.addEventListener('keydown', event => {
   }
   if (textEntry) return;
   if (nativeControl && !modifiedShortcut && event.key !== 'Escape' && !((event.key === 'Delete' || event.key === 'Backspace') && selection)) return;
+  if ((event.ctrlKey || event.metaKey) && ['c', 'x', 'v'].includes(event.key.toLowerCase())) {
+    event.preventDefault();
+    try {
+      const command = event.key.toLowerCase();
+      if (command === 'c' || command === 'x') {
+        if (!selection) { status('Select a pixel region before copying or cutting', 'neutral'); return; }
+        pixelClipboard = doc.copyRect(selection.x, selection.y, selection.width, selection.height);
+        if (command === 'x') {
+          const cleared = doc.clearRect(selection.x, selection.y, selection.width, selection.height);
+          if (cleared) changed();
+          status(cleared ? 'Selection cut to internal clipboard' : 'Selection copied; no opaque pixels to cut', 'success');
+        } else status(`Copied ${pixelClipboard.width} × ${pixelClipboard.height} pixels`, 'success');
+      } else {
+        if (!pixelClipboard) { status('Pixel clipboard is empty', 'neutral'); return; }
+        const x = selection?.x ?? pixelClipboard.x, y = selection?.y ?? pixelClipboard.y;
+        const pasted = doc.pasteRect(pixelClipboard, { x, y });
+        if (pasted) { changed(); status(`Pasted ${pasted.toLocaleString()} pixels`, 'success'); }
+        else status('Paste made no changes (check layer lock and selection)', 'neutral');
+      }
+    } catch (error) { status(error.message, 'error'); }
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
     event.preventDefault(); $('#save').click(); return;
   } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
