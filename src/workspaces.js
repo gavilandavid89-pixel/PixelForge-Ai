@@ -49,6 +49,7 @@ export class AIWorkspace {
   get sandbox() { return this.#sandbox; }
   get baseRevision() { return this.#baseRevision; }
   get hasProposal() { return this.#proposal !== null; }
+  get hasSandboxChanges() { return this.#sandbox.revision !== this.#baseRevision; }
   get proposalSummary() {
     if (!this.#proposal) return null;
     return Object.freeze({
@@ -62,9 +63,12 @@ export class AIWorkspace {
     });
   }
 
-  syncFromUser({ discardProposal = false } = {}) {
+  syncFromUser({ discardProposal = false, discardSandboxChanges = false } = {}) {
     if (this.#proposal && !discardProposal) {
       return { status: 'proposal-pending', stale: this.#source.revision !== this.#proposal.baseRevision };
+    }
+    if (!this.#proposal && this.hasSandboxChanges && !discardSandboxChanges) {
+      return { status: 'sandbox-pending', stale: this.#source.revision !== this.#baseRevision };
     }
     this.#proposal = null;
     this.#syncSandboxFromSource();
@@ -87,6 +91,12 @@ export class AIWorkspace {
   discardProposal() {
     if (!this.#proposal) return false;
     this.#proposal = null;
+    this.#syncSandboxFromSource();
+    return true;
+  }
+
+  discardSandboxChanges() {
+    if (!this.hasSandboxChanges) return false;
     this.#syncSandboxFromSource();
     return true;
   }
