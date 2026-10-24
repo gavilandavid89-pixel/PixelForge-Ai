@@ -544,7 +544,10 @@ try {
   assert.ok(transformCanvas);
   const transformPoint = { x: transformCanvas.x + transformCanvas.width / 2, y: transformCanvas.y + transformCanvas.height / 2 };
   const beforeTransformStroke = await settledCanvasData();
-  await desktop.mouse.click(transformPoint.x, transformPoint.y);
+  await desktop.mouse.move(transformPoint.x, transformPoint.y);
+  await desktop.mouse.down();
+  await desktop.mouse.move(transformPoint.x + 6, transformPoint.y + 4, { steps: 2 });
+  await desktop.mouse.up();
   const afterTransformStroke = await settledCanvasData();
   assert.notEqual(afterTransformStroke, beforeTransformStroke, 'setup stroke should change the canvas');
   await desktop.locator('#select-tool').click();
@@ -567,7 +570,10 @@ try {
 
   // Applying a transform commits one edit; undo restores the exact pre-transform image.
   await desktop.locator('#brush-tool').click();
-  await desktop.mouse.click(transformPoint.x, transformPoint.y);
+  await desktop.mouse.move(transformPoint.x, transformPoint.y);
+  await desktop.mouse.down();
+  await desktop.mouse.move(transformPoint.x + 6, transformPoint.y + 4, { steps: 2 });
+  await desktop.mouse.up();
   const beforeTransformApply = await settledCanvasData();
   await desktop.locator('#select-tool').click();
   await desktop.mouse.move(transformPoint.x - 30, transformPoint.y - 24);
