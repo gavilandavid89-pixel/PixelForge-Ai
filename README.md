@@ -21,7 +21,7 @@ Research and define the editing engine before building the visual interface. Use
 - **Pixel transformations:** horizontal/vertical flips work on the selected rectangle or the full active layer. Line and rectangle tools use integer Bresenham rasterization; ellipse outlines are connected pixel-stepped paths. One-pixel sprite outlines preserve existing pixels and can be limited by the active selection.
 - **Game asset workflow:** start with templates for character sprites, icons, environment tiles, UI elements, backgrounds and VFX, each with useful editable layers. Export each layer as a padded sprite-sheet frame plus a JSON manifest with frame coordinates, dimensions, visibility, opacity, and centered pivots. Arbitrary atlas packing and engine-specific presets remain planned.
 - **Color workflow:** foreground/background swap (X shortcut), eight recent colors, a browser-persisted user palette with GPL import/export, and exact active-layer color replacement that preserves alpha.
-- **Painterly foundation:** brush/eraser opacity uses source-over alpha compositing; square and circular brush tips support adjustable hardness with partial edge alpha. Bucket fill supports a checker dither using foreground/background colors and adjustable pattern scale.
+- **Painterly foundation:** brush/eraser opacity uses source-over alpha compositing; square and circular brush tips support adjustable hardness with partial edge alpha. A linear foreground-to-background gradient has a non-destructive drag preview and one-step undo. Bucket fill supports checker dithering with adjustable pattern scale.
 
 ## Documents
 
