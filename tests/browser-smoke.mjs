@@ -180,11 +180,11 @@ try {
   assert.equal(await desktop.locator('.layer-select').first().textContent(), 'Layer 2', 'layer reorder should undo with the document history');
   await desktop.locator('#redo').click();
   assert.equal(await desktop.locator('.layer-select').first().textContent(), 'Layer 1', 'layer reorder should redo with the document history');
-  await desktop.getByRole('button', { name: 'Lock layer against edits' }).last().click();
+  await desktop.getByRole('button', { name: 'Lock layer' }).last().click();
   assert.equal(await desktop.getByRole('button', { name: 'Unlock layer' }).count(), 1, 'layer lock should update the layer control');
   assert.equal(await desktop.locator('#draw-hold').isDisabled(), true, 'locked active layer should disable draw-hold input');
   await desktop.locator('#undo').click();
-  assert.equal(await desktop.getByRole('button', { name: 'Lock layer against edits' }).count(), 2, 'undo should restore the unlocked layer state');
+  assert.equal(await desktop.getByRole('button', { name: 'Lock layer' }).count(), 2, 'undo should restore the unlocked layer state');
   assert.equal(await desktop.locator('#draw-hold').isDisabled(), false, 'undo should re-enable drawing on the active layer');
   await desktop.locator('#redo').click();
   assert.equal(await desktop.getByRole('button', { name: 'Unlock layer' }).count(), 1, 'redo should restore the locked layer state');
