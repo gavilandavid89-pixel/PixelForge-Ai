@@ -150,6 +150,16 @@ try {
     await desktop.locator('#undo').click();
     assert.equal(await settledCanvasData(), beforeShape, shape.name + ' should be reverted completely by one undo');
   }
+  const beforeCancelledShape = await settledCanvasData();
+  await desktop.locator('#line-tool').click();
+  const cancelX = box.x + box.width * 0.36, cancelY = box.y + box.height * 0.36;
+  await desktop.mouse.move(cancelX, cancelY);
+  await desktop.mouse.down();
+  await desktop.mouse.move(cancelX + 70, cancelY + 25, { steps: 4 });
+  assert.notEqual(await settledCanvasData(), beforeCancelledShape, 'a shape should be visible in the preview before cancellation');
+  await desktop.keyboard.press('Escape');
+  await desktop.mouse.up();
+  assert.equal(await settledCanvasData(), beforeCancelledShape, 'Escape must cancel the preview without changing document pixels');
   await desktop.locator('#brush-tool').click();
 
   // Bucket fill is wired to the same document/history pipeline as brush strokes.
