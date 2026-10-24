@@ -466,3 +466,19 @@ test('horizontal and vertical flips are clipped, selection-aware, and atomically
   assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [255, 255, 0, 255]);
   assert.throws(() => doc.flipRect(0, 0, 3, 2, 'diagonal'), /Flip axis/);
 });
+
+
+test('sprite outline fills only transparent neighbors, respects selection, and undoes atomically', () => {
+  const doc = new RasterDocument(3, 3);
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 1 }); doc.strokeTo(stroke, 1, 1); doc.endStroke(stroke);
+  const before = new Uint8ClampedArray(doc.activeLayer.pixels);
+  assert.equal(doc.createOutline('#0000ff'), 8);
+  assert.deepEqual([...doc.activeLayer.pixels.slice((1 * 3 + 1) * 4, (1 * 3 + 1) * 4 + 4)], [255, 0, 0, 255]);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(0, 4)], [0, 0, 255, 255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual(doc.activeLayer.pixels, before);
+  const mask = new Uint8Array(9); mask[1] = 1; doc.setSelectionMask(mask);
+  assert.equal(doc.createOutline('#00ff00'), 1);
+  assert.deepEqual([...doc.activeLayer.pixels.slice(4, 8)], [0, 255, 0, 255]);
+  assert.throws(() => doc.createOutline('#fff', { diagonals: 'yes' }), /boolean/);
+});
