@@ -40,7 +40,7 @@ Every advertised control must execute a real, testable operation. Unsupported fi
 - [ ] Pressure, tilt and barrel behavior where available; mouse/touch fallback; optional stroke smoothing and pressure curve.
 - [ ] Smudge, blur, sharpen, dodge/burn, clone stamp and retouch tools with clear sampling rules.
 - [ ] Line, curve and shape previews that can be cancelled before commit.
-- [ ] Drawing assistants for perspective, parallel lines, ellipses and symmetry.
+- [ ] Drawing assistants for perspective, parallel lines, ellipses and symmetry. Implemented line/rectangle/ellipse previews with atomic undo and browser smoke coverage.
 
 ## 4. Selection, clipboard and transforms
 
