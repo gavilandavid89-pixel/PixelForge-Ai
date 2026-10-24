@@ -399,8 +399,10 @@ try {
   assert.equal(await mobile.locator('#undo').isEnabled(), true, 'touching the size gesture bar in cursor mode must draw at the cursor position');
   await mobile.locator('#undo').click();
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'the cursor-mode dab must be one undoable action');
-  await mobile.locator('#cursor-mode').click();
-  assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'false');
+  await mobile.locator('#rectangle-tool').click();
+  assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'false', 'choosing a geometric tool must leave cursor mode automatically');
+  assert.equal(await mobile.locator('#rectangle-tool').evaluate(element => element.classList.contains('active')), true, 'the selected geometric tool must receive input after leaving cursor mode');
+  await mobile.locator('#brush-tool').click();
   const startX = mobileBox.x + mobileBox.width / 2, startY = mobileBox.y + mobileBox.height / 2;
   await touchDrag(startX, startY, startX + 18, startY + 8);
   await mobile.waitForFunction(() => document.querySelector('#undo')?.disabled === false);
