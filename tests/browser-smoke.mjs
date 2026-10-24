@@ -530,6 +530,86 @@ try {
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
 
+  // Transform previews are view-only until Apply; Cancel must preserve both pixels and history.
+  await desktop.locator('#brush-tool').click();
+  const transformCanvas = await desktop.locator('#canvas').boundingBox();
+  assert.ok(transformCanvas);
+  const transformPoint = { x: transformCanvas.x + transformCanvas.width / 2, y: transformCanvas.y + transformCanvas.height / 2 };
+  const beforeTransformStroke = await settledCanvasData();
+  await desktop.mouse.click(transformPoint.x, transformPoint.y);
+  const afterTransformStroke = await settledCanvasData();
+  assert.notEqual(afterTransformStroke, beforeTransformStroke, 'setup stroke should change the canvas');
+  await desktop.locator('#select-tool').click();
+  await desktop.mouse.move(transformPoint.x - 30, transformPoint.y - 24);
+  await desktop.mouse.down();
+  await desktop.mouse.move(transformPoint.x + 30, transformPoint.y + 24);
+  await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.locator('#transform-scale-x').fill('200');
+  await desktop.locator('#transform-scale-y').fill('150');
+  await desktop.locator('#transform-preview').click();
+  await desktop.waitForFunction(() => document.querySelector('#transform-apply')?.disabled === false);
+  assert.equal(await desktop.locator('#undo').isEnabled(), true, 'preview must not clear or add history');
+  assert.match(await desktop.locator('#status').textContent(), /Transform preview/);
+  await desktop.locator('#transform-cancel').click();
+  assert.equal(await desktop.locator('#transform-apply').isDisabled(), true, 'cancel must discard preview state');
+  await desktop.keyboard.press('Escape');
+  await desktop.locator('#undo').click();
+  assert.equal(await settledCanvasData(), beforeTransformStroke, 'cancelled transform preview must not consume the undo slot');
+
+  // Applying a transform commits one edit; undo restores the exact pre-transform image.
+  await desktop.locator('#brush-tool').click();
+  await desktop.mouse.click(transformPoint.x, transformPoint.y);
+  const beforeTransformApply = await settledCanvasData();
+  await desktop.locator('#select-tool').click();
+  await desktop.mouse.move(transformPoint.x - 30, transformPoint.y - 24);
+  await desktop.mouse.down();
+  await desktop.mouse.move(transformPoint.x + 30, transformPoint.y + 24);
+  await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.locator('#transform-scale-x').fill('200');
+  await desktop.locator('#transform-scale-y').fill('200');
+  await desktop.locator('#transform-rotation').selectOption('90');
+  await desktop.locator('#transform-preview').click();
+  await desktop.waitForFunction(() => document.querySelector('#transform-apply')?.disabled === false);
+  await desktop.locator('#transform-apply').click();
+  await desktop.waitForFunction(() => /Transform applied/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.keyboard.press('Escape');
+  const afterTransformApply = await settledCanvasData();
+  assert.notEqual(afterTransformApply, beforeTransformApply, 'applied scale/rotation should change the visible artwork');
+  await desktop.locator('#undo').click();
+  assert.equal(await settledCanvasData(), beforeTransformApply, 'one undo must restore the exact pre-transform image');
+  await desktop.locator('#redo').click();
+  await desktop.keyboard.press('Escape');
+
+  // Crop preview is non-destructive; committing resizes all layers and undo restores canvas dimensions.
+  const beforeCropSize = await desktop.locator('#document-size').textContent();
+  await desktop.locator('#select-tool').click();
+  const cropBox = await desktop.locator('#canvas').boundingBox();
+  const cropCenterX = cropBox.x + cropBox.width / 2, cropCenterY = cropBox.y + cropBox.height / 2;
+  await desktop.mouse.move(cropCenterX - 28, cropCenterY - 22);
+  await desktop.mouse.down();
+  await desktop.mouse.move(cropCenterX + 28, cropCenterY + 22);
+  await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.locator('#crop-preview').click();
+  await desktop.waitForFunction(() => document.querySelector('#crop-apply')?.disabled === false);
+  assert.equal(await desktop.locator('#document-size').textContent(), beforeCropSize, 'crop preview must not resize the actual document');
+  await desktop.locator('#crop-cancel').click();
+  assert.equal(await desktop.locator('#document-size').textContent(), beforeCropSize, 'cancelled crop must preserve dimensions');
+  await desktop.locator('#crop-preview').click();
+  await desktop.locator('#crop-apply').click();
+  await desktop.waitForFunction(expected => document.querySelector('#document-size')?.textContent !== expected, beforeCropSize);
+  const croppedSize = await desktop.locator('#document-size').textContent();
+  assert.notEqual(croppedSize, beforeCropSize, 'crop apply must update document dimensions');
+  await desktop.locator('#undo').click();
+  await desktop.waitForFunction(expected => document.querySelector('#document-size')?.textContent === expected, beforeCropSize);
+  await desktop.locator('#redo').click();
+  await desktop.waitForFunction(expected => document.querySelector('#document-size')?.textContent === expected, croppedSize);
+  await desktop.locator('#undo').click();
+  await desktop.waitForFunction(expected => document.querySelector('#document-size')?.textContent === expected, beforeCropSize);
+  await desktop.keyboard.press('Escape');
+
   // Use an isolated context so desktop autosaved state cannot leak into the mobile smoke tests.
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const mobile = await mobileContext.newPage();
