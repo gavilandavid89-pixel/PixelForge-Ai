@@ -304,6 +304,13 @@ try {
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'mobile selection must not alter document history');
 
 
+  // The desktop smoke checks and mobile page share browser storage; normalize the layer state before hold-input tests.
+  await mobile.locator('#layers-tab').click();
+  const mobileUnlockLayer = mobile.getByRole('button', { name: 'Unlock layer' });
+  if (await mobileUnlockLayer.count()) await mobileUnlockLayer.last().click();
+  await mobile.locator('#properties-tab').click();
+  assert.equal(await mobile.locator('#draw-hold').isDisabled(), false, 'mobile hold-input tests require an editable active layer');
+
   await mobile.locator('#draw-hold').focus();
   await mobile.keyboard.down('Space');
   assert.equal(await mobile.locator('#draw-hold').getAttribute('aria-pressed'), 'true', 'keyboard hold must enter the pressed state on the mobile workspace');
