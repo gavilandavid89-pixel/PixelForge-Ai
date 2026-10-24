@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints } from '../src/core.js';
+import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints, createSelectionMask } from '../src/core.js';
 
 test('layer reordering changes composite stacking and supports undo/redo', () => {
   const doc = new RasterDocument(2, 2);
@@ -536,4 +536,29 @@ test('unchanged stroke pixels do not create empty undo entries', () => {
   doc.strokeTo(stroke, 0, 0);
   assert.equal(doc.endStroke(stroke), false);
   assert.equal(doc.history.length, 1);
+});
+
+
+test('rectangle and ellipse selection masks produce clipped deterministic pixel regions', () => {
+  const rectangle = createSelectionMask(5, 5, { x: 1, y: 1, width: 3, height: 3, shape: 'rect' });
+  assert.equal(rectangle.reduce((sum, value) => sum + value, 0), 9);
+  assert.equal(rectangle[0], 0);
+  const ellipse = createSelectionMask(5, 5, { x: 0, y: 0, width: 5, height: 5, shape: 'ellipse' });
+  assert.equal(ellipse[2 * 5 + 2], 1, 'ellipse should include its center');
+  assert.equal(ellipse[0], 0, 'ellipse should exclude bounding-box corners');
+  assert.equal(ellipse[2], 1, 'ellipse should include the top-center pixel');
+  assert.equal(createSelectionMask(5, 5, null), null);
+  assert.throws(() => createSelectionMask(5, 5, { x: 0, y: 0, width: 2, height: 2, shape: 'lasso' }), /supported rect\/ellipse/);
+});
+
+test('copyRect copies only selected pixels and leaves unselected clipboard pixels transparent', () => {
+  const doc = new RasterDocument(3, 3);
+  const stroke = doc.beginStroke({ color: '#ff0000' });
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) doc.strokeTo(stroke, x, y);
+  doc.endStroke(stroke);
+  doc.setSelectionMask(createSelectionMask(3, 3, { x: 0, y: 0, width: 3, height: 3, shape: 'ellipse' }));
+  const clip = doc.copyRect(0, 0, 3, 3);
+  assert.equal(clip.pixels[(0 * 3 + 0) * 4 + 3], 0);
+  assert.equal(clip.pixels[(1 * 3 + 1) * 4 + 3], 255);
+  assert.equal(clip.pixels[(0 * 3 + 1) * 4 + 3], 255);
 });
