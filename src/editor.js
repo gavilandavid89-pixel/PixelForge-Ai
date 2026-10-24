@@ -317,7 +317,24 @@ $('#eyedropper-tool').addEventListener('click', () => setTool('eyedropper'));
 $('#sample-source').addEventListener('change', event => { sampleMerged = event.target.value === 'merged'; });
 $('#fill-tolerance').addEventListener('input', event => { fillTolerance = Number(event.target.value); $('#fill-tolerance-value').textContent = `${fillTolerance}`; });
 $('#fill-mode').addEventListener('change', event => { fillContiguous = event.target.value === 'contiguous'; });
-$('#layers-tab').addEventListener('click', () => $('#layers').scrollIntoView({ behavior: 'smooth', block: 'center' }));
+const mobileInspector = window.matchMedia('(max-width: 760px)');
+function setInspectorPanel(panel) {
+  const layersVisible = panel === 'layers' && mobileInspector.matches;
+  document.querySelector('.inspector').classList.toggle('show-layers', layersVisible);
+  $('#properties-tab').classList.toggle('active', !layersVisible);
+  $('#layers-tab').classList.toggle('active', layersVisible);
+  $('#properties-tab').setAttribute('aria-selected', String(!layersVisible));
+  $('#layers-tab').setAttribute('aria-selected', String(layersVisible));
+}
+$('#properties-tab').addEventListener('click', () => {
+  if (mobileInspector.matches) setInspectorPanel('properties');
+  else $('.inspector-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('#layers-tab').addEventListener('click', () => {
+  if (mobileInspector.matches) setInspectorPanel('layers');
+  else $('#layers').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+mobileInspector.addEventListener('change', () => setInspectorPanel('properties'));
 function setTool(next) {
   if (activeStroke) finishActiveStroke(false);
   if (next === 'eyedropper' && tool !== 'eyedropper') returnTool = ['draw', 'erase', 'fill'].includes(tool) ? tool : 'draw';
