@@ -13,7 +13,8 @@ This is the capability checklist, not a promise that every item already exists. 
 
 ## B. Tools
 ### Pixel-precise
-- **Implemented:** pixel-aligned pencil and eraser; bucket fill with connected/global modes, per-channel color tolerance, active-layer lock checks, bounded traversal buffers and one undoable tile-patch command.\n- Planned: pixel-perfect line; extend bucket fill with merged-image sampling and selection boundaries.
+- **Implemented:** pixel-aligned pencil and eraser; bucket fill with connected/global modes, per-channel color tolerance, active-layer lock checks, bounded traversal buffers and one undoable tile-patch command.
+- Planned: pixel-perfect line; extend bucket fill with merged-image sampling and selection boundaries.
 - Eyedropper (current layer / merged image), color replace, gradient, dithering, pixel-perfect shapes.
 - Rectangle, rounded rectangle, ellipse, polygon, polyline, curve/bezier, spray, tile stamp.
 - Shading tool, outline, lighten/darken, indexed palette mode, pattern fill.
