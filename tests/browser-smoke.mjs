@@ -405,6 +405,13 @@ try {
   await desktop.mouse.click(magicBox.x + magicBox.width / 2, magicBox.y + magicBox.height / 2);
   await desktop.waitForFunction(() => /Color selection: [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeMagicSelection, 'magic-wand selection must not mutate artwork history');
+  assert.equal(await desktop.locator('#selection-settings').isVisible(), true, 'selection mask operations should be visible for an active selection');
+  await desktop.locator('#selection-invert').click();
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection inverted');
+  await desktop.locator('#selection-expand').click();
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection expanded');
+  await desktop.locator('#selection-contract').click();
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection contracted');
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
   await desktop.locator('#magic-tolerance').evaluate(element => { element.value = '0'; element.dispatchEvent(new Event('input', { bubbles: true })); });
