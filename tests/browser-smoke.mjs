@@ -117,7 +117,11 @@ try {
   await desktop.waitForFunction(() => /Filled [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   assert.equal(await desktop.locator('#undo').isEnabled(), true, 'a fill must create one undoable edit');
   await desktop.locator('#undo').click();
-  await desktop.locator('#brush-tool').click();
+  await desktop.locator('#eyedropper-tool').click();
+  assert.equal(await desktop.locator('#sample-settings').isVisible(), true, 'eyedropper source settings should follow the selected tool');
+  await desktop.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  assert.equal(await desktop.locator('#color').inputValue(), '#DCE2F0', 'eyedropper should restore the sampled foreground color');
+  assert.equal(await desktop.locator('#brush-tool').getAttribute('class').then(value => value.includes('active')), true, 'sampling should return to the previous drawing tool');
   await desktop.locator('#color').evaluate(element => {
     element.value = '#DCE2F0';
     element.dispatchEvent(new Event('input', { bubbles: true }));
