@@ -410,6 +410,13 @@ try {
   assert.equal(await settledCanvasData(), beforeClipboardRoundTrip, 'cut then paste at the selection origin must restore exact canvas pixels');
   await desktop.keyboard.press('Escape');
 
+  const undoBeforeSelectAll = await desktop.locator('#undo').isEnabled();
+  await desktop.keyboard.press('Control+a');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selected entire canvas');
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeSelectAll, 'select-all must only change the selection mask, not artwork history');
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+
   // Use an isolated context so desktop autosaved state cannot leak into the mobile smoke tests.
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const mobile = await mobileContext.newPage();
