@@ -29,3 +29,37 @@
 /* Bucket fill controls share the editor's compact inspector styling. */
 .fill-select{width:100%;min-height:32px;padding:0 8px;border:1px solid #3b3e4c;border-radius:7px;background:#20222c;color:#d8dbe7;font-size:10px;}
 .fill-select:focus-visible{outline:2px solid #9b8afb;outline-offset:2px;}
+
+
+/* Layer locking and the compact mobile inspector are part of the editing workflow. */
+.layer-lock[aria-pressed="true"]{color:#e8c98a;background:#302c22}
+.layer-visibility:focus-visible,.layer-select:focus-visible,.inspector-tab:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.inspector-tab{cursor:pointer}
+@media(max-width:760px){
+  .inspector{display:block;max-height:244px;overflow-y:auto;overscroll-behavior:contain}
+  .inspector-tabs{position:sticky;top:0;z-index:3;background:#181a22}
+  .inspector>.inspector-section:first-of-type{display:block}
+  .inspector.show-layers>.inspector-section:first-of-type{display:none}
+  .inspector>.layer-section{display:none;border-left:0;padding-bottom:12px}
+  .inspector.show-layers>.layer-section{display:block}
+  .inspector>.files-section{display:none}
+  .inspector.show-layers>.files-section{display:block;padding-top:12px}
+  .layer-row{min-height:44px;gap:5px}
+  .layer-visibility{flex:0 0 40px;min-width:40px;min-height:40px;font-size:17px}
+  .layer-select{min-height:40px;font-size:12px}
+  .inspector-section .section-heading h2{font-size:13px}
+  .inspector-section .control-heading{font-size:11px}
+  .inspector-section .range-input{height:8px}
+  .inspector-section input[type="range"]{min-height:24px}
+  .inspector-section .color-control input[type="color"]{width:40px;height:40px}
+  .inspector-section .color-presets button{width:25px;height:25px;border-radius:7px}
+  .inspector-section .fill-select{min-height:40px;font-size:12px}
+  .inspector-section .small-note{display:block;font-size:10px}
+  .inspector-section .file-button{min-height:44px;font-size:12px}
+  .draw-hold{min-height:52px;min-width:112px;font-size:12px}
+}
+@media(max-width:420px){
+  .inspector{max-height:226px}
+  .layer-visibility{flex-basis:36px;min-width:36px}
+  .inspector-section{padding-right:10px;padding-left:10px}
+}
