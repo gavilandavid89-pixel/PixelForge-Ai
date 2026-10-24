@@ -233,7 +233,13 @@ function render() {
       const traceSelection = () => {
         ctx.beginPath();
         if (selection.shape === 'ellipse') ctx.ellipse(sx + sw / 2, sy + sh / 2, Math.max(.5, sw / 2), Math.max(.5, sh / 2), 0, 0, Math.PI * 2);
-        else ctx.rect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1));
+        else if (selection.shape === 'polygon' && selection.points?.length) {
+          selection.points.forEach((point, index) => {
+            const px = panX + (point.x + .5) * zoom, py = panY + (point.y + .5) * zoom;
+            if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          });
+          if (selection.points.length >= 3) ctx.closePath();
+        } else ctx.rect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1));
       };
       ctx.save(); ctx.strokeStyle = '#f4f0ff'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]); traceSelection(); ctx.stroke();
       ctx.strokeStyle = '#282532'; ctx.lineDashOffset = 5; traceSelection(); ctx.stroke(); ctx.restore();
@@ -257,7 +263,7 @@ function eventPoint(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
-function syncSelectionMask() { doc.setSelectionMask(createSelectionMask(doc.width, doc.height, selection)); }
+function syncSelectionMask() {\n  if (selection?.shape === 'polygon' && selection.points.length < 3) { doc.setSelectionMask(null); return; }\n  doc.setSelectionMask(createSelectionMask(doc.width, doc.height, selection));\n}
 function clearSelectionState() {
   selection = null; selectionStart = null; selectionPointerId = null;
   doc.setSelectionMask(null);
@@ -455,8 +461,16 @@ function moveStroke(event) {
   if (selectionStart && event.pointerId === selectionPointerId) {
     const point = docPoint(event);
     const x = Math.max(0, Math.min(doc.width - 1, point.x)), y = Math.max(0, Math.min(doc.height - 1, point.y));
-    const left = Math.min(selectionStart.x, x), top = Math.min(selectionStart.y, y);
-    selection = { x: left, y: top, width: Math.abs(x - selectionStart.x) + 1, height: Math.abs(y - selectionStart.y) + 1, shape: selectionStart.shape };
+    if (selectionStart.shape === 'polygon') {
+      const points = selectionStart.points, last = points[points.length - 1];
+      if ((Math.abs(x - last.x) + Math.abs(y - last.y) >= 1) && points.length < 4096) points.push({ x, y });
+      const xs = points.map(item => item.x), ys = points.map(item => item.y);
+      const left = Math.min(...xs), top = Math.min(...ys), right = Math.max(...xs), bottom = Math.max(...ys);
+      selection = { x: left, y: top, width: right - left + 1, height: bottom - top + 1, shape: 'polygon', points: [...points] };
+    } else {
+      const left = Math.min(selectionStart.x, x), top = Math.min(selectionStart.y, y);
+      selection = { x: left, y: top, width: Math.abs(x - selectionStart.x) + 1, height: Math.abs(y - selectionStart.y) + 1, shape: selectionStart.shape };
+    }
     syncSelectionMask(); render(); return;
   }
   if (panning && panStart) {
@@ -498,11 +512,13 @@ canvas.addEventListener('pointerdown', event => {
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     render(); event.preventDefault(); return;
   }
-  if (tool === 'select' || tool === 'select-ellipse') {
+  if (['select', 'select-ellipse', 'select-lasso'].includes(tool)) {
     const point = docPoint(event); if (!point.inside) return;
-    const shape = tool === 'select-ellipse' ? 'ellipse' : 'rect';
-    selectionStart = { x: point.x, y: point.y, shape }; selectionPointerId = event.pointerId;
-    selection = { x: point.x, y: point.y, width: 1, height: 1, shape }; syncSelectionMask();
+    const shape = tool === 'select-ellipse' ? 'ellipse' : tool === 'select-lasso' ? 'polygon' : 'rect';
+    selectionStart = shape === 'polygon' ? { x: point.x, y: point.y, shape, points: [{ x: point.x, y: point.y }] } : { x: point.x, y: point.y, shape };
+    selectionPointerId = event.pointerId;
+    selection = shape === 'polygon' ? { x: point.x, y: point.y, width: 1, height: 1, shape, points: [...selectionStart.points] } : { x: point.x, y: point.y, width: 1, height: 1, shape };
+    syncSelectionMask();
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     render(); event.preventDefault(); return;
   }
@@ -682,7 +698,7 @@ $('#pan-tool').addEventListener('click', () => setTool('pan'));
 $('#fill-tool').addEventListener('click', () => setTool('fill'));
 $('#eyedropper-tool').addEventListener('click', () => setTool('eyedropper'));
 $('#select-tool').addEventListener('click', () => setTool('select'));
-$('#ellipse-select-tool').addEventListener('click', () => setTool('select-ellipse'));
+$('#ellipse-select-tool').addEventListener('click', () => setTool('select-ellipse'));\n$('#lasso-select-tool').addEventListener('click', () => setTool('select-lasso'));
 $('#line-tool').addEventListener('click', () => setTool('shape-line'));
 $('#rectangle-tool').addEventListener('click', () => setTool('shape-rect'));
 $('#ellipse-tool').addEventListener('click', () => setTool('shape-ellipse'));
@@ -728,14 +744,14 @@ function setTool(next) {
   $('#fill-tool').classList.toggle('active', tool === 'fill');
   $('#eyedropper-tool').classList.toggle('active', tool === 'eyedropper');
   $('#select-tool').classList.toggle('active', tool === 'select');
-  $('#ellipse-select-tool').classList.toggle('active', tool === 'select-ellipse');
+  $('#ellipse-select-tool').classList.toggle('active', tool === 'select-ellipse');\n  $('#lasso-select-tool').classList.toggle('active', tool === 'select-lasso');
   $('#line-tool').classList.toggle('active', tool === 'shape-line');
   $('#rectangle-tool').classList.toggle('active', tool === 'shape-rect');
   $('#ellipse-tool').classList.toggle('active', tool === 'shape-ellipse');
-  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', 'select-ellipse': 'Elliptical selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse' })[tool] ?? 'Pencil';
+  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', 'select-ellipse': 'Elliptical selection', 'select-lasso': 'Lasso selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse' })[tool] ?? 'Pencil';
   $('#fill-settings').hidden = tool !== 'fill';
   $('#sample-settings').hidden = tool !== 'eyedropper';
-  if (!['select', 'select-ellipse'].includes(tool)) { selectionStart = null; selectionPointerId = null; }
+  if (!['select', 'select-ellipse', 'select-lasso'].includes(tool)) { selectionStart = null; selectionPointerId = null; }
   canvas.dataset.tool = tool;
   updateDrawHoldUI();
   render();
