@@ -117,7 +117,9 @@ try {
   await desktop.mouse.up();
   await canvas.evaluate(element => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const after = await canvas.evaluate(element => element.toDataURL());
-  assert.notEqual(after, before, 'drawing must change rendered artwork');
+  const undoAfterStroke = await desktop.locator('#undo').isEnabled();
+  const strokeStatus = await desktop.locator('#status').textContent();
+  assert.notEqual(after, before, 'drawing must change rendered artwork (undo=' + undoAfterStroke + ', status=' + strokeStatus + ', canvasBox=' + JSON.stringify(box) + ')');
   // The centered scrub gesture is relative to the starting size and recenters without resetting the chosen size.
   await desktop.locator('#brush-size').evaluate(element => { element.value = '10'; element.dispatchEvent(new Event('input', { bubbles: true })); });
   const scrub = desktop.locator('#brush-scrub');
