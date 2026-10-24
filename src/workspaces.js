@@ -48,6 +48,7 @@ export class AIWorkspace {
 
   get sandbox() { return this.#sandbox; }
   get baseRevision() { return this.#baseRevision; }
+  get sourceRevision() { return this.#source.revision; }
   get hasProposal() { return this.#proposal !== null; }
   get hasSandboxChanges() { return this.#sandbox.revision !== this.#baseRevision; }
   get proposalSummary() {
