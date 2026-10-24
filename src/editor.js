@@ -13,7 +13,7 @@ let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEna
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null;
 let shapeGesture = null, symmetryMode = 0;
-let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorGestureOrigin = null, cursorGestureStartedOnControl = false, cursorGestureSuppressClick = false, cursorDrawPointerId = null;
+let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorGestureOrigin = null, cursorGestureStartedOnControl = false, cursorGestureControlTarget = null, cursorGestureSuppressClick = false, cursorDrawPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
 
@@ -419,10 +419,12 @@ canvas.addEventListener('pointermove', event => {
 window.addEventListener('pointerdown', event => {
   if (!cursorMode || event.pointerType !== 'touch' || cursorGesturePointerId !== null) return;
   if (event.target instanceof Element && event.target.closest('#brush-scrub')) return;
+  cursorGestureSuppressClick = false;
+  cursorGestureControlTarget = null;
   cursorGesturePointerId = event.pointerId;
   cursorGestureLast = cursorGestureOrigin = { x: event.clientX, y: event.clientY };
-  cursorGestureStartedOnControl = event.target instanceof Element && Boolean(event.target.closest('button, a, input, select, textarea, [role="button"]'));
-  cursorGestureSuppressClick = false;
+  cursorGestureControlTarget = event.target instanceof Element ? event.target.closest('button, a, input, select, textarea, [role="button"]') : null;
+  cursorGestureStartedOnControl = Boolean(cursorGestureControlTarget);
 }, true);
 window.addEventListener('pointermove', event => {
   if (!cursorMode || event.pointerType !== 'touch' || event.pointerId !== cursorGesturePointerId || !cursorGestureLast) return;
@@ -432,8 +434,12 @@ window.addEventListener('pointermove', event => {
   if (dx || dy) moveVirtualCursorBy(dx, dy);
 }, true);
 window.addEventListener('click', event => {
-  if (!cursorMode || !cursorGestureSuppressClick) return;
+  if (!cursorGestureSuppressClick) return;
+  const originalControl = cursorGestureControlTarget;
+  const sameControl = originalControl && (event.target === originalControl || originalControl.contains(event.target));
   cursorGestureSuppressClick = false;
+  cursorGestureControlTarget = null;
+  if (!cursorMode || !sameControl) return;
   event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();
 }, true);
 function finishCursorGesture(event) {
