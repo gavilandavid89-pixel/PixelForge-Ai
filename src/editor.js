@@ -2,12 +2,14 @@ import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints,
 import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
 import { preflightImageFile } from './image-import.js';
 import { createSpriteSheetLayout } from './asset-export.js';
+import { AIWorkspace } from './workspaces.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#canvas'), ctx = canvas.getContext('2d', { alpha: true });
 const workArea = $('#work-area');
 const previewCanvas = document.createElement('canvas'), previewCtx = previewCanvas.getContext('2d', { alpha: true });
-let doc = new RasterDocument(128, 128), tool = 'draw', spaceDown = false;
+let doc = new RasterDocument(128, 128), aiWorkspace = new AIWorkspace(doc), tool = 'draw', spaceDown = false;
+let aiPanelVisible = false;
 let color = $('#color').value, backgroundColor = '#242632', recentColors = [], brushSize = Number($('#brush-size').value);
 let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 'draw';
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
@@ -111,6 +113,59 @@ function syncBackgroundColor() {
 function status(message, kind = 'neutral') {
   $('#status').textContent = message;
   $('#status').dataset.kind = kind;
+}
+function updateAIWorkspaceUI() {
+  const state = $('#ai-workspace-state');
+  const dot = document.querySelector('.ai-state-dot');
+  const summary = aiWorkspace.proposalSummary;
+  const sourceStale = Boolean(summary?.stale);
+  if (summary) {
+    $('#ai-proposal-summary').textContent = sourceStale
+      ? 'The original canvas changed after this proposal was created. Sync or discard it before applying.'
+      : summary.sandboxStale
+        ? 'The sandbox changed after this proposal was captured. Discard it and prepare a new proposal.'
+        : summary.summary;
+    $('#ai-accept-proposal').disabled = sourceStale || summary.sandboxStale;
+    $('#ai-discard-proposal').disabled = false;
+    state.textContent = sourceStale ? 'Proposal is out of date' : summary.sandboxStale ? 'Proposal snapshot changed' : 'Proposal ready for review';
+    dot.dataset.kind = sourceStale || summary.sandboxStale ? 'warning' : 'success';
+  } else {
+    $('#ai-proposal-summary').textContent = 'No proposal to review yet.';
+    $('#ai-accept-proposal').disabled = true;
+    $('#ai-discard-proposal').disabled = true;
+    state.textContent = 'Mirroring your canvas';
+    dot.dataset.kind = 'success';
+  }
+  $('#ai-preview-size').textContent = aiWorkspace.sandbox.width + ' × ' + aiWorkspace.sandbox.height + ' px';
+}
+function renderAIWorkspacePreview() {
+  const preview = $('#ai-preview-canvas');
+  if (!preview) return;
+  const sandbox = aiWorkspace.sandbox;
+  if (preview.width !== sandbox.width || preview.height !== sandbox.height) {
+    preview.width = sandbox.width; preview.height = sandbox.height;
+  }
+  const pixels = sandbox.composite();
+  const previewContext = preview.getContext('2d', { alpha: true });
+  previewContext.clearRect(0, 0, preview.width, preview.height);
+  previewContext.putImageData(new ImageData(new Uint8ClampedArray(pixels), sandbox.width, sandbox.height), 0, 0);
+  sandbox.clearCompositeDirtyTiles();
+  updateAIWorkspaceUI();
+}
+function resetAIWorkspaceForDocument() {
+  aiWorkspace = new AIWorkspace(doc);
+  updateAIWorkspaceUI();
+  if (aiPanelVisible) renderAIWorkspacePreview();
+}
+function syncAIWorkspaceFromUser() {
+  const result = aiWorkspace.syncFromUser();
+  if (result.status === 'synced') {
+    $('#ai-workspace-state').textContent = 'Mirroring your canvas';
+    if (aiPanelVisible) renderAIWorkspacePreview();
+    else updateAIWorkspaceUI();
+  } else {
+    updateAIWorkspaceUI();
+  }
 }
 function updateTitle() {
   $('#document-name').textContent = doc.name;
@@ -448,7 +503,7 @@ async function flushAutosave({ force = false } = {}) {
   try { await flushPromise; }
   finally { flushPromise = null; }
 }
-function changed() { render(); updateTitle(); scheduleAutosave(); }
+function changed() { syncAIWorkspaceFromUser(); render(); updateTitle(); scheduleAutosave(); }
 function startStrokeAt(point, id) {
   if (!point?.inside || activeStroke) return;
   try {
@@ -840,14 +895,16 @@ $('#fill-tolerance').addEventListener('input', event => { fillTolerance = Number
 $('#fill-mode').addEventListener('change', event => { fillContiguous = event.target.value === 'contiguous'; });
 const mobileInspector = window.matchMedia('(max-width: 760px)');
 function setInspectorPanel(panel) {
-  const layersVisible = panel === 'layers' && mobileInspector.matches;
   const inspector = document.querySelector('.inspector');
+  inspector.dataset.panel = panel;
   if (mobileInspector.matches) inspector.scrollTop = 0;
-  inspector.classList.toggle('show-layers', layersVisible);
-  $('#properties-tab').classList.toggle('active', !layersVisible);
-  $('#layers-tab').classList.toggle('active', layersVisible);
-  $('#properties-tab').setAttribute('aria-selected', String(!layersVisible));
-  $('#layers-tab').setAttribute('aria-selected', String(layersVisible));
+  const panels = { properties: '#properties-tab', layers: '#layers-tab', ai: '#ai-tab' };
+  for (const [name, selector] of Object.entries(panels)) {
+    $(selector).classList.toggle('active', name === panel);
+    $(selector).setAttribute('aria-selected', String(name === panel));
+  }
+  aiPanelVisible = panel === 'ai';
+  if (aiPanelVisible) renderAIWorkspacePreview();
 }
 $('#properties-tab').addEventListener('click', () => {
   if (mobileInspector.matches) setInspectorPanel('properties');
@@ -856,6 +913,32 @@ $('#properties-tab').addEventListener('click', () => {
 $('#layers-tab').addEventListener('click', () => {
   if (mobileInspector.matches) setInspectorPanel('layers');
   else $('#layers').scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+$('#ai-tab').addEventListener('click', () => {
+  if (mobileInspector.matches) setInspectorPanel('ai');
+  else $('#ai-workspace-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  aiPanelVisible = true; renderAIWorkspacePreview();
+});
+$('#ai-sync').addEventListener('click', () => {
+  const result = aiWorkspace.syncFromUser();
+  if (result.status === 'synced') status('AI canvas synchronized from the original', 'success');
+  else status('A proposal is pending. Discard it before synchronizing.', 'warning');
+  renderAIWorkspacePreview();
+});
+$('#ai-refresh-preview').addEventListener('click', () => { renderAIWorkspacePreview(); status('AI canvas preview refreshed', 'success'); });
+$('#ai-discard-proposal').addEventListener('click', () => {
+  if (!aiWorkspace.discardProposal()) { status('There is no proposal to discard', 'neutral'); return; }
+  renderAIWorkspacePreview(); status('Proposal discarded; original artwork is unchanged', 'success');
+});
+$('#ai-accept-proposal').addEventListener('click', () => {
+  const result = aiWorkspace.acceptProposal();
+  if (result.status !== 'applied') {
+    updateAIWorkspaceUI();
+    status(result.reason === 'stale-base' ? 'Proposal rejected: original canvas changed' : result.reason === 'proposal-changed' ? 'Proposal rejected: sandbox changed after review snapshot' : result.message || 'Proposal could not be applied', 'warning');
+    return;
+  }
+  changed(); renderLayers(); renderAIWorkspacePreview();
+  status('Proposal accepted · ' + result.changedPixels.toLocaleString() + ' pixels changed in ' + result.changedLayers + ' layer(s)', 'success');
 });
 mobileInspector.addEventListener('change', () => setInspectorPanel('properties'));
 function setTool(next) {
@@ -1037,7 +1120,7 @@ async function renderProjects() {
         await flushAutosave();
         const saved = await loadProjectById(project.id);
         if (!saved) throw new Error('That saved project no longer exists.');
-        doc = RasterDocument.fromJSON(saved); clearSelectionState();
+        doc = RasterDocument.fromJSON(saved); clearSelectionState(); resetAIWorkspaceForDocument();
         $('#projects-dialog').close(); fitCanvas(); updateTitle(); renderLayers();
         status('Opened saved project', 'success');
       } catch (error) { status(`Could not open project: ${error.message}`, 'error'); }
@@ -1076,6 +1159,7 @@ $('#create-new').addEventListener('click', async () => {
     doc.setActiveLayer(firstLayer);
     // Template scaffolding is the initial document state, not user undo history.
     doc.history.length = 0; doc.future.length = 0; doc.historyBytes = 0; doc.revision = 0; doc.saveVersion = 0; doc.dirty = false;
+    resetAIWorkspaceForDocument();
     $('#new-dialog').close(); fitCanvas(); updateTitle(); renderLayers(); scheduleAutosave();
     status(template.layers.length > 1 ? `Created ${template.name} template with ${template.layers.length} layers` : 'New document created', 'success');
   } catch (error) { $('#new-error').textContent = error.message; status(`Could not switch documents: ${error.message}`, 'error'); }
@@ -1332,7 +1416,7 @@ async function boot() {
   resizeCanvas();
   try {
     const saved = await loadMostRecentProject();
-    if (saved) { doc = RasterDocument.fromJSON(saved); clearSelectionState(); status('Recovered latest local project', 'success'); }
+    if (saved) { doc = RasterDocument.fromJSON(saved); clearSelectionState(); resetAIWorkspaceForDocument(); status('Recovered latest local project', 'success'); }
     else status('Ready · saved locally on this device', 'success');
   } catch (error) { status(`Local recovery unavailable: ${error.message}`, 'warning'); }
   fitCanvas(); updateTitle(); renderLayers();
