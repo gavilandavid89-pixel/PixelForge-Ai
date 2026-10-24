@@ -293,6 +293,34 @@ export class RasterDocument {
     }
     return changedPixels;
   }
+  replaceColor(sourceColor, targetColor, tolerance = 0) {
+    if (!Number.isInteger(tolerance) || tolerance < 0 || tolerance > 255) throw new RangeError('Color replacement tolerance must be an integer from 0 to 255.');
+    const source = parseHexColor(sourceColor), target = parseHexColor(targetColor), layer = this.activeLayer;
+    if (layer.locked) throw new Error('The active layer is locked.');
+    if (source.every((value, index) => value === target[index]) && tolerance === 0) return 0;
+    const tilesBefore = new Map();
+    let changedPixels = 0;
+    for (let index = 0; index < layer.pixels.length; index += 4) {
+      const pixel = index / 4;
+      if (this.selectionMask && !this.selectionMask[pixel]) continue;
+      if (layer.pixels[index + 3] === 0) continue;
+      if (Math.max(Math.abs(layer.pixels[index] - source[0]), Math.abs(layer.pixels[index + 1] - source[1]), Math.abs(layer.pixels[index + 2] - source[2])) > tolerance) continue;
+      if (layer.pixels[index] === target[0] && layer.pixels[index + 1] === target[1] && layer.pixels[index + 2] === target[2]) continue;
+      const px = pixel % this.width, py = Math.floor(pixel / this.width);
+      const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
+      if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
+      layer.pixels[index] = target[0]; layer.pixels[index + 1] = target[1]; layer.pixels[index + 2] = target[2];
+      this.compositeDirtyTiles.add(key); changedPixels++;
+    }
+    if (changedPixels) {
+      const tiles = [...tilesBefore.entries()].map(([key, before]) => {
+        const [tileX, tileY] = key.split(':').map(Number);
+        return { tileX, tileY, before, after: this.#captureTile(layer, tileX, tileY) };
+      });
+      this.#record({ type: 'pixels', layerId: layer.id, tiles });
+    }
+    return changedPixels;
+  }
   copyRect(x, y, width, height) {
     if (![x, y, width, height].every(Number.isInteger) || width < 1 || height < 1) throw new RangeError('Copy rectangle coordinates and dimensions must be positive integers.');
     const left = Math.max(0, x), top = Math.max(0, y), right = Math.min(this.width, x + width), bottom = Math.min(this.height, y + height);
