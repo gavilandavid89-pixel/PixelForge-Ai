@@ -705,3 +705,21 @@ test('selection transform validates parameters and respects layer locks', () => 
   doc.setLayerLocked(doc.activeLayer.id, true);
   assert.throws(() => doc.transformRect(0, 0, 2, 2, { dx: 1 }), /locked/);
 });
+
+test('multi-layer pixel replacement validates all targets before mutating any layer', () => {
+  const doc = new RasterDocument(4, 4);
+  const locked = doc.addLayer('Locked');
+  const unlocked = doc.layers[0];
+  const before = new Uint8ClampedArray(unlocked.pixels);
+  const first = new Uint8ClampedArray(unlocked.pixels);
+  first.set([255,0,0,255], (1 * 4 + 1) * 4);
+  const second = new Uint8ClampedArray(locked.pixels);
+  second.set([0,255,0,255], (2 * 4 + 2) * 4);
+  doc.setLayerLocked(locked.id, true);
+  assert.throws(() => doc.replaceLayerPixelsBatch([
+    { layerId: unlocked.id, pixels: first },
+    { layerId: locked.id, pixels: second },
+  ]), /locked/);
+  assert.deepEqual(unlocked.pixels, before, 'no earlier layer may be mutated if a later target is locked');
+  assert.equal(doc.history.length, 2, 'failed replacement must not add a history entry');
+});
