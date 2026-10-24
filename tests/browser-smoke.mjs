@@ -239,6 +239,21 @@ try {
   await desktop.waitForFunction(() => /Recovered latest local project/.test(document.querySelector('#status')?.textContent ?? ''), null, { timeout: 5000 });
   assert.equal(await desktop.locator('#layer-count').textContent(), '2 layers', 'IndexedDB recovery must preserve document layers');
 
+  // Rectangular marquee selection must work with a mouse and clear cleanly on Escape.
+  await desktop.locator('#select-tool').click();
+  assert.equal(await desktop.locator('#select-tool').evaluate(element => element.classList.contains('active')), true);
+  const selectCanvasBox = await desktop.locator('#canvas').boundingBox();
+  assert.ok(selectCanvasBox);
+  await desktop.mouse.move(selectCanvasBox.x + selectCanvasBox.width / 2, selectCanvasBox.y + selectCanvasBox.height / 2);
+  await desktop.mouse.down();
+  await desktop.mouse.move(selectCanvasBox.x + selectCanvasBox.width / 2 + 30, selectCanvasBox.y + selectCanvasBox.height / 2 + 24);
+  await desktop.mouse.up();
+  await desktop.waitForFunction(() => /Selected \\d+ × \\d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+  assert.equal(await desktop.locator('#undo').isEnabled(), false, 'selection is a non-destructive overlay and must not add history');
+  await desktop.locator('#brush-tool').click();
+
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   mobile.on('pageerror', error => failures.push(`mobile page error: ${error.message}`));
   await mobile.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
