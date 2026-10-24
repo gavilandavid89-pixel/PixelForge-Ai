@@ -428,6 +428,79 @@ export class RasterDocument {
     }
     return changedPixels;
   }
+  transformRect(x, y, width, height, { dx = 0, dy = 0, rotate = 0 } = {}) {
+    if (![x, y, width, height, dx, dy, rotate].every(Number.isInteger) || width < 1 || height < 1 ||
+        ![0, 90, 180, 270].includes(rotate)) {
+      throw new TypeError('Transform requires integer bounds/offsets and rotation of 0, 90, 180, or 270 degrees.');
+    }
+    const layer = this.activeLayer;
+    if (layer.locked) throw new Error('The active layer is locked.');
+    const left = Math.max(0, x), top = Math.max(0, y);
+    const right = Math.min(this.width, x + width), bottom = Math.min(this.height, y + height);
+    if (left >= right || top >= bottom) throw new RangeError('Transform rectangle is outside document bounds.');
+
+    const selected = [];
+    for (let sy = top; sy < bottom; sy++) for (let sx = left; sx < right; sx++) {
+      const sourceIndex = sy * this.width + sx;
+      if (this.selectionMask && !this.selectionMask[sourceIndex]) continue;
+      const offset = sourceIndex * 4;
+      selected.push({ x: sx, y: sy, rx: sx - x, ry: sy - y, pixel: new Uint8ClampedArray(layer.pixels.subarray(offset, offset + 4)) });
+    }
+    if (!selected.length) return { changedPixels: 0, selectedPixels: 0, selectionMask: new Uint8Array(this.width * this.height), bounds: null };
+
+    const outWidth = rotate % 180 === 0 ? width : height;
+    const outHeight = rotate % 180 === 0 ? height : width;
+    const targetLeft = x + dx + Math.floor((width - outWidth) / 2);
+    const targetTop = y + dy + Math.floor((height - outHeight) / 2);
+    const transformed = selected.map(item => {
+      let tx, ty;
+      if (rotate === 90) { tx = height - 1 - item.ry; ty = item.rx; }
+      else if (rotate === 180) { tx = width - 1 - item.rx; ty = height - 1 - item.ry; }
+      else if (rotate === 270) { tx = item.ry; ty = width - 1 - item.rx; }
+      else { tx = item.rx; ty = item.ry; }
+      return { x: targetLeft + tx, y: targetTop + ty, pixel: item.pixel };
+    });
+
+    const tilesBefore = new Map();
+    const touch = (px, py) => {
+      const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
+      if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
+      this.compositeDirtyTiles.add(key);
+    };
+    for (const item of selected) {
+      touch(item.x, item.y);
+      layer.pixels.fill(0, (item.y * this.width + item.x) * 4, (item.y * this.width + item.x) * 4 + 4);
+    }
+    const nextMask = new Uint8Array(this.width * this.height);
+    let minX = this.width, minY = this.height, maxX = -1, maxY = -1;
+    for (const item of transformed) {
+      if (item.x < 0 || item.y < 0 || item.x >= this.width || item.y >= this.height) continue;
+      const pixelIndex = item.y * this.width + item.x, offset = pixelIndex * 4;
+      touch(item.x, item.y);
+      layer.pixels.set(item.pixel, offset);
+      nextMask[pixelIndex] = 1;
+      minX = Math.min(minX, item.x); minY = Math.min(minY, item.y);
+      maxX = Math.max(maxX, item.x); maxY = Math.max(maxY, item.y);
+    }
+
+    const changedTiles = [];
+    let changedPixels = 0;
+    for (const [key, before] of tilesBefore) {
+      const [tileX, tileY] = key.split(':').map(Number), after = this.#captureTile(layer, tileX, tileY);
+      let tileChanged = 0;
+      for (let i = 0; i < before.length; i += 4) {
+        if (before[i] !== after[i] || before[i + 1] !== after[i + 1] || before[i + 2] !== after[i + 2] || before[i + 3] !== after[i + 3]) tileChanged++;
+      }
+      if (tileChanged) { changedTiles.push({ tileX, tileY, before, after }); changedPixels += tileChanged; }
+    }
+    if (changedTiles.length) this.#record({ type: 'pixels', layerId: layer.id, tiles: changedTiles });
+    return {
+      changedPixels,
+      selectedPixels: transformed.length,
+      selectionMask: nextMask,
+      bounds: maxX < 0 ? null : { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
+    };
+  }
   flipRect(x, y, width, height, axis = 'horizontal') {
     if (!['horizontal', 'vertical'].includes(axis)) throw new TypeError('Flip axis must be horizontal or vertical.');
     const clipboard = this.copyRect(x, y, width, height);
