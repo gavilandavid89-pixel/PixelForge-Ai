@@ -47,6 +47,12 @@ export class RasterDocument {
     this.maxHistoryBytes = 64 * 1024 * 1024;
     this.historyBytes = 0;
     this.dirty = false;
+    this.selectionMask = null;
+  }
+  setSelectionMask(mask) {
+    if (mask === null) { this.selectionMask = null; return; }
+    if (!(mask instanceof Uint8Array) || mask.length !== this.width * this.height) throw new TypeError('Selection mask must be a Uint8Array matching document dimensions.');
+    this.selectionMask = new Uint8Array(mask);
   }
   get activeLayer() { return this.layers.find(layer => layer.id === this.activeLayerId) ?? this.layers[0]; }
   addLayer(name = `Layer ${this.layers.length + 1}`) {
@@ -200,6 +206,8 @@ export class RasterDocument {
     if (tolerance === 0 && seed.every((value, channel) => value === replacement[channel])) return 0;
     const tilesBefore = new Map();
     const paint = index => {
+      const pixel = index / 4;
+      if (this.selectionMask && !this.selectionMask[pixel]) return false;
       if (!matches(index)) return false;
       if (replacement.every((value, channel) => layer.pixels[index + channel] === value)) return false;
       const pixel = Math.floor(index / 4), px = pixel % this.width, py = Math.floor(pixel / this.width);
@@ -253,7 +261,9 @@ export class RasterDocument {
     const tilesBefore = new Map();
     let changedPixels = 0;
     for (let py = top; py < bottom; py++) for (let px = left; px < right; px++) {
-      const index = (py * this.width + px) * 4;
+      const pixelIndex = py * this.width + px;
+      if (this.selectionMask && !this.selectionMask[pixelIndex]) continue;
+      const index = pixelIndex * 4;
       if (layer.pixels[index + 3] === 0 && layer.pixels[index] === 0 && layer.pixels[index + 1] === 0 && layer.pixels[index + 2] === 0) continue;
       const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
       if (!tilesBefore.has(key)) tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
@@ -382,7 +392,9 @@ export class RasterDocument {
     for (let py = minY; py <= maxY; py++) for (let px = minX; px <= maxX; px++) {
       const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
       if (!stroke.tilesBefore.has(key)) stroke.tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
-      const i = (py * this.width + px) * 4;
+      const pixelIndex = py * this.width + px;
+      if (this.selectionMask && !this.selectionMask[pixelIndex]) continue;
+      const i = pixelIndex * 4;
       this.compositeDirtyTiles.add(key);
       if (stroke.mode === 'erase') layer.pixels[i + 3] = 0;
       else { layer.pixels[i] = stroke.color[0]; layer.pixels[i + 1] = stroke.color[1]; layer.pixels[i + 2] = stroke.color[2]; layer.pixels[i + 3] = 255; }
