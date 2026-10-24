@@ -22,7 +22,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Tile-patch undo/redo for strokes and fill.
 - [x] Versioned project serialization, validated import and local autosave.
 - [x] Layer rename, duplicate, delete and opacity with undo/redo, including memory limits and last-layer protection.
-- [ ] Persistent selection masks shared by drawing, fill, copy/cut/paste and transforms.
+- [x] Persistent-in-session selection mask constrains pencil, eraser, bucket fill and clearing; masks are dimension-validated and intentionally excluded from artwork serialization.\n- [ ] Selection mask support for shape tools, copy/cut/paste and transforms.
 - [ ] Unified command/transaction API for tools, filters, selections and AI edits.
 - [ ] Schema migrations, checksums, recovery snapshots and storage-quota UX.
 - [ ] Worker-friendly large operations and cancellable exports.
@@ -44,7 +44,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Off/2/4/8 symmetry modes and one-step undo.
 - [x] Eight-way symmetry uses document-space rotations, clips out-of-bounds copies on rectangular canvases and has browser regression coverage.
 - [ ] Pixel-perfect line/curve algorithms and constrained pixel shapes.
-- [ ] Selection-constrained drawing, erasing, filling and shapes.
+- [x] Selection-constrained pencil, eraser, bucket fill and clear operations.\n- [ ] Selection-constrained geometric shapes and transforms.
 - [ ] Color replace, outline, shading, lighten/darken, dithering, pattern fill and tile stamp.
 - [ ] Indexed palette mode, nearest-color mapping and palette-safe operations.
 ### Selections and transforms
@@ -56,7 +56,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [ ] Move pixels vs move selection; flip, rotate, scale, skew, crop and transforms.
 - [ ] Preview/cancel/commit, interpolation choices, clipping and single-step undo.
 ### Palettes and sprite animation
-- [ ] Foreground/background swap, recent colors and color history.
+- [x] Foreground/background color swap and eight-color recent history with keyboard shortcut.\n- [ ] Persistent user palettes, named color history and palette import/export.
 - [ ] Palette create/edit/reorder/lock/tags/favorites, GPL/PAL/TXT/PNG import/export and palette-from-image.
 - [ ] Frame/cel timeline, duration, duplicate/reorder/delete, playback and loops.
 - [ ] Onion skin, frame tags, named animations, linked cels and frame-range selection.
