@@ -683,6 +683,13 @@ document.addEventListener('keydown', event => {
     event.preventDefault(); $('#swap-colors').click();
   }
 });
+$('#replace-color').addEventListener('click', () => {
+  try {
+    const count = doc.replaceColor($('#replace-source').value, color, 0);
+    if (count) { changed(); status(`Replaced ${count.toLocaleString()} pixels with foreground color`, 'success'); }
+    else status('No matching opaque pixels on the active layer', 'neutral');
+  } catch (error) { status(error.message, 'error'); }
+});
 $('#brush-size').addEventListener('input', event => {
   brushSize = Number(event.target.value); $('#brush-size-value').textContent = `${brushSize} px`;
 });
