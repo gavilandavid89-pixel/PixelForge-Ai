@@ -45,7 +45,7 @@ Every advertised control must execute a real, testable operation. Unsupported fi
 
 ## 4. Selection, clipboard and transforms
 
-- [x] Non-destructive rectangular marquee overlay.
+- [x] Non-destructive rectangular marquee overlay with Delete/Backspace clear of selected active-layer pixels in one undoable command.
 - [ ] Ellipse, freehand lasso, polygon, magic wand, color-range and contiguous selections.
 - [ ] Add/subtract/intersect, invert, feather, expand, contract, save/load selection and selection boundaries.
 - [ ] Copy, cut, paste, paste-in-place, duplicate, floating selection and clipboard interoperability where browser permissions permit.
@@ -55,8 +55,8 @@ Every advertised control must execute a real, testable operation. Unsupported fi
 
 ## 5. Layers and compositing
 
-- [x] Raster layers, visibility, lock, add, stack reorder and undo/redo for implemented operations.
-- [ ] Rename, duplicate, delete with confirmation, opacity, blend modes, alpha lock, clipping, groups and color labels.
+- [x] Raster layers, visibility, lock, add, stack reorder, rename, duplicate, delete and opacity, with undo/redo for implemented operations.
+- [ ] Blend modes, alpha lock, clipping, groups and color labels.
 - [ ] Layer masks, clipping masks, vector/shape layers, editable text layers, reference layers, adjustment layers and effect layers.
 - [ ] Merge selected, merge down, flatten copy, isolate, search, batch operations and layer visibility comps.
 - [ ] Per-layer sampling options and clear distinction between active-layer and merged-image behavior.
