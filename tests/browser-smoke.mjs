@@ -109,7 +109,7 @@ try {
 
   const canvas = desktop.locator('#canvas');
   const box = await canvas.boundingBox();
-  assert.ok(box && box.width > 200 && box.height > 200, 'desktop canvas should have a useful drawing area');
+  assert.ok(box && box.width > 200 && box.height > 200 && box.height < 960, 'desktop canvas should fit inside the viewport and remain drawable');
   const before = await canvas.evaluate(element => element.toDataURL());
   await desktop.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await desktop.mouse.down();
