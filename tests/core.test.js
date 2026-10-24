@@ -2,6 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES } from '../src/core.js';
 
+test('eyedropper samples visible merged color or active-layer pixels without editing', () => {
+  const doc = new RasterDocument(2, 1);
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 1 });
+  doc.strokeTo(stroke, 0, 0); doc.strokeTo(stroke, 1, 0); doc.endStroke(stroke);
+  doc.addLayer('Highlights');
+  stroke = doc.beginStroke({ color: '#0000ff', size: 1 });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  const historyCount = doc.history.length, revision = doc.revision;
+  assert.equal(doc.sampleColorAt(0, 0), '#0000FF');
+  assert.equal(doc.sampleColorAt(1, 0), '#FF0000');
+  assert.equal(doc.sampleColorAt(1, 0, { merged: false }), null);
+  assert.throws(() => doc.sampleColorAt(2, 0), /outside the document/);
+  assert.equal(doc.history.length, historyCount);
+  assert.equal(doc.revision, revision);
+});
+
 test('bucket fill respects connected boundaries and is one undoable pixel command', () => {
   const doc = new RasterDocument(5, 3);
   const barrier = doc.beginStroke({ color: '#ff0000', size: 1 });
