@@ -42,7 +42,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Temporary eyedropper with merged/active-layer sampling.
 - [x] Line, rectangle outline and ellipse outline with preview, cancel and atomic undo.
 - [x] Off/2/4/8 symmetry modes and one-step undo.
-- [ ] Validate symmetry on non-square canvases; define geometrically correct behavior without distortion.
+- [x] Eight-way symmetry uses document-space rotations, clips out-of-bounds copies on rectangular canvases and has browser regression coverage.
 - [ ] Pixel-perfect line/curve algorithms and constrained pixel shapes.
 - [ ] Selection-constrained drawing, erasing, filling and shapes.
 - [ ] Color replace, outline, shading, lighten/darken, dithering, pattern fill and tile stamp.
