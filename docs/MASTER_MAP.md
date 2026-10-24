@@ -136,3 +136,4 @@ Parallel work is allowed only when tasks do not conflict in files or shared APIs
 
 ## Selection verification gate
 Selection-only operations must not enter artwork undo history. Every selection-mask change must update the visible contour and constrain all applicable pixel-mutating tools. Browser tests must exercise selections on both transparent and opaque regions so the magic wand cannot accidentally assume the selected area is smaller than the canvas.
+
