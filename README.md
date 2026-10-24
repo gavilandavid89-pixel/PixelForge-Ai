@@ -50,7 +50,7 @@ Use these labels consistently:
 
 - Dedicated artwork canvas with fit, zoom, pan, pixel-aligned pencil and eraser, connected/global bucket fill with color tolerance, and a temporary eyedropper that samples the visible composite or active layer.
 - Mobile virtual cursor: touch movement is view-only; a separate hold-to-draw/erase control is required to modify pixels.
-- Color selection, brush-size control, multiple layers, visibility, undoable lock toggles and undoable stack reordering; mobile-sized inspector tabs switch between tool settings and layer management.
+- Color selection, brush-size control, multiple layers, visibility, undoable lock toggles and undoable stack reordering; mobile-sized inspector tabs switch between tool settings and layer management. Rectangular marquee selection is a non-destructive canvas overlay with drag-to-select and Escape-to-clear; pixel copy/paste and selection transforms remain planned.
 - Undo/redo with tile-based pixel history and a bounded history-memory budget.
 - PNG/JPEG/WebP/GIF import with bounded header preflight before decoding (animated files flatten to a still frame), transparent PNG export and editable `.pforge` project import/export. Imported projects receive fresh document/layer IDs so they cannot overwrite their source.
 - Local IndexedDB autosave, a saved-project picker (open/switch local projects), and recovery of the last-opened project.
