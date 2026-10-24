@@ -57,7 +57,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [ ] Preview/cancel/commit, interpolation choices, clipping and single-step undo.
 ### Palettes and sprite animation
 - [x] Foreground/background color swap and eight-color recent history with keyboard shortcut.\n- [ ] Persistent user palettes, named color history and palette import/export.
-- [ ] Palette create/edit/reorder/lock/tags/favorites, GPL/PAL/TXT/PNG import/export and palette-from-image.
+- [x] Local editable palette swatches with browser persistence and GPL/hex/RGB-list import plus GPL export.\n- [ ] Named palette sets, reorder/lock/tags/favorites, PAL/PNG export and palette-from-image.
 - [ ] Frame/cel timeline, duration, duplicate/reorder/delete, playback and loops.
 - [ ] Onion skin, frame tags, named animations, linked cels and frame-range selection.
 - [ ] Sprite sheets and PNG/GIF/APNG/WebP outputs only after decoder/encoder tests.
