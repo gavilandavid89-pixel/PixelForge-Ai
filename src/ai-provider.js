@@ -71,7 +71,7 @@ export class OpenAICompatibleProvider {
     if (serializedContext.length > 50000) throw new RangeError('Editor context exceeds the 50,000-character safety limit.');
     const userText = JSON.stringify({ request: prompt.trim(), editorContext: context ?? {} });
     const content = imageDataUrl
-      ? [{ type: 'text', text: userText }, { type: 'image_url', image_url: { url: imageDataUrl, detail: 'low' } }]
+      ? [{ type: 'text', text: userText }, { type: 'image_url', image_url: { url: imageDataUrl, detail: 'high' } }]
       : userText;
     const headers = { 'Content-Type': 'application/json' };
     if (this.#apiKey) headers.Authorization = 'Bearer ' + this.#apiKey;
@@ -127,8 +127,10 @@ export class AIEditCoordinator {
         signal,
       }));
     } catch (error) {
+      if (signal?.aborted || error?.name === 'AbortError') return { status: 'cancelled' };
       return { status: 'failed', reason: 'provider-error', message: error instanceof Error ? error.message : 'Provider request failed.' };
     }
+    if (signal?.aborted) return { status: 'cancelled' };
     if (this.workspace.baseRevision !== baseRevision || this.workspace.sourceRevision !== baseRevision) {
       this.workspace.syncFromUser({ discardSandboxChanges: true });
       return { status: 'rejected', reason: 'stale-source' };
