@@ -54,6 +54,10 @@ export class AICommandSession {
     if (DENIED_ACTIONS.has(action.name)) {
       return { ok: false, error: { code: 'permission_denied', message: 'AI tools cannot delete, export, upload, or publish a project.' } };
     }
+    const readOnlyActions = new Set(['document.get_summary', 'canvas.get_pixel']);
+    if (this.#workspace.hasProposal && !readOnlyActions.has(action.name)) {
+      return { ok: false, action: action.name, error: { code: 'proposal_pending', message: 'Accept or discard the pending proposal before making more sandbox edits.' } };
+    }
     try {
       const doc = this.#workspace.sandbox;
       let result;
