@@ -162,6 +162,14 @@ function eventPoint(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
+function syncSelectionMask() {
+  if (!selection) { doc.setSelectionMask(null); return; }
+  const mask = new Uint8Array(doc.width * doc.height);
+  const left = Math.max(0, selection.x), top = Math.max(0, selection.y);
+  const right = Math.min(doc.width, selection.x + selection.width), bottom = Math.min(doc.height, selection.y + selection.height);
+  for (let y = top; y < bottom; y++) mask.fill(1, y * doc.width + left, y * doc.width + right);
+  doc.setSelectionMask(mask);
+}
 function symmetryPoints(point, mode = symmetryMode) {
   const w = doc.width, h = doc.height;
   const cx = (w - 1) / 2, cy = (h - 1) / 2;
@@ -339,7 +347,7 @@ function moveStroke(event) {
     const x = Math.max(0, Math.min(doc.width - 1, point.x)), y = Math.max(0, Math.min(doc.height - 1, point.y));
     const left = Math.min(selectionStart.x, x), top = Math.min(selectionStart.y, y);
     selection = { x: left, y: top, width: Math.abs(x - selectionStart.x) + 1, height: Math.abs(y - selectionStart.y) + 1 };
-    render(); return;
+    syncSelectionMask(); render(); return;
   }
   if (panning && panStart) {
     const p = eventPoint(event);
@@ -383,7 +391,7 @@ canvas.addEventListener('pointerdown', event => {
   if (tool === 'select') {
     const point = docPoint(event); if (!point.inside) return;
     selectionStart = { x: point.x, y: point.y }; selectionPointerId = event.pointerId;
-    selection = { x: point.x, y: point.y, width: 1, height: 1 };
+    selection = { x: point.x, y: point.y, width: 1, height: 1 }; syncSelectionMask();
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     render(); event.preventDefault(); return;
   }
@@ -457,7 +465,7 @@ canvas.addEventListener('pointerup', event => {
     const gesture = shapeGesture; shapeGesture = null;
     commitShapeGesture(gesture); render(); return;
   }
-  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return; }
+  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; syncSelectionMask(); status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return; }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(true);
@@ -467,7 +475,7 @@ canvas.addEventListener('pointerup', event => {
 });
 canvas.addEventListener('pointercancel', event => {
   if (shapeGesture && event.pointerId === shapeGesture.pointerId) { shapeGesture = null; render(); return; }
-  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; selection = null; render(); return; }
+  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; selection = null; syncSelectionMask(); render(); return; }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
@@ -923,14 +931,14 @@ window.addEventListener('keydown', event => {
     event.preventDefault();
     try {
       const cleared = doc.clearRect(selection.x, selection.y, selection.width, selection.height);
-      selection = null; selectionStart = null; selectionPointerId = null;
+      selection = null; selectionStart = null; selectionPointerId = null; syncSelectionMask();
       if (cleared) { changed(); status(`Cleared ${cleared.toLocaleString()} pixels from selection`, 'success'); }
       else { render(); status('Selection was already transparent', 'neutral'); }
     } catch (error) { status(error.message, 'error'); }
   }
   else if (event.key === 'Escape') {
     if (shapeGesture) { shapeGesture = null; status('Shape preview cancelled', 'neutral'); }
-    if (selection) { selection = null; selectionStart = null; selectionPointerId = null; status('Selection cleared', 'neutral'); }
+    if (selection) { selection = null; selectionStart = null; selectionPointerId = null; syncSelectionMask(); status('Selection cleared', 'neutral'); }
     if (activeStroke) finishActiveStroke(false);
     drawHeld = false; drawHoldPointerId = null;
     virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false;
