@@ -52,7 +52,8 @@ export class AIWorkspace {
     return Object.freeze({
       id: this.#proposal.id,
       baseRevision: this.#proposal.baseRevision,
-      sandboxRevision: this.#sandbox.revision,
+      sandboxRevision: this.#proposal.sandboxRevision,
+      sandboxStale: this.#sandbox.revision !== this.#proposal.sandboxRevision,
       stale: this.#source.revision !== this.#proposal.baseRevision,
       createdAt: this.#proposal.createdAt,
       summary: this.#proposal.summary,
@@ -69,10 +70,12 @@ export class AIWorkspace {
   }
 
   createProposal(summary = 'AI editing proposal') {
+    if (this.#proposal) throw new Error('A proposal is already pending; accept or discard it first.');
     if (typeof summary !== 'string' || !summary.trim()) throw new TypeError('Proposal summary must be non-empty text.');
     this.#proposal = {
       id: crypto.randomUUID(),
       baseRevision: this.#baseRevision,
+      sandboxRevision: this.#sandbox.revision,
       createdAt: new Date().toISOString(),
       summary: summary.trim().slice(0, 500),
     };
@@ -91,7 +94,10 @@ export class AIWorkspace {
     if (this.#source.revision !== this.#proposal.baseRevision) {
       return { valid: false, reason: 'stale-base', expectedRevision: this.#proposal.baseRevision, actualRevision: this.#source.revision };
     }
-    return { valid: true, baseRevision: this.#baseRevision };
+    if (this.#sandbox.revision !== this.#proposal.sandboxRevision) {
+      return { valid: false, reason: 'proposal-changed', expectedSandboxRevision: this.#proposal.sandboxRevision, actualSandboxRevision: this.#sandbox.revision };
+    }
+    return { valid: true, baseRevision: this.#baseRevision, sandboxRevision: this.#proposal.sandboxRevision };
   }
 
   acceptProposal() {
@@ -117,10 +123,15 @@ export class AIWorkspace {
       }
     }
     try {
-      const result = this.#source.replaceLayerPixelsBatch(this.#layerBindings.map(binding => {
-        const layer = this.#sandbox.layers.find(item => item.id === binding.sandboxId);
-        return { layerId: binding.sourceId, pixels: layer.pixels };
-      }));
+      const replacements = this.#layerBindings.flatMap(binding => {
+        const sourceLayer = this.#source.layers.find(item => item.id === binding.sourceId);
+        const sandboxLayer = this.#sandbox.layers.find(item => item.id === binding.sandboxId);
+        if (sourceLayer.pixels.every((value, index) => value === sandboxLayer.pixels[index])) return [];
+        return [{ layerId: binding.sourceId, pixels: sandboxLayer.pixels }];
+      });
+      const result = replacements.length
+        ? this.#source.replaceLayerPixelsBatch(replacements)
+        : { changedPixels: 0, changedLayers: 0 };
       this.#proposal = null;
       this.#refreshSandbox();
       return { status: 'applied', changedPixels: result.changedPixels, changedLayers: result.changedLayers };
