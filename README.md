@@ -18,6 +18,7 @@ Research and define the editing engine before building the visual interface. Use
 
 - `docs/EDITOR_RESEARCH.md` — source-code architecture, release/APK references, licensing notes, and feature analysis.
 - `docs/FEATURE_SPEC.md` — target feature inventory, including improvements beyond the references.
+- `docs/ARTIST_WORKFLOW_MATRIX.md` — full artist-workflow acceptance matrix for painting, design, animation, game assets, AI, mobile, accessibility and release QA.
 - `docs/ARCHITECTURE.md` — modular editor architecture, input/document contracts, renderer policy and implementation priorities.
 - `docs/AI_TOOL_API.md` — AI tool registry, permissions, proposal lifecycle and command contract.
 - `docs/ENGINE_TEST_PLAN.md` — central acceptance matrix, release gates, adversarial scenarios and manual test record template.
