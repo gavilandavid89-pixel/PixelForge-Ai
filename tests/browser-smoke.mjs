@@ -240,6 +240,7 @@ try {
   assert.equal(await desktop.locator('#layer-count').textContent(), '2 layers', 'IndexedDB recovery must preserve document layers');
 
   // Rectangular marquee selection must work with a mouse and clear cleanly on Escape.
+  const undoBeforeSelection = await desktop.locator('#undo').isEnabled();
   await desktop.locator('#select-tool').click();
   assert.equal(await desktop.locator('#select-tool').evaluate(element => element.classList.contains('active')), true);
   const selectCanvasBox = await desktop.locator('#canvas').boundingBox();
@@ -248,10 +249,10 @@ try {
   await desktop.mouse.down();
   await desktop.mouse.move(selectCanvasBox.x + selectCanvasBox.width / 2 + 30, selectCanvasBox.y + selectCanvasBox.height / 2 + 24);
   await desktop.mouse.up();
-  await desktop.waitForFunction(() => /Selected \\d+ × \\d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.waitForFunction(() => /Selected \d+ × \d+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
-  assert.equal(await desktop.locator('#undo').isEnabled(), false, 'selection is a non-destructive overlay and must not add history');
+  assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeSelection, 'selection is a non-destructive overlay and must not add history');
   await desktop.locator('#brush-tool').click();
 
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
