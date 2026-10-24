@@ -1,9 +1,8 @@
 import { RasterDocument } from './core.js';
 
 /**
- * Creates a fully independent raster-document snapshot. Pixel buffers, layer
- * objects and history arrays are never shared with the source document.
- * Viewport/UI state is intentionally not copied.
+ * Creates an independent raster snapshot. Pixel buffers, layer objects and
+ * history arrays are never shared with the source document.
  */
 export function cloneRasterDocument(source, { name = source.name } = {}) {
   if (!(source instanceof RasterDocument)) throw new TypeError('Expected a RasterDocument source.');
@@ -17,7 +16,6 @@ export function cloneRasterDocument(source, { name = source.name } = {}) {
   const layerMap = new Map(source.layers.map((layer, i) => [layer.id, copy.layers[i].id]));
   copy.activeLayerId = layerMap.get(source.activeLayerId) ?? copy.layers[0].id;
   copy.compositeCache = new Uint8ClampedArray(source.width * source.height * 4);
-  // Keep the constructor's all-dirty marker so the first composite is rebuilt.
   copy.revision = source.revision;
   copy.saveVersion = source.saveVersion;
   copy.history = [];
@@ -28,14 +26,16 @@ export function cloneRasterDocument(source, { name = source.name } = {}) {
 }
 
 /**
- * Minimal lifecycle controller for the isolated AI workspace.
- * This deliberately exposes no canonical-document mutation, project deletion,
- * or export method. The host UI must invoke human approval separately.
+ * Isolated AI workspace. Proposal acceptance is optimistic-concurrency guarded
+ * and commits pixel changes to the source as one undoable batch. Structural
+ * layer edits are rejected until a structural merge implementation exists.
  */
 export class AIWorkspace {
   #source;
   #sandbox;
   #baseRevision;
+  #layerBindings = [];
+  #baseLayerState = [];
   #proposal = null;
 
   constructor(sourceDocument) {
@@ -59,7 +59,6 @@ export class AIWorkspace {
     });
   }
 
-  /** User edits flow to AI only when no proposal would be silently discarded. */
   syncFromUser({ discardProposal = false } = {}) {
     if (this.#proposal && !discardProposal) {
       return { status: 'proposal-pending', stale: this.#source.revision !== this.#proposal.baseRevision };
@@ -87,17 +86,58 @@ export class AIWorkspace {
     return true;
   }
 
-  /** Returns a read-only conflict report; never applies anything to the source. */
   validateProposalBase() {
     if (!this.#proposal) return { valid: false, reason: 'no-proposal' };
     if (this.#source.revision !== this.#proposal.baseRevision) {
       return { valid: false, reason: 'stale-base', expectedRevision: this.#proposal.baseRevision, actualRevision: this.#source.revision };
     }
-    return { valid: true, baseRevision: this.#proposal.baseRevision };
+    return { valid: true, baseRevision: this.#baseRevision };
+  }
+
+  acceptProposal() {
+    const validation = this.validateProposalBase();
+    if (!validation.valid) return { status: 'rejected', ...validation };
+    if (this.#source.width !== this.#sandbox.width || this.#source.height !== this.#sandbox.height) {
+      return { status: 'rejected', reason: 'dimension-mismatch' };
+    }
+    if (this.#sandbox.layers.length !== this.#layerBindings.length || this.#source.layers.length !== this.#layerBindings.length) {
+      return { status: 'rejected', reason: 'unsupported-layer-structure' };
+    }
+    for (let index = 0; index < this.#layerBindings.length; index++) {
+      const binding = this.#layerBindings[index];
+      const sourceLayer = this.#source.layers[index];
+      const sandboxLayer = this.#sandbox.layers[index];
+      const base = this.#baseLayerState[index];
+      if (!sourceLayer || sourceLayer.id !== binding.sourceId || sandboxLayer?.id !== binding.sandboxId ||
+          sourceLayer.name !== base.name || sourceLayer.visible !== base.visible ||
+          sourceLayer.opacity !== base.opacity || sourceLayer.locked !== base.locked ||
+          sandboxLayer.name !== base.name || sandboxLayer.visible !== base.visible ||
+          sandboxLayer.opacity !== base.opacity || sandboxLayer.locked !== base.locked) {
+        return { status: 'rejected', reason: 'unsupported-layer-structure' };
+      }
+    }
+    try {
+      const result = this.#source.replaceLayerPixelsBatch(this.#layerBindings.map(binding => {
+        const layer = this.#sandbox.layers.find(item => item.id === binding.sandboxId);
+        return { layerId: binding.sourceId, pixels: layer.pixels };
+      }));
+      this.#proposal = null;
+      this.#refreshSandbox();
+      return { status: 'applied', changedPixels: result.changedPixels, changedLayers: result.changedLayers };
+    } catch (error) {
+      return { status: 'rejected', reason: 'apply-failed', message: error instanceof Error ? error.message : 'Could not apply proposal.' };
+    }
   }
 
   #refreshSandbox() {
     this.#sandbox = cloneRasterDocument(this.#source, { name: this.#source.name });
     this.#baseRevision = this.#source.revision;
+    this.#layerBindings = this.#source.layers.map((layer, index) => ({
+      sourceId: layer.id,
+      sandboxId: this.#sandbox.layers[index].id,
+    }));
+    this.#baseLayerState = this.#source.layers.map(layer => ({
+      name: layer.name, visible: layer.visible, opacity: layer.opacity, locked: layer.locked,
+    }));
   }
 }
