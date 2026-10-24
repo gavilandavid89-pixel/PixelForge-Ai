@@ -578,6 +578,7 @@ try {
   assert.equal(await settledCanvasData(), beforeReleaseHold, 'release must stop drawing without leaving a second history action');
 
   // Also exercise the real two-touch pattern: one touch holds the control, the other moves the cursor.
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 3, x: holdX, y: holdY }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 3, x: holdX, y: holdY }, { id: 4, x: startX, y: startY }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 3, x: holdX, y: holdY }, { id: 4, x: startX + 18, y: startY + 8 }] });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
