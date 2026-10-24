@@ -295,7 +295,7 @@ canvas.addEventListener('pointerdown', event => {
     if (virtualCursorPointerId !== null && virtualCursorPointerId !== event.pointerId) { event.preventDefault(); return; }
     virtualCursorPointerId = event.pointerId; virtualCursorScreen = eventPoint(event);
     virtualCursorPoint = docPoint(event); virtualCursorVisible = true;
-    virtualCursorCanDraw = !activeStroke && ['draw', 'erase'].includes(tool);
+    virtualCursorCanDraw = !activeStroke && !drawHeld && ['draw', 'erase'].includes(tool);
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     if (['draw', 'erase'].includes(tool)) startStrokeAt(virtualCursorPoint, event.pointerId);
     render(); event.preventDefault(); return;
