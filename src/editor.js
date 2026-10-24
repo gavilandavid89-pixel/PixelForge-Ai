@@ -117,14 +117,22 @@ function render() {
     if (shapeGesture) {
       const points = shapePoints(shapeGesture);
       if (points.length) {
-        ctx.save(); ctx.beginPath();
-        points.forEach((point, index) => {
-          const sx = panX + (point.x + .5) * zoom, sy = panY + (point.y + .5) * zoom;
-          if (index === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
-        });
-        ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, brushSize * zoom);
+        const paths = symmetryMode ? Array.from({ length: symmetryMode === 2 ? 2 : symmetryMode === 4 ? 4 : 8 }, (_, index) => {
+          const mapped = points.map(point => symmetryPoints(point)[index]).filter(Boolean);
+          return mapped;
+        }) : [points];
+        ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, brushSize * zoom);
         ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = .92;
-        ctx.stroke(); ctx.restore();
+        for (const path of paths) {
+          if (!path.length) continue;
+          ctx.beginPath();
+          path.forEach((point, index) => {
+            const sx = panX + (point.x + .5) * zoom, sy = panY + (point.y + .5) * zoom;
+            if (index === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          });
+          ctx.stroke();
+        }
+        ctx.restore();
       }
     }
     if (selection) {
