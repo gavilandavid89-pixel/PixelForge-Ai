@@ -9,7 +9,7 @@ const previewCanvas = document.createElement('canvas'), previewCtx = previewCanv
 let doc = new RasterDocument(128, 128), tool = 'draw', spaceDown = false;
 let color = $('#color').value, brushSize = Number($('#brush-size').value);
 let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 'draw';
-let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null;
+let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false;
@@ -86,6 +86,32 @@ function render() {
     ctx.drawImage(previewCanvas, panX, panY, doc.width * zoom, doc.height * zoom);
     ctx.strokeStyle = '#555b6c'; ctx.lineWidth = 1;
     ctx.strokeRect(Math.round(panX) + .5, Math.round(panY) + .5, Math.round(doc.width * zoom), Math.round(doc.height * zoom));
+    // View-only pixel grid: clipped to the visible canvas region and never part of document pixels/exports.
+    if (gridEnabled && zoom >= 4) {
+      const left = Math.max(1, Math.ceil(-panX / zoom));
+      const right = Math.min(doc.width - 1, Math.floor((canvas.clientWidth - panX) / zoom));
+      const top = Math.max(1, Math.ceil(-panY / zoom));
+      const bottom = Math.min(doc.height - 1, Math.floor((canvas.clientHeight - panY) / zoom));
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(panX, panY, doc.width * zoom, doc.height * zoom);
+      ctx.clip();
+      ctx.strokeStyle = 'rgba(20, 22, 31, 0.42)';
+      ctx.lineWidth = 1 / dpr;
+      ctx.beginPath();
+      for (let x = left; x <= right; x++) {
+        const screenX = Math.round(panX + x * zoom) + .5 / dpr;
+        ctx.moveTo(screenX, Math.max(0, panY));
+        ctx.lineTo(screenX, Math.min(canvas.clientHeight, panY + doc.height * zoom));
+      }
+      for (let y = top; y <= bottom; y++) {
+        const screenY = Math.round(panY + y * zoom) + .5 / dpr;
+        ctx.moveTo(Math.max(0, panX), screenY);
+        ctx.lineTo(Math.min(canvas.clientWidth, panX + doc.width * zoom), screenY);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
     if (selection) {
       const sx = panX + selection.x * zoom, sy = panY + selection.y * zoom;
       const sw = selection.width * zoom, sh = selection.height * zoom;
@@ -388,6 +414,15 @@ $('#brush-size').addEventListener('input', event => {
 $('#undo').addEventListener('click', () => { if (doc.undo()) { changed(); renderLayers(); } });
 $('#redo').addEventListener('click', () => { if (doc.redo()) { changed(); renderLayers(); } });
 $('#fit').addEventListener('click', fitCanvas);
+$('#grid-toggle').addEventListener('click', () => {
+  gridEnabled = !gridEnabled;
+  const button = $('#grid-toggle');
+  button.textContent = `Pixel grid: ${gridEnabled ? 'On' : 'Off'}`;
+  button.setAttribute('aria-pressed', String(gridEnabled));
+  if (gridEnabled && zoom < 4) status('Pixel grid enabled; zoom to 400% or more to see individual cells', 'neutral');
+  else status(gridEnabled ? 'Pixel grid overlay enabled' : 'Pixel grid overlay hidden', 'success');
+  render();
+});
 const viewportCenter = () => ({ x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 });
 $('#zoom-in').addEventListener('click', () => zoomAt(viewportCenter(), zoom * 1.25));
 $('#zoom-out').addEventListener('click', () => zoomAt(viewportCenter(), zoom / 1.25));
