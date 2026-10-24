@@ -184,10 +184,10 @@ Do not expose controls for features that are not implemented. Animation, advance
 
 - Environment: Node.js 22.16.0, Linux container.
 - Command: `npm test`.
-- Result: **30 passed, 0 failed** (including bounded PNG/JPEG/GIF and VP8X/VP8/VP8L WebP header parsing, malformed headers and oversized-image rejection).
+- Result: **33 passed, 0 failed** (including bounded PNG/JPEG/GIF and VP8X/VP8/VP8L WebP header parsing, malformed headers and oversized-image rejection, plus connected/global bucket fill, tolerance and lock/history behavior).
 - Command: `npm run check`.
 - Result: **passed** (JavaScript syntax checks for core, persistence, image-import preflight and editor controller).
-- Covered: dimension and memory guards, coordinate mapping, pixel stroke, compositing, undo/redo, cancellation rollback, eraser alpha, layer visibility/addition, native project round-trip, invalid project rejection, color parsing, tile-patch history, redo invalidation, bounds and memory guards, ordered alpha compositing and dirty-tile tracking, duplicate/invalid identity rejection, strict layer-command validation, active-layer save state, save-version monotonicity and independent imported-project/layer IDs.
+- Covered: dimension and memory guards, coordinate mapping, pixel stroke, compositing, undo/redo, cancellation rollback, eraser alpha, layer visibility/addition, native project round-trip, invalid project rejection, color parsing, tile-patch history, redo invalidation, bounds and memory guards, ordered alpha compositing and dirty-tile tracking, connected/global bucket fill with tolerance, lock validation and undo/redo, duplicate/invalid identity rejection, strict layer-command validation, active-layer save state, save-version monotonicity and independent imported-project/layer IDs.
 - Not covered by the Node core run: browser rendering, pointer capture, IndexedDB behavior, file downloads, visual regression, screen-reader audit or physical device testing. The separate browser-smoke job covers a subset of these.
 - Release status: core checks are verified in Node and browser smoke checks are verified in headless Chromium. Physical Android/stylus behavior, accessibility conformance, stress performance and the full release gates remain open. Do not label the full professional editor as release-ready.
 
