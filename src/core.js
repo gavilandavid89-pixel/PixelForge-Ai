@@ -22,6 +22,27 @@ export function rasterLinePoints(x0, y0, x1, y1) {
   return points;
 }
 
+export function modifySelectionMask(width, height, mask, operation, radius = 1) {
+  validateDimensions(width, height);
+  if (!(mask instanceof Uint8Array) || mask.length !== width * height) throw new TypeError('Selection mask must match document dimensions.');
+  if (!['invert', 'expand', 'contract'].includes(operation)) throw new TypeError('Unsupported selection-mask operation.');
+  if (!Number.isInteger(radius) || radius < 1 || radius > 16) throw new RangeError('Selection radius must be an integer from 1 to 16.');
+  if (operation === 'invert') return Uint8Array.from(mask, value => value ? 0 : 1);
+  const output = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    let selected = operation === 'contract';
+    for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+      if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+      const px = x + dx, py = y + dy;
+      const neighbor = px >= 0 && py >= 0 && px < width && py < height ? mask[py * width + px] === 1 : false;
+      if (operation === 'expand' && neighbor) selected = true;
+      if (operation === 'contract' && !neighbor) selected = false;
+    }
+    output[y * width + x] = selected ? 1 : 0;
+  }
+  return output;
+}
+
 export function createColorSelectionMask(width, height, pixels, x, y, { tolerance = 0, contiguous = true } = {}) {
   validateDimensions(width, height);
   if (!(pixels instanceof Uint8ClampedArray) || pixels.length !== width * height * 4) throw new TypeError('Color selection pixels must match document dimensions.');
