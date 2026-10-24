@@ -2,6 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES } from '../src/core.js';
 
+test('layer reordering changes composite stacking and supports undo/redo', () => {
+  const doc = new RasterDocument(2, 2);
+  const baseId = doc.activeLayer.id;
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 1 });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  const top = doc.addLayer('Blue top');
+  stroke = doc.beginStroke({ color: '#0000ff', size: 1 });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  assert.deepEqual([...doc.composite().slice(0, 4)], [0, 0, 255, 255]);
+  assert.equal(doc.moveLayer(top.id, 0), true);
+  assert.deepEqual([...doc.composite().slice(0, 4)], [255, 0, 0, 255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual([...doc.composite().slice(0, 4)], [0, 0, 255, 255]);
+  assert.equal(doc.redo(), true);
+  assert.deepEqual([...doc.composite().slice(0, 4)], [255, 0, 0, 255]);
+  assert.throws(() => doc.moveLayer(baseId, 4), /target index/);
+  assert.equal(doc.moveLayer(baseId, doc.layers.indexOf(doc.layers.find(layer => layer.id === baseId))), false);
+});
+
 test('layer lock changes are undoable, redoable, persisted, and enforced by drawing and fill', () => {
   const doc = new RasterDocument(4, 4);
   const id = doc.activeLayer.id;
