@@ -17,7 +17,7 @@ Every advertised control must execute a real, testable operation. Unsupported fi
 - [ ] Dockable/collapsible panels, workspace presets, reset layout, UI scale, light/dark/high-contrast themes and focus mode.
 
 ## 2. Canvas navigation and visual aids
-- [x] Multi-part symmetry with Off/2/4/8-part modes, view-only axis guides, shared brush/eraser/shape gestures, and one-step undo.
+- [x] Multi-part symmetry with Off/2/4/8-part modes, view-only axis guides, shared brush/eraser/shape gestures, one-step undo and non-square-canvas clipping for eight-way rotations.
 
 - [ ] Zoom around pointer, fit, 100%, pixel-perfect steps, pan, minimap, rotate view and reset view.
 - [ ] Rulers, draggable guides, snapping, configurable pixel/grid overlays and perspective guides.
