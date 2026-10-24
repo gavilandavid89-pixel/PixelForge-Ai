@@ -21,6 +21,41 @@ test('layer reordering changes composite stacking and supports undo/redo', () =>
   assert.equal(doc.moveLayer(baseId, doc.layers.indexOf(doc.layers.find(layer => layer.id === baseId))), false);
 });
 
+test('layer rename, opacity, duplicate and delete are undoable and preserve pixels', () => {
+  const doc = new RasterDocument(2, 2);
+  const base = doc.activeLayer;
+  let stroke = doc.beginStroke({ color: '#ff0000', size: 1 });
+  doc.strokeTo(stroke, 0, 0); doc.endStroke(stroke);
+  const duplicate = doc.duplicateLayer(base.id);
+  assert.equal(doc.layers.length, 2);
+  assert.equal(duplicate.name, 'Layer 1 copy');
+  assert.deepEqual([...doc.composite().slice(0, 4)], [255, 0, 0, 255]);
+  doc.setLayerOpacity(duplicate.id, 0.5);
+  assert.deepEqual([...doc.composite().slice(0, 4)], [255, 0, 0, 191]);
+  doc.renameLayer(duplicate.id, 'Highlights');
+  assert.equal(doc.activeLayer.name, 'Highlights');
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.activeLayer.name, 'Layer 1 copy');
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.activeLayer.opacity, 1);
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.layers.length, 1);
+  assert.equal(doc.activeLayer.id, base.id);
+  assert.equal(doc.redo(), true);
+  assert.equal(doc.layers.length, 2);
+  assert.equal(doc.activeLayer.name, 'Layer 1 copy');
+  doc.deleteLayer(duplicate.id);
+  assert.equal(doc.layers.length, 1);
+  assert.throws(() => doc.deleteLayer(base.id), /at least one layer/);
+  assert.equal(doc.undo(), true);
+  assert.equal(doc.layers.length, 2);
+  assert.equal(doc.layers.find(layer => layer.id === duplicate.id).name, 'Layer 1 copy');
+  assert.throws(() => doc.setLayerOpacity(duplicate.id, 1.1), /between 0 and 1/);
+  const restored = RasterDocument.fromJSON(doc.toJSON());
+  assert.equal(restored.layers.length, 2);
+  assert.equal(restored.layers.find(layer => layer.id === duplicate.id).opacity, 1);
+});
+
 test('layer lock changes are undoable, redoable, persisted, and enforced by drawing and fill', () => {
   const doc = new RasterDocument(4, 4);
   const id = doc.activeLayer.id;
