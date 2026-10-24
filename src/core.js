@@ -8,6 +8,20 @@ export function validateDimensions(width, height) {
   return { width, height };
 }
 
+export function rasterLinePoints(x0, y0, x1, y1) {
+  if (![x0, y0, x1, y1].every(Number.isInteger)) throw new TypeError('Line coordinates must be integers.');
+  const points = [], dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1, dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  let error = dx + dy, x = x0, y = y0;
+  while (true) {
+    points.push({ x, y });
+    if (x === x1 && y === y1) break;
+    const twice = 2 * error;
+    if (twice >= dy) { error += dy; x += sx; }
+    if (twice <= dx) { error += dx; y += sy; }
+  }
+  return points;
+}
+
 export function screenToDocument(point, viewport, dimensions) {
   const x = Math.floor((point.x - viewport.panX) / viewport.zoom);
   const y = Math.floor((point.y - viewport.panY) / viewport.zoom);
