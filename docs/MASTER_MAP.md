@@ -22,8 +22,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Tile-patch undo/redo for strokes and fill.
 - [x] Versioned project serialization, validated import and local autosave.
 - [x] Layer rename, duplicate, delete and opacity with undo/redo, including memory limits and last-layer protection.
-- [x] Persistent-in-session selection mask constrains pencil, eraser, bucket fill and clearing; masks are dimension-validated and intentionally excluded from artwork serialization.
-- [ ] Selection mask support for shape tools, copy/cut/paste and transforms.
+- [x] Persistent-in-session selection mask constrains pencil, eraser, fill, shapes, clear, color replacement, copy/cut/paste, outline and flips; masks are dimension-validated and excluded from artwork serialization.
 - [ ] Unified command/transaction API for tools, filters, selections and AI edits.
 - [ ] Schema migrations, checksums, recovery snapshots and storage-quota UX.
 - [ ] Worker-friendly large operations and cancellable exports.
@@ -60,7 +59,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Magic-wand selection by connected or global matching colors, with RGBA-aware transparency and tolerance.
 - [x] Invert, expand and contract selection masks with bounded Manhattan-distance radius and visible pixel contours for custom masks.
 - [ ] Click-to-place polygon selection, feathering, add/subtract/intersect selection modes and saved selection sets.
-- [ ] Add/subtract/intersect/invert/feather/expand/contract and saved selections.
+- [ ] Add/subtract/intersect, feathering and saved selection sets.
 - [x] Internal active-layer pixel copy/cut/paste with clipped bounds, selection-aware paste, and atomic undo for cut/paste.
 - [ ] Move/duplicate pasted pixels independently, system clipboard interoperability, and copy merged composite.
 - [x] Horizontal/vertical flip of the selected rectangle or whole active layer, selection-aware and one-step undoable.
@@ -68,7 +67,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [ ] Preview/cancel/commit, interpolation choices, clipping and single-step undo.
 ### Palettes and sprite animation
 - [x] Foreground/background color swap and eight-color recent history with keyboard shortcut.
-- [ ] Persistent user palettes, named color history and palette import/export.
+- [ ] Named palette sets, reorder/lock/tags/favorites, PAL/PNG export and palette-from-image.
 - [x] Local editable palette swatches with browser persistence and GPL/hex/RGB-list import plus GPL export.
 - [ ] Named palette sets, reorder/lock/tags/favorites, PAL/PNG export and palette-from-image.
 - [ ] Frame/cel timeline, duration, duplicate/reorder/delete, playback and loops.
