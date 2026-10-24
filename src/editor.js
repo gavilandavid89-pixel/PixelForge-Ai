@@ -198,7 +198,11 @@ function drawSymmetryGuides() {
   ctx.strokeStyle = 'rgba(105, 223, 187, 0.58)'; ctx.lineWidth = 1; ctx.setLineDash([6, 5]); ctx.beginPath();
   if (symmetryMode >= 2) { ctx.moveTo(cx, panY); ctx.lineTo(cx, panY + doc.height * zoom); }
   if (symmetryMode >= 4) { ctx.moveTo(panX, cy); ctx.lineTo(panX + doc.width * zoom, cy); }
-  if (symmetryMode === 8) { ctx.moveTo(panX, panY); ctx.lineTo(panX + doc.width * zoom, panY + doc.height * zoom); ctx.moveTo(panX + doc.width * zoom, panY); ctx.lineTo(panX, panY + doc.height * zoom); }
+  if (symmetryMode === 8) {
+    const radius = Math.min(doc.width, doc.height) * zoom / 2;
+    ctx.moveTo(cx - radius, cy - radius); ctx.lineTo(cx + radius, cy + radius);
+    ctx.moveTo(cx + radius, cy - radius); ctx.lineTo(cx - radius, cy + radius);
+  }
   ctx.stroke(); ctx.restore();
 }
 function docPoint(event) { return documentPointFromScreen(eventPoint(event)); }
