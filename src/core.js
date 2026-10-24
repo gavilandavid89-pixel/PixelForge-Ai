@@ -527,23 +527,24 @@ export class RasterDocument {
       const pixelIndex = py * this.width + px;
       if (this.selectionMask && !this.selectionMask[pixelIndex]) continue;
       if (stroke.opacity <= 0) continue;
+      const i = pixelIndex * 4, next = [layer.pixels[i], layer.pixels[i + 1], layer.pixels[i + 2], layer.pixels[i + 3]];
+      if (stroke.mode === 'erase') {
+        next[3] = Math.round(next[3] * (1 - stroke.opacity));
+        if (next[3] === 0) next[0] = next[1] = next[2] = 0;
+      } else {
+        const destinationAlpha = next[3] / 255, sourceAlpha = stroke.opacity;
+        const outputAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha);
+        if (outputAlpha <= 0) continue;
+        next[0] = Math.round((stroke.color[0] * sourceAlpha + next[0] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
+        next[1] = Math.round((stroke.color[1] * sourceAlpha + next[1] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
+        next[2] = Math.round((stroke.color[2] * sourceAlpha + next[2] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
+        next[3] = Math.round(outputAlpha * 255);
+      }
+      if (next.every((value, channel) => value === layer.pixels[i + channel])) continue;
       const tileX = Math.floor(px / TILE_SIZE), tileY = Math.floor(py / TILE_SIZE), key = `${tileX}:${tileY}`;
       if (!stroke.tilesBefore.has(key)) stroke.tilesBefore.set(key, this.#captureTile(layer, tileX, tileY));
-      const i = pixelIndex * 4;
+      layer.pixels.set(next, i);
       this.compositeDirtyTiles.add(key);
-      const destinationAlpha = layer.pixels[i + 3] / 255;
-      if (stroke.mode === 'erase') {
-        const alpha = Math.round(layer.pixels[i + 3] * (1 - stroke.opacity));
-        layer.pixels[i + 3] = alpha;
-        if (alpha === 0) { layer.pixels[i] = 0; layer.pixels[i + 1] = 0; layer.pixels[i + 2] = 0; }
-      } else {
-        const sourceAlpha = stroke.opacity, outputAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha);
-        if (outputAlpha <= 0) continue;
-        layer.pixels[i] = Math.round((stroke.color[0] * sourceAlpha + layer.pixels[i] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
-        layer.pixels[i + 1] = Math.round((stroke.color[1] * sourceAlpha + layer.pixels[i + 1] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
-        layer.pixels[i + 2] = Math.round((stroke.color[2] * sourceAlpha + layer.pixels[i + 2] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
-        layer.pixels[i + 3] = Math.round(outputAlpha * 255);
-      }
     }
   }
   #record(entry) {
