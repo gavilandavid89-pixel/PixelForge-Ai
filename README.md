@@ -16,13 +16,14 @@ Research and define the editing engine before building the visual interface. Use
 
 ## Current editing tools
 
-- **Multi-part symmetry:** turn mirroring off or draw in 2, 4, or 8 linked parts. Pencil, eraser, and geometric tools share one gesture across all reflected copies, with view-only symmetry guides and one-step undo.
+- **Multi-part symmetry:** turn mirroring off or draw in 2, 4, or 8 linked parts. Pencil, eraser, and geometric tools share one gesture and one undo step. Eight-way rotations use real document-space geometry and clip to bounds on non-square canvases instead of stretching the artwork.
 
 ## Documents
 
 - `docs/EDITOR_RESEARCH.md` — source-code architecture, release/APK references, licensing notes, and feature analysis.
 - `docs/FEATURE_SPEC.md` — target feature inventory, including improvements beyond the references.
-- `docs/ARTIST_WORKFLOW_MATRIX.md` — full artist-workflow acceptance matrix for painting, design, animation, game assets, AI, mobile, accessibility and release QA.
+- `docs/ARTIST_WORKFLOW_MATRIX.md` — detailed acceptance matrix for painting, design, animation, game assets, AI, mobile, accessibility and release QA.
+- `docs/MASTER_MAP.md` — master roadmap split into Pixel art, General 2D art, and Video-game/game-asset production, with shared dependencies and truthful implementation checkboxes.
 - `docs/ARCHITECTURE.md` — modular editor architecture, input/document contracts, renderer policy and implementation priorities.
 - `docs/AI_TOOL_API.md` — AI tool registry, permissions, proposal lifecycle and command contract.
 - `docs/ENGINE_TEST_PLAN.md` — central acceptance matrix, release gates, adversarial scenarios and manual test record template.
@@ -56,7 +57,7 @@ Use these labels consistently:
 - Dedicated artwork canvas with fit, zoom, pan, pixel-aligned pencil and eraser, connected/global bucket fill with color tolerance, and a temporary eyedropper that samples the visible composite or active layer.
 - Mobile touch drawing: dragging on the canvas with pencil/eraser draws immediately; the touch cursor remains visible, the hold-to-draw control is retained as an alternate input, and the pan tool remains explicit for navigation.
 - Line, rectangle-outline, and ellipse-outline tools show a temporary on-canvas preview during drag, then commit the final pixel geometry as one atomic undoable action; Escape/tool switching cancels an uncommitted preview.
-- Color selection, a conventional brush-size slider plus a center-origin quick-size gesture (drag left to thicken, right to thin, with nonlinear distance response and automatic visual recentering), multiple layers, visibility, undoable lock toggles and undoable stack reordering; mobile-sized inspector tabs switch between tool settings and layer management. Rectangular marquee selection is a non-destructive canvas overlay with drag-to-select and Escape-to-clear. A toggleable pixel-grid overlay is clipped to the visible canvas and remains outside document pixels and exports; rectangular/isometric/hex grids remain planned. Pixel copy/paste and selection transforms remain planned.
+- Color selection, a conventional brush-size slider plus a center-origin quick-size gesture (drag left to thicken, right to thin, with nonlinear distance response and automatic visual recentering), multiple layers, visibility, lock, stack ordering, rename, duplicate, delete and opacity, with undo/redo; mobile-sized inspector tabs switch between tool settings and layer management. Rectangular marquee selection is a non-destructive canvas overlay with drag-to-select and Escape-to-clear; Delete/Backspace clears selected active-layer pixels as one undoable operation. A toggleable pixel-grid overlay is clipped to the visible canvas and remains outside document pixels and exports; rectangular/isometric/hex grids remain planned. Pixel copy/paste and selection transforms remain planned.
 - Undo/redo with tile-based pixel history and a bounded history-memory budget.
 - PNG/JPEG/WebP/GIF import with bounded header preflight before decoding (animated files flatten to a still frame), transparent PNG export and editable `.pforge` project import/export. Imported projects receive fresh document/layer IDs so they cannot overwrite their source.
 - Local IndexedDB autosave, a saved-project picker (open/switch local projects), and recovery of the last-opened project.
