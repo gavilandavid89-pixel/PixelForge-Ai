@@ -50,7 +50,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 ### Selections and transforms
 - [x] Rectangular marquee visual overlay plus Ctrl/Cmd+A select-all; Escape clears without altering artwork history.
 - [x] Delete/Backspace clears selected active-layer pixels as one undoable operation; locked layers reject the edit.
-- [ ] Persistent mask, ellipse/lasso/polygon/magic-wand/color-range selections.
+- [x] Rectangular and elliptical marquee selections generate persistent-in-session masks shared by pencil, eraser, fill, clear, color replacement, clipboard, outline and flip operations.\n- [ ] Lasso, polygon, magic-wand/color-range selection and saved selection sets.
 - [ ] Add/subtract/intersect/invert/feather/expand/contract and saved selections.
 - [x] Internal active-layer pixel copy/cut/paste with clipped bounds, selection-aware paste, and atomic undo for cut/paste.\n- [ ] Move/duplicate pasted pixels independently, system clipboard interoperability, and copy merged composite.
 - [x] Horizontal/vertical flip of the selected rectangle or whole active layer, selection-aware and one-step undoable.\n- [ ] Move pixels vs move selection; rotate, scale, skew, crop and transform previews.
