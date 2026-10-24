@@ -279,7 +279,9 @@ try {
   assert.equal(await desktop.locator('#undo').isEnabled(), undoBeforeSelection, 'selection is a non-destructive overlay and must not add history');
   await desktop.locator('#brush-tool').click();
 
-  const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  // Use an isolated context so desktop autosaved state cannot leak into the mobile smoke tests.
+  const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  const mobile = await mobileContext.newPage();
   mobile.on('pageerror', error => failures.push(`mobile page error: ${error.message}`));
   await mobile.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
   await mobile.waitForFunction(() => /Ready|Recovered latest local project|Local recovery unavailable/.test(document.querySelector('#status')?.textContent ?? ''));
@@ -304,11 +306,6 @@ try {
   assert.equal(await mobile.locator('#undo').isEnabled(), false, 'mobile selection must not alter document history');
 
 
-  // The desktop smoke checks and mobile page share browser storage; normalize the layer state before hold-input tests.
-  await mobile.locator('#layers-tab').click();
-  const mobileUnlockLayer = mobile.getByRole('button', { name: 'Unlock layer' });
-  if (await mobileUnlockLayer.count()) await mobileUnlockLayer.last().click();
-  await mobile.locator('#properties-tab').click();
   assert.equal(await mobile.locator('#draw-hold').isDisabled(), false, 'mobile hold-input tests require an editable active layer');
 
   await mobile.locator('#draw-hold').focus();
