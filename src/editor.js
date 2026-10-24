@@ -237,7 +237,7 @@ function moveStroke(event) {
   }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     virtualCursorScreen = eventPoint(event); virtualCursorPoint = docPoint(event); virtualCursorVisible = true;
-    if (drawHeld) {
+    if (['draw', 'erase'].includes(tool)) {
       if (!activeStroke) startStrokeAt(virtualCursorPoint, event.pointerId);
       else if (pointerId === event.pointerId && virtualCursorPoint.inside) doc.strokeTo(activeStroke, virtualCursorPoint.x, virtualCursorPoint.y);
     }
@@ -275,10 +275,12 @@ canvas.addEventListener('pointerdown', event => {
     canvas.classList.add('is-panning'); event.preventDefault(); return;
   }
   if (event.pointerType === 'touch') {
+    // Keep one canvas touch as the drawing pointer; extra fingers must not steal its stroke.
+    if (virtualCursorPointerId !== null && virtualCursorPointerId !== event.pointerId) { event.preventDefault(); return; }
     virtualCursorPointerId = event.pointerId; virtualCursorScreen = eventPoint(event);
     virtualCursorPoint = docPoint(event); virtualCursorVisible = true;
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
-    if (drawHeld) startStrokeAt(virtualCursorPoint, event.pointerId);
+    if (['draw', 'erase'].includes(tool)) startStrokeAt(virtualCursorPoint, event.pointerId);
     render(); event.preventDefault(); return;
   }
   beginStroke(event);
