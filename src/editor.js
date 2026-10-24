@@ -230,9 +230,13 @@ function render() {
     if (selection) {
       const sx = panX + selection.x * zoom, sy = panY + selection.y * zoom;
       const sw = selection.width * zoom, sh = selection.height * zoom;
-      ctx.save(); ctx.strokeStyle = '#f4f0ff'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
-      ctx.strokeRect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1));
-      ctx.strokeStyle = '#282532'; ctx.lineDashOffset = 5; ctx.strokeRect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1)); ctx.restore();
+      const traceSelection = () => {
+        ctx.beginPath();
+        if (selection.shape === 'ellipse') ctx.ellipse(sx + sw / 2, sy + sh / 2, Math.max(.5, sw / 2), Math.max(.5, sh / 2), 0, 0, Math.PI * 2);
+        else ctx.rect(Math.round(sx) + .5, Math.round(sy) + .5, Math.max(0, sw - 1), Math.max(0, sh - 1));
+      };
+      ctx.save(); ctx.strokeStyle = '#f4f0ff'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]); traceSelection(); ctx.stroke();
+      ctx.strokeStyle = '#282532'; ctx.lineDashOffset = 5; traceSelection(); ctx.stroke(); ctx.restore();
     }
     if (virtualCursorVisible && virtualCursorScreen && (cursorMode || virtualCursorPointerId !== null)) {
       const radius = Math.max(2, Math.min(48, brushSize * zoom / 2));
@@ -258,7 +262,16 @@ function syncSelectionMask() {
   const mask = new Uint8Array(doc.width * doc.height);
   const left = Math.max(0, selection.x), top = Math.max(0, selection.y);
   const right = Math.min(doc.width, selection.x + selection.width), bottom = Math.min(doc.height, selection.y + selection.height);
-  for (let y = top; y < bottom; y++) mask.fill(1, y * doc.width + left, y * doc.width + right);
+  if (selection.shape !== 'ellipse') {
+    for (let y = top; y < bottom; y++) mask.fill(1, y * doc.width + left, y * doc.width + right);
+  } else {
+    const cx = selection.x + (selection.width - 1) / 2, cy = selection.y + (selection.height - 1) / 2;
+    const rx = Math.max(.5, selection.width / 2), ry = Math.max(.5, selection.height / 2);
+    for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
+      const dx = (x - cx) / rx, dy = (y - cy) / ry;
+      if (dx * dx + dy * dy <= 1) mask[y * doc.width + x] = 1;
+    }
+  }
   doc.setSelectionMask(mask);
 }
 function clearSelectionState() {
@@ -459,7 +472,7 @@ function moveStroke(event) {
     const point = docPoint(event);
     const x = Math.max(0, Math.min(doc.width - 1, point.x)), y = Math.max(0, Math.min(doc.height - 1, point.y));
     const left = Math.min(selectionStart.x, x), top = Math.min(selectionStart.y, y);
-    selection = { x: left, y: top, width: Math.abs(x - selectionStart.x) + 1, height: Math.abs(y - selectionStart.y) + 1 };
+    selection = { x: left, y: top, width: Math.abs(x - selectionStart.x) + 1, height: Math.abs(y - selectionStart.y) + 1, shape: selectionStart.shape };
     syncSelectionMask(); render(); return;
   }
   if (panning && panStart) {
@@ -501,10 +514,11 @@ canvas.addEventListener('pointerdown', event => {
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     render(); event.preventDefault(); return;
   }
-  if (tool === 'select') {
+  if (tool === 'select' || tool === 'select-ellipse') {
     const point = docPoint(event); if (!point.inside) return;
-    selectionStart = { x: point.x, y: point.y }; selectionPointerId = event.pointerId;
-    selection = { x: point.x, y: point.y, width: 1, height: 1 }; syncSelectionMask();
+    const shape = tool === 'select-ellipse' ? 'ellipse' : 'rect';
+    selectionStart = { x: point.x, y: point.y, shape }; selectionPointerId = event.pointerId;
+    selection = { x: point.x, y: point.y, width: 1, height: 1, shape }; syncSelectionMask();
     try { canvas.setPointerCapture?.(event.pointerId); } catch {}
     render(); event.preventDefault(); return;
   }
@@ -729,13 +743,14 @@ function setTool(next) {
   $('#fill-tool').classList.toggle('active', tool === 'fill');
   $('#eyedropper-tool').classList.toggle('active', tool === 'eyedropper');
   $('#select-tool').classList.toggle('active', tool === 'select');
+  $('#ellipse-select-tool').classList.toggle('active', tool === 'select-ellipse');
   $('#line-tool').classList.toggle('active', tool === 'shape-line');
   $('#rectangle-tool').classList.toggle('active', tool === 'shape-rect');
   $('#ellipse-tool').classList.toggle('active', tool === 'shape-ellipse');
-  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse' })[tool] ?? 'Pencil';
+  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', 'select-ellipse': 'Elliptical selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse' })[tool] ?? 'Pencil';
   $('#fill-settings').hidden = tool !== 'fill';
   $('#sample-settings').hidden = tool !== 'eyedropper';
-  if (tool !== 'select') { selectionStart = null; selectionPointerId = null; }
+  if (!['select', 'select-ellipse'].includes(tool)) { selectionStart = null; selectionPointerId = null; }
   canvas.dataset.tool = tool;
   updateDrawHoldUI();
   render();
@@ -1120,7 +1135,7 @@ window.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'e') setTool('erase');
   else if (event.key.toLowerCase() === 'g') setTool('fill');
   else if (event.key.toLowerCase() === 'i') setTool('eyedropper');
-  else if (event.key.toLowerCase() === 'm') setTool('select');
+  else if (event.key.toLowerCase() === 'm') setTool(event.shiftKey ? 'select-ellipse' : 'select');
   else if (event.key.toLowerCase() === 'l') setTool('shape-line');
   else if (event.key.toLowerCase() === 'u') setTool('shape-rect');
   else if (event.key.toLowerCase() === 'o') setTool('shape-ellipse');
