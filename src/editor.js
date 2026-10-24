@@ -595,7 +595,14 @@ canvas.addEventListener('pointerup', event => {
     const gesture = shapeGesture; shapeGesture = null;
     commitShapeGesture(gesture); render(); return;
   }
-  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; syncSelectionMask(); status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return; }
+  if (selectionStart && event.pointerId === selectionPointerId) {
+    if (selectionStart.shape === 'polygon' && selectionStart.points.length < 3) {
+      selectionStart = null; selectionPointerId = null; selection = null; syncSelectionMask();
+      status('Lasso needs at least three points', 'warning'); render(); return;
+    }
+    selectionStart = null; selectionPointerId = null; syncSelectionMask();
+    status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return;
+  }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(true);
