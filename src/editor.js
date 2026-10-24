@@ -12,6 +12,7 @@ let fillTolerance = 0, fillContiguous = true, sampleMerged = true, returnTool = 
 let zoom = 3, panX = 0, panY = 0, activeStroke = null, pointerId = null, gridEnabled = false;
 let drawHeld = false, drawHoldPointerId = null;
 let selection = null, selectionStart = null, selectionPointerId = null;
+let shapeGesture = null;
 let cursorMode = false, cursorGesturePointerId = null, cursorGestureLast = null, cursorGestureOrigin = null, cursorGestureStartedOnControl = false, cursorGestureSuppressClick = false, cursorDrawPointerId = null;
 let virtualCursorPointerId = null, virtualCursorScreen = null, virtualCursorPoint = null, virtualCursorVisible = false, virtualCursorCanDraw = false;
 let panning = false, panStart = null, autosaveTimer = null, autosaveInFlight = Promise.resolve(), flushInProgress = false, flushPromise = null, renderQueued = false, previewReady = false;
@@ -113,6 +114,19 @@ function render() {
       ctx.stroke();
       ctx.restore();
     }
+    if (shapeGesture) {
+      const points = shapePoints(shapeGesture);
+      if (points.length) {
+        ctx.save(); ctx.beginPath();
+        points.forEach((point, index) => {
+          const sx = panX + (point.x + .5) * zoom, sy = panY + (point.y + .5) * zoom;
+          if (index === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        });
+        ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, brushSize * zoom);
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = .92;
+        ctx.stroke(); ctx.restore();
+      }
+    }
     if (selection) {
       const sx = panX + selection.x * zoom, sy = panY + selection.y * zoom;
       const sw = selection.width * zoom, sh = selection.height * zoom;
@@ -140,6 +154,34 @@ function eventPoint(event) {
 }
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
 function docPoint(event) { return documentPointFromScreen(eventPoint(event)); }
+function shapePoints(gesture) {
+  const { x1, y1, x2, y2 } = gesture;
+  if (gesture.tool === 'shape-line') return [{ x: x1, y: y1 }, { x: x2, y: y2 }];
+  const left = Math.min(x1, x2), right = Math.max(x1, x2);
+  const top = Math.min(y1, y2), bottom = Math.max(y1, y2);
+  if (gesture.tool === 'shape-rect') {
+    if (left === right || top === bottom) return [{ x: left, y: top }, { x: right, y: bottom }];
+    return [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }, { x: left, y: top }];
+  }
+  const cx = (left + right) / 2, cy = (top + bottom) / 2;
+  const rx = Math.max(.5, (right - left) / 2), ry = Math.max(.5, (bottom - top) / 2);
+  return Array.from({ length: 65 }, (_, i) => {
+    const angle = i / 64 * Math.PI * 2;
+    return { x: Math.max(0, Math.min(doc.width - 1, Math.round(cx + Math.cos(angle) * rx))), y: Math.max(0, Math.min(doc.height - 1, Math.round(cy + Math.sin(angle) * ry))) };
+  });
+}
+function commitShapeGesture(gesture) {
+  if (!gesture) return;
+  try {
+    const points = shapePoints(gesture);
+    if (!points.length) return;
+    const stroke = doc.beginStroke({ color, size: brushSize, mode: 'draw' });
+    for (const point of points) doc.strokeTo(stroke, point.x, point.y);
+    doc.endStroke(stroke, { commit: true });
+    changed();
+    status((gesture.tool === 'shape-line' ? 'Line' : gesture.tool === 'shape-rect' ? 'Rectangle' : 'Ellipse') + ' drawn', 'success');
+  } catch (error) { status(error.message, 'error'); }
+}
 function moveVirtualCursorBy(dx, dy) {
   if (!virtualCursorScreen) virtualCursorScreen = { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 };
   virtualCursorScreen = { x: Math.max(0, Math.min(canvas.clientWidth, virtualCursorScreen.x + dx)), y: Math.max(0, Math.min(canvas.clientHeight, virtualCursorScreen.y + dy)) };
@@ -275,6 +317,15 @@ function endStroke(event, commit = true) {
 canvas.addEventListener('pointerdown', event => {
   if (flushInProgress) { event.preventDefault(); return; }
   if (cursorMode) { event.preventDefault(); return; }
+  if (['shape-line', 'shape-rect', 'shape-ellipse'].includes(tool)) {
+    if (event.button !== undefined && event.button !== 0) return;
+    if (doc.activeLayer?.locked) { status('The active layer is locked.', 'error'); event.preventDefault(); return; }
+    const point = docPoint(event);
+    if (!point.inside) return;
+    shapeGesture = { tool, x1: point.x, y1: point.y, x2: point.x, y2: point.y, pointerId: event.pointerId };
+    try { canvas.setPointerCapture?.(event.pointerId); } catch {}
+    render(); event.preventDefault(); return;
+  }
   if (tool === 'select') {
     const point = docPoint(event); if (!point.inside) return;
     selectionStart = { x: point.x, y: point.y }; selectionPointerId = event.pointerId;
@@ -302,7 +353,15 @@ canvas.addEventListener('pointerdown', event => {
   }
   beginStroke(event);
 });
-canvas.addEventListener('pointermove', moveStroke);
+canvas.addEventListener('pointermove', event => {
+  if (shapeGesture && event.pointerId === shapeGesture.pointerId) {
+    const point = docPoint(event);
+    shapeGesture.x2 = Math.max(0, Math.min(doc.width - 1, point.x));
+    shapeGesture.y2 = Math.max(0, Math.min(doc.height - 1, point.y));
+    render(); return;
+  }
+  moveStroke(event);
+});
 window.addEventListener('pointerdown', event => {
   if (!cursorMode || event.pointerType !== 'touch' || cursorGesturePointerId !== null) return;
   if (event.target instanceof Element && event.target.closest('#brush-scrub')) return;
@@ -331,6 +390,10 @@ function finishCursorGesture(event) {
 window.addEventListener('pointerup', finishCursorGesture, true);
 window.addEventListener('pointercancel', finishCursorGesture, true);
 canvas.addEventListener('pointerup', event => {
+  if (shapeGesture && event.pointerId === shapeGesture.pointerId) {
+    const gesture = shapeGesture; shapeGesture = null;
+    commitShapeGesture(gesture); render(); return;
+  }
   if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return; }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
@@ -340,6 +403,7 @@ canvas.addEventListener('pointerup', event => {
   endStroke(event, true);
 });
 canvas.addEventListener('pointercancel', event => {
+  if (shapeGesture && event.pointerId === shapeGesture.pointerId) { shapeGesture = null; render(); return; }
   if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; selection = null; render(); return; }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
@@ -349,6 +413,7 @@ canvas.addEventListener('pointercancel', event => {
   endStroke(event, false);
 });
 canvas.addEventListener('lostpointercapture', event => {
+  if (shapeGesture && event.pointerId === shapeGesture.pointerId) { shapeGesture = null; render(); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
     virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; render(); return;
@@ -433,6 +498,9 @@ $('#pan-tool').addEventListener('click', () => setTool('pan'));
 $('#fill-tool').addEventListener('click', () => setTool('fill'));
 $('#eyedropper-tool').addEventListener('click', () => setTool('eyedropper'));
 $('#select-tool').addEventListener('click', () => setTool('select'));
+$('#line-tool').addEventListener('click', () => setTool('shape-line'));
+$('#rectangle-tool').addEventListener('click', () => setTool('shape-rect'));
+$('#ellipse-tool').addEventListener('click', () => setTool('shape-ellipse'));
 $('#sample-source').addEventListener('change', event => { sampleMerged = event.target.value === 'merged'; });
 $('#fill-tolerance').addEventListener('input', event => { fillTolerance = Number(event.target.value); $('#fill-tolerance-value').textContent = `${fillTolerance}`; });
 $('#fill-mode').addEventListener('change', event => { fillContiguous = event.target.value === 'contiguous'; });
@@ -456,6 +524,7 @@ $('#layers-tab').addEventListener('click', () => {
 mobileInspector.addEventListener('change', () => setInspectorPanel('properties'));
 function setTool(next) {
   if (activeStroke) finishActiveStroke(false);
+  shapeGesture = null;
   if (next === 'eyedropper' && tool !== 'eyedropper') returnTool = ['draw', 'erase'].includes(tool) ? tool : 'draw';
   drawHeld = false; drawHoldPointerId = null;
   tool = next;
@@ -465,7 +534,10 @@ function setTool(next) {
   $('#fill-tool').classList.toggle('active', tool === 'fill');
   $('#eyedropper-tool').classList.toggle('active', tool === 'eyedropper');
   $('#select-tool').classList.toggle('active', tool === 'select');
-  $('#tool-label').textContent = tool === 'draw' ? 'Pencil' : tool === 'erase' ? 'Eraser' : tool === 'fill' ? 'Bucket fill' : tool === 'eyedropper' ? 'Eyedropper' : tool === 'select' ? 'Rectangular selection' : 'Pan';
+  $('#line-tool').classList.toggle('active', tool === 'shape-line');
+  $('#rectangle-tool').classList.toggle('active', tool === 'shape-rect');
+  $('#ellipse-tool').classList.toggle('active', tool === 'shape-ellipse');
+  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse' })[tool] ?? 'Pencil';
   $('#fill-settings').hidden = tool !== 'fill';
   $('#sample-settings').hidden = tool !== 'eyedropper';
   if (tool !== 'select') { selectionStart = null; selectionPointerId = null; }
@@ -731,6 +803,9 @@ window.addEventListener('keydown', event => {
   else if (event.key.toLowerCase() === 'g') setTool('fill');
   else if (event.key.toLowerCase() === 'i') setTool('eyedropper');
   else if (event.key.toLowerCase() === 'm') setTool('select');
+  else if (event.key.toLowerCase() === 'l') setTool('shape-line');
+  else if (event.key.toLowerCase() === 'u') setTool('shape-rect');
+  else if (event.key.toLowerCase() === 'o') setTool('shape-ellipse');
   else if (event.key === 'Escape') {
     if (selection) { selection = null; selectionStart = null; selectionPointerId = null; status('Selection cleared', 'neutral'); }
     if (activeStroke) finishActiveStroke(false);
