@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints } from '../src/core.js';
+import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints, createSelectionMask, createColorSelectionMask, modifySelectionMask } from '../src/core.js';
 
 test('layer reordering changes composite stacking and supports undo/redo', () => {
   const doc = new RasterDocument(2, 2);
@@ -536,6 +536,69 @@ test('unchanged stroke pixels do not create empty undo entries', () => {
   doc.strokeTo(stroke, 0, 0);
   assert.equal(doc.endStroke(stroke), false);
   assert.equal(doc.history.length, 1);
+});
+
+
+test('rectangle and ellipse selection masks produce clipped deterministic pixel regions', () => {
+  const rectangle = createSelectionMask(5, 5, { x: 1, y: 1, width: 3, height: 3, shape: 'rect' });
+  assert.equal(rectangle.reduce((sum, value) => sum + value, 0), 9);
+  assert.equal(rectangle[0], 0);
+  const ellipse = createSelectionMask(5, 5, { x: 0, y: 0, width: 5, height: 5, shape: 'ellipse' });
+  assert.equal(ellipse[2 * 5 + 2], 1, 'ellipse should include its center');
+  assert.equal(ellipse[0], 0, 'ellipse should exclude bounding-box corners');
+  assert.equal(ellipse[2], 1, 'ellipse should include the top-center pixel');
+  const polygon = createSelectionMask(5, 5, { x: 0, y: 0, width: 5, height: 5, shape: 'polygon', points: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 0, y: 4 }] });
+  assert.equal(polygon[0], 1, 'polygon should include its boundary');
+  assert.equal(polygon[1 * 5 + 1], 1, 'polygon should include interior pixels');
+  assert.equal(polygon[4 * 5 + 4], 0, 'polygon should exclude pixels outside its path');
+  assert.equal(createSelectionMask(5, 5, null), null);
+  assert.throws(() => createSelectionMask(5, 5, { x: 0, y: 0, width: 2, height: 2, shape: 'lasso' }), /supported rect\/ellipse\/polygon/);
+});
+
+test('copyRect copies only selected pixels and leaves unselected clipboard pixels transparent', () => {
+  const doc = new RasterDocument(3, 3);
+  const stroke = doc.beginStroke({ color: '#ff0000' });
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) doc.strokeTo(stroke, x, y);
+  doc.endStroke(stroke);
+  doc.setSelectionMask(createSelectionMask(3, 3, { x: 0, y: 0, width: 3, height: 3, shape: 'ellipse' }));
+  const clip = doc.copyRect(0, 0, 3, 3);
+  assert.equal(clip.pixels[(0 * 3 + 0) * 4 + 3], 0);
+  assert.equal(clip.pixels[(1 * 3 + 1) * 4 + 3], 255);
+  assert.equal(clip.pixels[(0 * 3 + 1) * 4 + 3], 255);
+});
+
+
+test('magic-wand masks select connected or global colors with tolerance and alpha-aware transparency', () => {
+  const width = 4, height = 3, pixels = new Uint8ClampedArray(width * height * 4);
+  const set = (x, y, rgba) => pixels.set(rgba, (y * width + x) * 4);
+  set(0, 0, [255, 0, 0, 255]); set(1, 0, [255, 1, 0, 255]); set(2, 0, [0, 0, 255, 255]);
+  set(0, 1, [255, 0, 0, 255]); set(1, 1, [0, 0, 255, 255]); set(2, 1, [255, 0, 0, 255]);
+  set(3, 2, [255, 0, 0, 255]);
+  const connected = createColorSelectionMask(width, height, pixels, 0, 0, { tolerance: 2, contiguous: true });
+  assert.equal(connected.reduce((sum, value) => sum + value, 0), 3);
+  assert.equal(connected[1], 1, 'tolerance should include near-matching adjacent color');
+  assert.equal(connected[2], 0, 'connected selection must not cross a different color');
+  const global = createColorSelectionMask(width, height, pixels, 0, 0, { tolerance: 2, contiguous: false });
+  assert.equal(global.reduce((sum, value) => sum + value, 0), 5);
+  assert.equal(global[11], 1, 'global selection should include separated matching colors');
+  const transparent = new Uint8ClampedArray(3 * 4);
+  transparent.set([20, 30, 40, 0], 0); transparent.set([0, 0, 0, 0], 4); transparent.set([255, 0, 0, 255], 8);
+  assert.equal(createColorSelectionMask(3, 1, transparent, 0, 0).reduce((sum, value) => sum + value, 0), 2);
+  assert.throws(() => createColorSelectionMask(width, height, pixels, 9, 0), /outside document bounds/);
+});
+
+
+test('selection mask invert, expand and contract are deterministic and radius-bounded', () => {
+  const mask = new Uint8Array(25); mask[12] = 1;
+  const inverted = modifySelectionMask(5, 5, mask, 'invert');
+  assert.equal(inverted.reduce((sum, value) => sum + value, 0), 24);
+  const expanded = modifySelectionMask(5, 5, mask, 'expand', 1);
+  assert.equal(expanded.reduce((sum, value) => sum + value, 0), 5);
+  assert.equal(expanded[7], 1); assert.equal(expanded[11], 1); assert.equal(expanded[12], 1); assert.equal(expanded[13], 1); assert.equal(expanded[17], 1);
+  const contracted = modifySelectionMask(5, 5, expanded, 'contract', 1);
+  assert.deepEqual(contracted, mask);
+  assert.throws(() => modifySelectionMask(5, 5, mask, 'feather'), /Unsupported selection-mask operation/);
+  assert.throws(() => modifySelectionMask(5, 5, mask, 'expand', 17), /radius/);
 });
 
 
