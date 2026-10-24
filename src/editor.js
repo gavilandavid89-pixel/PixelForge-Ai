@@ -263,7 +263,10 @@ function eventPoint(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 function documentPointFromScreen(point) { return screenToDocument(point, { zoom, panX, panY }, doc); }
-function syncSelectionMask() {\n  if (selection?.shape === 'polygon' && selection.points.length < 3) { doc.setSelectionMask(null); return; }\n  doc.setSelectionMask(createSelectionMask(doc.width, doc.height, selection));\n}
+function syncSelectionMask() {
+  if (selection?.shape === 'polygon' && selection.points.length < 3) { doc.setSelectionMask(null); return; }
+  doc.setSelectionMask(createSelectionMask(doc.width, doc.height, selection));
+}
 function clearSelectionState() {
   selection = null; selectionStart = null; selectionPointerId = null;
   doc.setSelectionMask(null);
