@@ -556,3 +556,20 @@ test('circular brush shape excludes distant corners and hardness controls edge c
   assert.throws(() => doc.beginStroke({ shape: 'triangle' }), /Brush shape/);
   assert.throws(() => doc.beginStroke({ hardness: 1.1 }), /hardness/);
 });
+
+
+test('linear gradient interpolates endpoints and commits as one reversible operation', () => {
+  const doc = new RasterDocument(5, 1);
+  const before = new Uint8ClampedArray(doc.activeLayer.pixels);
+  assert.equal(doc.fillGradient(0, 0, 4, 0, { startColor: '#ff0000', endColor: '#0000ff' }), 5);
+  const pixel = x => [...doc.activeLayer.pixels.slice(x * 4, x * 4 + 4)];
+  assert.deepEqual(pixel(0), [255, 0, 0, 255]);
+  assert.deepEqual(pixel(4), [0, 0, 255, 255]);
+  assert.deepEqual(pixel(2), [128, 0, 128, 255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual(doc.activeLayer.pixels, before);
+  assert.equal(doc.fillGradient(2, 0, 2, 0, { startColor: '#00ff00', endColor: '#0000ff' }), 5, 'zero-length gradient should behave as a solid start color');
+  assert.deepEqual(pixel(4), [0, 255, 0, 255]);
+  assert.throws(() => doc.fillGradient(-1, 0, 1, 0), /endpoints/);
+  assert.throws(() => doc.fillGradient(0, 0, 1, 0, { opacity: 2 }), /opacity/);
+});
