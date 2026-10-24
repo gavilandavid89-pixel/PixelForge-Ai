@@ -6,7 +6,7 @@
   "description": "PixelForge AI — first functional raster editor slice",
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/core.js && node --check src/persistence.js && node --check src/image-import.js && node --check src/asset-export.js && node --check src/editor.js && node --check src/workspaces.js && node --check src/ai-tools.js"
+    "check": "node --check src/core.js && node --check src/persistence.js && node --check src/image-import.js && node --check src/asset-export.js && node --check src/editor.js && node --check src/workspaces.js && node --check src/ai-tools.js && node --check src/ai-provider.js"
   },
   "engines": {
     "node": ">=20"
