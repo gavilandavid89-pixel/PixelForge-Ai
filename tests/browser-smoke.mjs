@@ -369,6 +369,10 @@ try {
   const cursorStart = await mobile.locator('#canvas').boundingBox();
   await touchDrag(cursorStart.x + cursorStart.width * 0.25, cursorStart.y + cursorStart.height * 0.25, cursorStart.x + cursorStart.width * 0.25 + 30, cursorStart.y + cursorStart.height * 0.25 + 14);
   assert.equal(await mobile.locator('#undo').isEnabled(), undoBeforeCursorSwipe, 'swiping anywhere in cursor mode must move the cursor without painting');
+  const panButtonBox = await mobile.locator('#pan-tool').boundingBox();
+  await touchDrag(panButtonBox.x + panButtonBox.width / 2, panButtonBox.y + panButtonBox.height / 2, panButtonBox.x + panButtonBox.width / 2 + 24, panButtonBox.y + panButtonBox.height / 2 + 12);
+  assert.equal(await mobile.locator('#cursor-mode').getAttribute('aria-pressed'), 'true', 'swiping from a toolbar button must not activate that button');
+  assert.equal(await mobile.locator('#pan-tool').evaluate(element => element.classList.contains('active')), false, 'cursor-mode swipes must not switch tools');
   await mobile.locator('#brush-scrub').tap();
   assert.equal(await mobile.locator('#undo').isEnabled(), true, 'touching the size gesture bar in cursor mode must draw at the cursor position');
   await mobile.locator('#undo').click();
