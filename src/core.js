@@ -164,13 +164,15 @@ export class RasterDocument {
     this.#markAllCompositeDirty();
     this.#record({ type: 'layer-visibility', layerId: id, before, after: layer.visible });
   }
-  beginStroke({ color = '#20202a', size = 1, mode = 'draw', opacity = 1 } = {}) {
+  beginStroke({ color = '#20202a', size = 1, mode = 'draw', opacity = 1, shape = 'square', hardness = 1 } = {}) {
     const layer = this.activeLayer;
     if (layer.locked) throw new Error('The active layer is locked.');
     if (!Number.isFinite(size) || size < 1 || size > 128) throw new RangeError('Brush size must be between 1 and 128 pixels.');
     if (!['draw', 'erase'].includes(mode)) throw new Error('Unsupported stroke mode.');
     if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new RangeError('Stroke opacity must be between 0 and 1.');
-    return { layerId: layer.id, tilesBefore: new Map(), color: parseHexColor(color), size: Math.round(size), mode, opacity, last: null, changed: false };
+    if (!['square', 'circle'].includes(shape)) throw new TypeError('Brush shape must be square or circle.');
+    if (!Number.isFinite(hardness) || hardness < 0 || hardness > 1) throw new RangeError('Brush hardness must be between 0 and 1.');
+    return { layerId: layer.id, tilesBefore: new Map(), color: parseHexColor(color), size: Math.round(size), mode, opacity, shape, hardness, last: null, changed: false };
   }
   strokeTo(stroke, x, y) {
     if (!Number.isInteger(x) || !Number.isInteger(y)) throw new TypeError('Stroke coordinates must be integer document coordinates.');
@@ -527,12 +529,22 @@ export class RasterDocument {
       const pixelIndex = py * this.width + px;
       if (this.selectionMask && !this.selectionMask[pixelIndex]) continue;
       if (stroke.opacity <= 0) continue;
+      let coverage = 1;
+      if (stroke.shape === 'circle') {
+        const cx = x + (stroke.size - 1) / 2, cy = y + (stroke.size - 1) / 2, radius = stroke.size / 2;
+        const distance = Math.hypot(px - cx, py - cy);
+        if (distance >= radius) continue;
+        const innerRadius = radius * stroke.hardness;
+        coverage = distance <= innerRadius || stroke.hardness >= 1 ? 1 : Math.max(0, Math.min(1, (radius - distance) / Math.max(.0001, radius - innerRadius)));
+        if (coverage <= 0) continue;
+      }
+      const effectiveOpacity = stroke.opacity * coverage;
       const i = pixelIndex * 4, next = [layer.pixels[i], layer.pixels[i + 1], layer.pixels[i + 2], layer.pixels[i + 3]];
       if (stroke.mode === 'erase') {
-        next[3] = Math.round(next[3] * (1 - stroke.opacity));
+        next[3] = Math.round(next[3] * (1 - effectiveOpacity));
         if (next[3] === 0) next[0] = next[1] = next[2] = 0;
       } else {
-        const destinationAlpha = next[3] / 255, sourceAlpha = stroke.opacity;
+        const destinationAlpha = next[3] / 255, sourceAlpha = effectiveOpacity;
         const outputAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha);
         if (outputAlpha <= 0) continue;
         next[0] = Math.round((stroke.color[0] * sourceAlpha + next[0] * destinationAlpha * (1 - sourceAlpha)) / outputAlpha);
