@@ -698,6 +698,7 @@ canvas.addEventListener('pointercancel', event => {
 canvas.addEventListener('lostpointercapture', event => {
   if (gradientGesture && event.pointerId === gradientGesture.pointerId) { gradientGesture = null; render(); return; }
   if (shapeGesture && event.pointerId === shapeGesture.pointerId) { shapeGesture = null; render(); return; }
+  if (selectionStart && event.pointerId === selectionPointerId) { selectionStart = null; selectionPointerId = null; selection = null; syncSelectionMask(); render(); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
     if (activeStroke && pointerId === event.pointerId) finishActiveStroke(false);
     virtualCursorPointerId = null; virtualCursorPoint = null; virtualCursorVisible = false; render(); return;
@@ -848,14 +849,18 @@ function setTool(next) {
   $('#fill-tool').classList.toggle('active', tool === 'fill');
   $('#eyedropper-tool').classList.toggle('active', tool === 'eyedropper');
   $('#select-tool').classList.toggle('active', tool === 'select');
+  $('#ellipse-select-tool').classList.toggle('active', tool === 'select-ellipse');
+  $('#lasso-select-tool').classList.toggle('active', tool === 'select-lasso');
+  $('#magic-select-tool').classList.toggle('active', tool === 'select-color');
   $('#line-tool').classList.toggle('active', tool === 'shape-line');
   $('#rectangle-tool').classList.toggle('active', tool === 'shape-rect');
   $('#ellipse-tool').classList.toggle('active', tool === 'shape-ellipse');
   $('#gradient-tool').classList.toggle('active', tool === 'gradient');
-  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse', gradient: 'Linear gradient' })[tool] ?? 'Pencil';
+  $('#tool-label').textContent = ({ draw: 'Pencil', erase: 'Eraser', fill: 'Bucket fill', eyedropper: 'Eyedropper', select: 'Rectangular selection', 'select-ellipse': 'Elliptical selection', 'select-lasso': 'Lasso selection', 'select-color': 'Magic wand selection', pan: 'Pan', 'shape-line': 'Line', 'shape-rect': 'Rectangle', 'shape-ellipse': 'Ellipse', gradient: 'Linear gradient' })[tool] ?? 'Pencil';
   $('#fill-settings').hidden = tool !== 'fill';
   $('#sample-settings').hidden = tool !== 'eyedropper';
-  if (tool !== 'select') { selectionStart = null; selectionPointerId = null; }
+  $('#magic-settings').hidden = tool !== 'select-color';
+  if (!['select', 'select-ellipse', 'select-lasso'].includes(tool)) { selectionStart = null; selectionPointerId = null; }
   canvas.dataset.tool = tool;
   updateDrawHoldUI();
   render();
