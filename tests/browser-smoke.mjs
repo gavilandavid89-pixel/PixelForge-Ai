@@ -371,6 +371,20 @@ try {
   await desktop.locator('#undo').click();
   assert.equal(await settledCanvasData(), pixelsBeforeSelectionDelete, 'deleting a selection must be one reversible pixel operation');
 
+  // Copy/cut/paste must round-trip selected active-layer pixels without touching outside pixels.
+  await desktop.locator('#select-tool').click();
+  await desktop.mouse.move(selectedEditPoint.x - 12, selectedEditPoint.y - 10);
+  await desktop.mouse.down();
+  await desktop.mouse.move(selectedEditPoint.x + 12, selectedEditPoint.y + 10);
+  await desktop.mouse.up();
+  const beforeClipboardRoundTrip = await settledCanvasData();
+  await desktop.keyboard.press('Control+x');
+  await desktop.waitForFunction(() => /Selection cut to internal clipboard/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.keyboard.press('Control+v');
+  await desktop.waitForFunction(() => /Pasted [0-9,]+ pixels/.test(document.querySelector('#status')?.textContent ?? ''));
+  assert.equal(await settledCanvasData(), beforeClipboardRoundTrip, 'cut then paste at the selection origin must restore exact canvas pixels');
+  await desktop.keyboard.press('Escape');
+
   // Use an isolated context so desktop autosaved state cannot leak into the mobile smoke tests.
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const mobile = await mobileContext.newPage();
