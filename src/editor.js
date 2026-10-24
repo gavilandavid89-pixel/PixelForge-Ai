@@ -1081,6 +1081,12 @@ window.addEventListener('keydown', event => {
   }
   if (textEntry) return;
   if (nativeControl && !modifiedShortcut && event.key !== 'Escape' && !((event.key === 'Delete' || event.key === 'Backspace') && selection)) return;
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+    event.preventDefault();
+    selection = { x: 0, y: 0, width: doc.width, height: doc.height };
+    selectionStart = null; selectionPointerId = null; syncSelectionMask();
+    status('Selected entire canvas', 'success'); render(); return;
+  }
   if ((event.ctrlKey || event.metaKey) && ['c', 'x', 'v'].includes(event.key.toLowerCase())) {
     event.preventDefault();
     try {
