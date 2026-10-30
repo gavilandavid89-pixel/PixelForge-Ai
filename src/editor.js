@@ -1,4 +1,4 @@
-import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints, createSelectionMask, createColorSelectionMask, modifySelectionMask } from './core.js';
+import { RasterDocument, screenToDocument, validateDimensions, rasterLinePoints, createSelectionMask, createColorSelectionMask, modifySelectionMask, combineSelectionMasks, translateSelectionMask } from './core.js';
 import { loadMostRecentProject, saveProject, listSavedProjects, loadProjectById } from './persistence.js';
 import { preflightImageFile } from './image-import.js';
 import { createSpriteSheetLayout } from './asset-export.js';
@@ -586,17 +586,24 @@ function selectionBounds(mask) {
   }
   return right < left ? null : { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
 }
+function applySelectionCombination(nextMask, baseMask = doc.selectionMask) {
+  const operation = $('#selection-mode')?.value ?? 'replace';
+  const combined = combineSelectionMasks(doc.width, doc.height, baseMask, nextMask, operation);
+  const bounds = combined ? selectionBounds(combined) : null;
+  selection = bounds ? { ...bounds, shape: 'mask', customMask: combined } : null;
+  selectionStart = null; selectionPointerId = null; syncSelectionMask();
+  const labels = { replace: 'replaced', add: 'expanded', subtract: 'reduced', intersect: 'intersected' };
+  status(selection ? 'Selection ' + labels[operation] + ' · ' + combined.reduce((sum, value) => sum + value, 0).toLocaleString() + ' pixels' : 'Selection is empty', 'success');
+  render();
+}
 function performColorSelection(point) {
   if (!point?.inside || flushInProgress) return;
   try {
     const mask = createColorSelectionMask(doc.width, doc.height, doc.activeLayer.pixels, point.x, point.y, {
       tolerance: Number($('#magic-tolerance').value), contiguous: $('#magic-mode').value === 'contiguous'
     });
-    const bounds = selectionBounds(mask);
-    if (!bounds) { selection = null; syncSelectionMask(); status('No matching colors selected', 'neutral'); render(); return; }
-    selection = { ...bounds, shape: 'mask', customMask: mask };
-    selectionStart = null; selectionPointerId = null; syncSelectionMask();
-    status(`Color selection: ${mask.reduce((sum, value) => sum + value, 0).toLocaleString()} pixels`, 'success'); render();
+    if (!mask.some(Boolean)) { status('No matching colors selected', 'neutral'); return; }
+    applySelectionCombination(mask);
   } catch (error) { status(error.message, 'error'); }
 }
 function performFill(point) {
@@ -680,7 +687,7 @@ canvas.addEventListener('pointerdown', event => {
   if (['select', 'select-ellipse', 'select-lasso'].includes(tool)) {
     const point = docPoint(event); if (!point.inside) return;
     const shape = tool === 'select-ellipse' ? 'ellipse' : tool === 'select-lasso' ? 'polygon' : 'rect';
-    selectionStart = shape === 'polygon' ? { x: point.x, y: point.y, shape, points: [{ x: point.x, y: point.y }] } : { x: point.x, y: point.y, shape };
+    selectionStart = shape === 'polygon' ? { x: point.x, y: point.y, shape, points: [{ x: point.x, y: point.y }], baseMask: doc.selectionMask ? new Uint8Array(doc.selectionMask) : null } : { x: point.x, y: point.y, shape, baseMask: doc.selectionMask ? new Uint8Array(doc.selectionMask) : null };
     selectionPointerId = event.pointerId;
     selection = shape === 'polygon' ? { x: point.x, y: point.y, width: 1, height: 1, shape, points: [...selectionStart.points] } : { x: point.x, y: point.y, width: 1, height: 1, shape };
     syncSelectionMask();
@@ -780,8 +787,9 @@ canvas.addEventListener('pointerup', event => {
       selectionStart = null; selectionPointerId = null; selection = null; syncSelectionMask();
       status('Lasso needs at least three points', 'warning'); render(); return;
     }
-    selectionStart = null; selectionPointerId = null; syncSelectionMask();
-    status(`Selected ${selection.width} × ${selection.height} pixels`, 'success'); render(); return;
+    const baseMask = selectionStart.baseMask;
+    const nextMask = new Uint8Array(doc.selectionMask);
+    applySelectionCombination(nextMask, baseMask); return;
   }
   if (panning) { panning = false; panStart = null; canvas.classList.remove('is-panning'); return; }
   if (event.pointerType === 'touch' && event.pointerId === virtualCursorPointerId) {
@@ -909,6 +917,21 @@ function modifyCurrentSelection(operation) {
 $('#selection-invert').addEventListener('click', () => modifyCurrentSelection('invert'));
 $('#selection-expand').addEventListener('click', () => modifyCurrentSelection('expand'));
 $('#selection-contract').addEventListener('click', () => modifyCurrentSelection('contract'));
+function moveSelectionOutline(dx, dy) {
+  if (!selection || !doc.selectionMask) { status('Create a selection first', 'neutral'); return; }
+  const mask = translateSelectionMask(doc.width, doc.height, doc.selectionMask, dx, dy);
+  const bounds = selectionBounds(mask);
+  selection = bounds ? { ...bounds, shape: 'mask', customMask: mask } : null;
+  syncSelectionMask();
+  status(selection ? 'Selection outline moved without moving artwork' : 'Selection moved outside the canvas', 'success');
+  render();
+}
+$('#selection-outline-move').addEventListener('click', event => {
+  const button = event.target.closest('[data-selection-move]');
+  if (!button) return;
+  const offsets = button.dataset.selectionMove.split(',').map(Number);
+  moveSelectionOutline(offsets[0], offsets[1]);
+});
 
 function clearTransformPreview() {
   transformPreview = null;
