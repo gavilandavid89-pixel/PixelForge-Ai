@@ -133,19 +133,36 @@ export function createSelectionMask(width, height, selection) {
     }
   } else {
     const points = selection.points;
-    const onSegment = (x, y, a, b) => {
-      const cross = (x - a.x) * (b.y - a.y) - (y - a.y) * (b.x - a.x);
-      if (Math.abs(cross) > .5) return false;
-      return x >= Math.min(a.x, b.x) - .5 && x <= Math.max(a.x, b.x) + .5 && y >= Math.min(a.y, b.y) - .5 && y <= Math.max(a.y, b.y) + .5;
-    };
-    for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) {
-      let inside = false;
+    // Scanline filling changes polygon rasterization from O(area × vertices) to
+    // O(height × vertices + filled area), which matters for detailed freehand lassos.
+    const intersections = [];
+    for (let y = top; y < bottom; y++) {
+      intersections.length = 0;
       for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-        const a = points[i], b = points[j];
-        if (onSegment(x, y, a, b)) { inside = true; break; }
-        if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+        const a = points[j], b = points[i];
+        if ((a.y > y) === (b.y > y) || a.y === b.y) continue;
+        intersections.push(a.x + (y - a.y) * (b.x - a.x) / (b.y - a.y));
       }
-      if (inside) mask[y * width + x] = 1;
+      intersections.sort((a, b) => a - b);
+      for (let i = 0; i + 1 < intersections.length; i += 2) {
+        const start = Math.max(left, Math.ceil(intersections[i] - 1e-9));
+        const end = Math.min(right - 1, Math.floor(intersections[i + 1] + 1e-9));
+        if (end >= start) mask.fill(1, y * width + start, y * width + end + 1);
+      }
+    }
+    // Include the polygon boundary consistently, including horizontal edges.
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i], b = points[(i + 1) % points.length];
+      const dx = Math.abs(b.x - a.x), sx = a.x < b.x ? 1 : -1;
+      const dy = -Math.abs(b.y - a.y), sy = a.y < b.y ? 1 : -1;
+      let error = dx + dy, x = a.x, y = a.y;
+      while (true) {
+        if (x >= 0 && y >= 0 && x < width && y < height) mask[y * width + x] = 1;
+        if (x === b.x && y === b.y) break;
+        const twice = 2 * error;
+        if (twice >= dy) { error += dy; x += sx; }
+        if (twice <= dx) { error += dx; y += sy; }
+      }
     }
   }
   return mask;
