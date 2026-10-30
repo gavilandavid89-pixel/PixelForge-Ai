@@ -43,6 +43,38 @@ export function modifySelectionMask(width, height, mask, operation, radius = 1) 
   return output;
 }
 
+export function combineSelectionMasks(width, height, baseMask, nextMask, operation = 'replace') {
+  validateDimensions(width, height);
+  const size = width * height;
+  for (const mask of [baseMask, nextMask]) {
+    if (mask !== null && (!(mask instanceof Uint8Array) || mask.length !== size)) {
+      throw new TypeError('Selection masks must be Uint8Arrays matching document dimensions.');
+    }
+  }
+  if (!['replace', 'add', 'subtract', 'intersect'].includes(operation)) throw new TypeError('Unsupported selection combination operation.');
+  if (operation === 'replace' || baseMask === null) return nextMask ? new Uint8Array(nextMask) : null;
+  if (nextMask === null) return operation === 'intersect' ? new Uint8Array(size) : new Uint8Array(baseMask);
+  const output = new Uint8Array(size);
+  for (let i = 0; i < size; i++) {
+    const a = baseMask[i] !== 0, b = nextMask[i] !== 0;
+    output[i] = (operation === 'add' ? a || b : operation === 'subtract' ? a && !b : a && b) ? 1 : 0;
+  }
+  return output;
+}
+
+export function translateSelectionMask(width, height, mask, dx, dy) {
+  validateDimensions(width, height);
+  if (!(mask instanceof Uint8Array) || mask.length !== width * height) throw new TypeError('Selection mask must match document dimensions.');
+  if (!Number.isInteger(dx) || !Number.isInteger(dy)) throw new TypeError('Selection offset must use integer pixels.');
+  const output = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    if (!mask[y * width + x]) continue;
+    const nx = x + dx, ny = y + dy;
+    if (nx >= 0 && ny >= 0 && nx < width && ny < height) output[ny * width + nx] = 1;
+  }
+  return output;
+}
+
 export function createColorSelectionMask(width, height, pixels, x, y, { tolerance = 0, contiguous = true } = {}) {
   validateDimensions(width, height);
   if (!(pixels instanceof Uint8ClampedArray) || pixels.length !== width * height * 4) throw new TypeError('Color selection pixels must match document dimensions.');
