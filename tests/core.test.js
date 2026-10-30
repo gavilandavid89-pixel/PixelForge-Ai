@@ -238,8 +238,19 @@ test('project serialization round-trips pixels, layers, identity and metadata', 
 });
 test('project import rejects mismatched pixel buffers and unsupported versions', () => {
   const invalid = new RasterDocument(2, 2).toJSON(); invalid.layers[0].pixels = 'AA==';
-  assert.throws(() => RasterDocument.fromJSON(invalid), /pixel data length/);
+  assert.throws(() => RasterDocument.fromJSON(invalid), /Invalid or oversized layer data/);
   assert.throws(() => RasterDocument.fromJSON({ format: 'pixelforge-project', version: 900, width: 2, height: 2, layers: [] }), /Unsupported/);
+});
+test('project import rejects malformed and non-canonical base64 pixel buffers', () => {
+  const base = new RasterDocument(2, 2).toJSON();
+  for (const encoded of ['!!!!', 'AAAA AAAA', 'AAAA====', 'AB==', 'AAAA']) {
+    const invalid = structuredClone(base);
+    invalid.layers[0].pixels = encoded;
+    assert.throws(() => RasterDocument.fromJSON(invalid), /Invalid|pixel data length/);
+  }
+  const valid = structuredClone(base);
+  valid.layers[0].pixels = btoa(String.fromCharCode(...new Uint8Array(16)));
+  assert.equal(RasterDocument.fromJSON(valid).activeLayer.pixels.length, 16);
 });
 test('hex color parsing supports short and long formats and rejects invalid values', () => {
   assert.deepEqual(parseHexColor('#abc'), [170, 187, 204]);
