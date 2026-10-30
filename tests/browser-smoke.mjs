@@ -469,11 +469,11 @@ try {
   await desktop.locator('#selection-mode').selectOption('intersect');
   await drawMarquee(mx - 18, my - 24, mx + 8, my + 2);
   await desktop.waitForFunction(() => /Selection intersected/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.locator('#selection-mode').selectOption('replace');
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
-  await desktop.locator('#selection-mode').selectOption('replace');
 
-  // Selected pixels can be nudged independently from the selection outline; this is a real canvas command; this is a real canvas command.
+  // Selected pixels can be nudged independently from the selection outline; this is a real canvas command.
   await desktop.locator('#select-tool').click();
   const transformBox = await desktop.locator('#canvas').boundingBox();
   const tx = transformBox.x + transformBox.width / 2, ty = transformBox.y + transformBox.height / 2;
