@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints, createSelectionMask, createColorSelectionMask, modifySelectionMask } from '../src/core.js';
+import { RasterDocument, screenToDocument, validateDimensions, parseHexColor, MAX_DOCUMENT_BYTES, rasterLinePoints, createSelectionMask, createColorSelectionMask, modifySelectionMask, combineSelectionMasks, translateSelectionMask } from '../src/core.js';
 
 test('layer reordering changes composite stacking and supports undo/redo', () => {
   const doc = new RasterDocument(2, 2);
@@ -553,6 +553,27 @@ test('rectangle and ellipse selection masks produce clipped deterministic pixel 
   assert.equal(polygon[4 * 5 + 4], 0, 'polygon should exclude pixels outside its path');
   assert.equal(createSelectionMask(5, 5, null), null);
   assert.throws(() => createSelectionMask(5, 5, { x: 0, y: 0, width: 2, height: 2, shape: 'lasso' }), /supported rect\/ellipse\/polygon/);
+});
+
+test('selection combination supports replace, add, subtract and intersect without mutating inputs', () => {
+  const base = new Uint8Array([1, 1, 0, 0, 1, 0]);
+  const next = new Uint8Array([0, 1, 1, 0, 0, 1]);
+  assert.deepEqual([...combineSelectionMasks(3, 2, base, next, 'replace')], [...next]);
+  assert.deepEqual([...combineSelectionMasks(3, 2, base, next, 'add')], [1, 1, 1, 0, 1, 1]);
+  assert.deepEqual([...combineSelectionMasks(3, 2, base, next, 'subtract')], [1, 0, 0, 0, 1, 0]);
+  assert.deepEqual([...combineSelectionMasks(3, 2, base, next, 'intersect')], [0, 1, 0, 0, 0, 0]);
+  assert.deepEqual([...combineSelectionMasks(3, 2, null, next, 'subtract')], [0, 0, 0, 0, 0, 0]);
+  assert.deepEqual([...base], [1, 1, 0, 0, 1, 0], 'combination must not mutate the base mask');
+  assert.throws(() => combineSelectionMasks(3, 2, base, next, 'xor'), /Unsupported selection combination/);
+});
+
+test('moving a selection outline clips at canvas edges and never mutates its source mask', () => {
+  const source = new Uint8Array([1, 1, 0, 0, 1, 0]);
+  assert.deepEqual([...translateSelectionMask(3, 2, source, 1, 0)], [0, 1, 1, 0, 0, 1]);
+  assert.deepEqual([...translateSelectionMask(3, 2, source, -1, 0)], [1, 0, 0, 1, 0, 0]);
+  assert.deepEqual([...translateSelectionMask(3, 2, source, 0, 5)], [0, 0, 0, 0, 0, 0]);
+  assert.deepEqual([...source], [1, 1, 0, 0, 1, 0]);
+  assert.throws(() => translateSelectionMask(3, 2, source, .5, 0), /integer pixels/);
 });
 
 test('copyRect copies only selected pixels and leaves unselected clipboard pixels transparent', () => {
