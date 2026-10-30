@@ -52,7 +52,8 @@ export function combineSelectionMasks(width, height, baseMask, nextMask, operati
     }
   }
   if (!['replace', 'add', 'subtract', 'intersect'].includes(operation)) throw new TypeError('Unsupported selection combination operation.');
-  if (operation === 'replace' || baseMask === null) return nextMask ? new Uint8Array(nextMask) : null;
+  if (operation === 'replace') return nextMask ? new Uint8Array(nextMask) : null;
+  if (baseMask === null) return operation === 'add' && nextMask ? new Uint8Array(nextMask) : new Uint8Array(size);
   if (nextMask === null) return operation === 'intersect' ? new Uint8Array(size) : new Uint8Array(baseMask);
   const output = new Uint8Array(size);
   for (let i = 0; i < size; i++) {
