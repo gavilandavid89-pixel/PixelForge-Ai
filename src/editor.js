@@ -579,10 +579,20 @@ function performSample(point) {
   } catch (error) { status(error.message, 'error'); }
 }
 function selectionBounds(mask) {
-  let left = doc.width, top = doc.height, right = -1, bottom = -1;
-  for (let y = 0; y < doc.height; y++) for (let x = 0; x < doc.width; x++) {
-    if (!mask[y * doc.width + x]) continue;
-    left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y);
+  if (!(mask instanceof Uint8Array) || mask.length !== doc.width * doc.height) return null;
+  const first = mask.indexOf(1);
+  if (first < 0) return null;
+  const last = mask.lastIndexOf(1);
+  const top = Math.floor(first / doc.width), bottom = Math.floor(last / doc.width);
+  let left = doc.width, right = -1;
+  // Typed-array row searches run in native code and avoid millions of JS-level
+  // branches when selections are recalculated on large canvases.
+  for (let y = top; y <= bottom; y++) {
+    const row = mask.subarray(y * doc.width, (y + 1) * doc.width);
+    const rowLeft = row.indexOf(1);
+    if (rowLeft < 0) continue;
+    left = Math.min(left, rowLeft);
+    right = Math.max(right, row.lastIndexOf(1));
   }
   return right < left ? null : { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
 }
