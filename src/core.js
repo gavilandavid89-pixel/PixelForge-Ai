@@ -28,17 +28,45 @@ export function modifySelectionMask(width, height, mask, operation, radius = 1) 
   if (!['invert', 'expand', 'contract'].includes(operation)) throw new TypeError('Unsupported selection-mask operation.');
   if (!Number.isInteger(radius) || radius < 1 || radius > 16) throw new RangeError('Selection radius must be an integer from 1 to 16.');
   if (operation === 'invert') return Uint8Array.from(mask, value => value ? 0 : 1);
-  const output = new Uint8Array(mask.length);
-  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
-    let selected = operation === 'contract';
-    for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
-      if (Math.abs(dx) + Math.abs(dy) > radius) continue;
-      const px = x + dx, py = y + dy;
-      const neighbor = px >= 0 && py >= 0 && px < width && py < height ? mask[py * width + px] === 1 : false;
-      if (operation === 'expand' && neighbor) selected = true;
-      if (operation === 'contract' && !neighbor) selected = false;
+  const cap = radius + 1;
+  // Two-pass Manhattan distance transform. The previous neighborhood scan
+  // revisited O(radius²) offsets for every pixel; this is O(width × height).
+  const distance = new Uint8Array(mask.length);
+  if (operation === 'expand') {
+    for (let i = 0; i < mask.length; i++) distance[i] = mask[i] === 1 ? 0 : cap;
+  } else {
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const index = y * width + x;
+      distance[index] = mask[index] === 1
+        ? Math.min(cap, x + 1, y + 1, width - x, height - y)
+        : 0;
     }
-    output[y * width + x] = selected ? 1 : 0;
+  }
+  // Forward pass: nearest source above or to the left.
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      const index = row + x;
+      let best = distance[index];
+      if (x > 0 && distance[index - 1] + 1 < best) best = distance[index - 1] + 1;
+      if (y > 0 && distance[index - width] + 1 < best) best = distance[index - width] + 1;
+      distance[index] = best;
+    }
+  }
+  // Backward pass completes exact four-neighbor Manhattan distances.
+  for (let y = height - 1; y >= 0; y--) {
+    const row = y * width;
+    for (let x = width - 1; x >= 0; x--) {
+      const index = row + x;
+      let best = distance[index];
+      if (x + 1 < width && distance[index + 1] + 1 < best) best = distance[index + 1] + 1;
+      if (y + 1 < height && distance[index + width] + 1 < best) best = distance[index + width] + 1;
+      distance[index] = best;
+    }
+  }
+  const output = new Uint8Array(mask.length);
+  for (let i = 0; i < output.length; i++) {
+    output[i] = operation === 'expand' ? (distance[i] <= radius ? 1 : 0) : (distance[i] > radius ? 1 : 0);
   }
   return output;
 }
