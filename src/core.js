@@ -959,7 +959,7 @@ export class RasterDocument {
       layerIdMap.set(item.id, newLayerId);
       const opacity = Number(item.opacity ?? 1);
       if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) throw new RangeError('Layer opacity must be between 0 and 1.');
-      const pixels = base64ToBytes(item.pixels);
+      const pixels = base64ToBytes(item.pixels, data.width * data.height * 4);
       if (pixels.length !== data.width * data.height * 4) throw new RangeError('Layer pixel data length does not match document dimensions.');
       return { id: newLayerId, name: item.name.trim().slice(0, 180) || `Layer ${index + 1}`, visible: item.visible !== false, opacity, locked: Boolean(item.locked), pixels };
     });
@@ -1122,11 +1122,17 @@ function bytesToBase64(bytes) {
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);
 }
-function base64ToBytes(value) {
-  if (typeof value !== 'string' || value.length > 24_000_000) throw new TypeError('Invalid or oversized layer data.');
+function base64ToBytes(value, expectedLength) {
+  if (!Number.isInteger(expectedLength) || expectedLength < 0) throw new RangeError('Invalid expected pixel-buffer length.');
+  const expectedEncodedLength = Math.ceil(expectedLength / 3) * 4;
+  if (typeof value !== 'string' || value.length !== expectedEncodedLength || value.length > 24_000_000 ||
+      !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+    throw new TypeError('Invalid or oversized layer data.');
+  }
   let binary;
   try { binary = atob(value); } catch { throw new TypeError('Invalid base64 pixel data.'); }
-  const bytes = new Uint8ClampedArray(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  if (binary.length !== expectedLength || btoa(binary) !== value) throw new TypeError('Invalid or non-canonical base64 pixel data.');
+  const bytes = new Uint8ClampedArray(expectedLength);
+  for (let i = 0; i < expectedLength; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
