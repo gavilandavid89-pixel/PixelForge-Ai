@@ -59,7 +59,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Delete/Backspace clears selected active-layer pixels as one undoable operation; locked layers reject the edit.
 - [x] Rectangular, elliptical and freehand lasso selections generate masks shared by pencil, eraser, fill, clear, color replacement, clipboard, outline and flip operations; lasso polygons use scanline rasterization to avoid per-pixel rescans of every vertex; selection bounds use native typed-array row searches.
 - [x] Magic-wand selection by connected or global matching colors, with RGBA-aware transparency and tolerance.
-- [x] Invert, expand and contract selection masks with bounded Manhattan-distance radius and visible pixel contours for custom masks.
+- [x] Invert, expand and contract selection masks with bounded Manhattan-distance radius, O(width × height) two-pass distance transforms and visible pixel contours for custom masks.
 - [ ] Click-to-place polygon selection, feathering and saved selection sets.
 - [x] Replace/add/subtract/intersect selection composition for marquee, lasso and magic-wand results.
 - [x] Move the selection outline independently in one-pixel steps without moving artwork; clipping and source-mask preservation are core-tested.
