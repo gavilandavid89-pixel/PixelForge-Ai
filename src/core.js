@@ -850,28 +850,37 @@ export class RasterDocument {
   }
   clearCompositeDirtyTiles() { this.compositeDirtyTiles.clear(); }
   composite() {
+    if (this.compositeDirtyTiles.size === 0) return this.compositeCache;
+    const visibleLayers = this.layers
+      .filter(layer => layer.visible && layer.opacity > 0)
+      .map(layer => ({ pixels: layer.pixels, opacity: Math.max(0, Math.min(1, layer.opacity)) }));
     for (const key of this.compositeDirtyTiles) {
-      const [tileX, tileY] = key.split(':').map(Number);
+      const separator = key.indexOf(':');
+      const tileX = Number(key.slice(0, separator)), tileY = Number(key.slice(separator + 1));
       const startX = tileX * TILE_SIZE, startY = tileY * TILE_SIZE;
       const width = Math.min(TILE_SIZE, this.width - startX), height = Math.min(TILE_SIZE, this.height - startY);
-      for (let row = 0; row < height; row++) for (let col = 0; col < width; col++) {
-        const x = startX + col, y = startY + row, i = (y * this.width + x) * 4;
-        let red = 0, green = 0, blue = 0, alpha = 0;
-        for (const layer of this.layers) {
-          if (!layer.visible || layer.opacity <= 0) continue;
-          const sa = layer.pixels[i + 3] / 255 * Math.max(0, Math.min(1, layer.opacity));
-          if (sa <= 0) continue;
-          const oa = sa + alpha * (1 - sa);
-          if (oa <= 0) continue;
-          red = (layer.pixels[i] * sa + red * alpha * (1 - sa)) / oa;
-          green = (layer.pixels[i + 1] * sa + green * alpha * (1 - sa)) / oa;
-          blue = (layer.pixels[i + 2] * sa + blue * alpha * (1 - sa)) / oa;
-          alpha = oa;
+      for (let row = 0; row < height; row++) {
+        let index = ((startY + row) * this.width + startX) * 4;
+        const rowEnd = index + width * 4;
+        for (; index < rowEnd; index += 4) {
+          let red = 0, green = 0, blue = 0, alpha = 0;
+          for (let layerIndex = 0; layerIndex < visibleLayers.length; layerIndex++) {
+            const layer = visibleLayers[layerIndex], source = layer.pixels;
+            const sourceAlpha = source[index + 3];
+            if (sourceAlpha === 0) continue;
+            const sa = sourceAlpha * (1 / 255) * layer.opacity;
+            const remaining = 1 - sa;
+            red = source[index] * sa + red * remaining;
+            green = source[index + 1] * sa + green * remaining;
+            blue = source[index + 2] * sa + blue * remaining;
+            alpha = sa + alpha * remaining;
+          }
+          const inverseAlpha = alpha > 0 ? 1 / alpha : 0;
+          this.compositeCache[index] = Math.round(red * inverseAlpha);
+          this.compositeCache[index + 1] = Math.round(green * inverseAlpha);
+          this.compositeCache[index + 2] = Math.round(blue * inverseAlpha);
+          this.compositeCache[index + 3] = Math.round(alpha * 255);
         }
-        this.compositeCache[i] = Math.round(red);
-        this.compositeCache[i + 1] = Math.round(green);
-        this.compositeCache[i + 2] = Math.round(blue);
-        this.compositeCache[i + 3] = Math.round(alpha * 255);
       }
     }
     return this.compositeCache;
