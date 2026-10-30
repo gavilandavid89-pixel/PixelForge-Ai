@@ -202,6 +202,28 @@ test('layer addition and visibility can be undone and redone', () => {
   doc.setLayerVisibility(doc.layers[1].id, false); assert.equal(doc.layers[1].visible, false);
   doc.undo(); assert.equal(doc.layers[1].visible, true);
 });
+test('tiled composite cache preserves layered alpha math and returns the cached buffer when clean', () => {
+  const doc = new RasterDocument(2, 1);
+  doc.activeLayer.pixels.set([240, 20, 10, 128, 40, 80, 220, 255]);
+  const top = doc.addLayer('Translucent top');
+  top.pixels.set([10, 230, 40, 128, 0, 0, 0, 0]);
+  doc.setLayerOpacity(top.id, 0.5);
+  const composite = doc.composite();
+  const first = [...composite];
+  const expectedAlpha = 128 / 255 * 0.5;
+  const expectedRed = Math.round((10 * expectedAlpha + 240 * (128 / 255) * (1 - expectedAlpha)) /
+    (expectedAlpha + (128 / 255) * (1 - expectedAlpha)));
+  assert.equal(first[0], expectedRed);
+  assert.equal(first[3], Math.round((expectedAlpha + (128 / 255) * (1 - expectedAlpha)) * 255));
+  assert.deepEqual(first.slice(4, 8), [40, 80, 220, 255]);
+  assert.equal(doc.composite(), composite, 'clean composite requests should reuse the same cache buffer');
+  assert.deepEqual([...doc.composite()], first, 'clean cache reads must preserve rendered pixels');
+  doc.setLayerVisibility(top.id, false);
+  assert.deepEqual([...doc.composite()], [240, 20, 10, 128, 40, 80, 220, 255]);
+  assert.equal(doc.undo(), true);
+  assert.deepEqual([...doc.composite()], first);
+});
+
 test('project serialization round-trips pixels, layers, identity and metadata', () => {
   const doc = new RasterDocument(6, 7, 'Test artwork');
   const stroke = doc.beginStroke({ color: '#abc', size: 1 });
