@@ -452,7 +452,28 @@ try {
   await desktop.keyboard.press('Escape');
   await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
 
-  // Selected pixels can be nudged independently from the selection outline; this is a real canvas command.
+  // Selection composition and outline movement are non-destructive UI operations.
+  const drawMarquee = async (x1, y1, x2, y2) => {
+    await desktop.mouse.move(x1, y1); await desktop.mouse.down();
+    await desktop.mouse.move(x2, y2); await desktop.mouse.up();
+  };
+  await drawMarquee(mx - 30, my - 24, mx - 4, my + 2);
+  await desktop.locator('#selection-mode').selectOption('add');
+  await drawMarquee(mx - 4, my - 24, mx + 22, my + 2);
+  await desktop.waitForFunction(() => /Selection added/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.locator('#selection-outline-move [data-selection-move="1,0"]').click();
+  await desktop.waitForFunction(() => /Selection outline moved without moving artwork/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.locator('#selection-mode').selectOption('subtract');
+  await drawMarquee(mx - 4, my - 24, mx + 22, my + 2);
+  await desktop.waitForFunction(() => /Selection subtracted/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.locator('#selection-mode').selectOption('intersect');
+  await drawMarquee(mx - 18, my - 24, mx + 8, my + 2);
+  await desktop.waitForFunction(() => /Selection intersected/.test(document.querySelector('#status')?.textContent ?? ''));
+  await desktop.keyboard.press('Escape');
+  await desktop.waitForFunction(() => document.querySelector('#status')?.textContent === 'Selection cleared');
+  await desktop.locator('#selection-mode').selectOption('replace');
+
+  // Selected pixels can be nudged independently from the selection outline; this is a real canvas command; this is a real canvas command.
   await desktop.locator('#select-tool').click();
   const transformBox = await desktop.locator('#canvas').boundingBox();
   const tx = transformBox.x + transformBox.width / 2, ty = transformBox.y + transformBox.height / 2;
