@@ -586,14 +586,18 @@ function selectionBounds(mask) {
   }
   return right < left ? null : { x: left, y: top, width: right - left + 1, height: bottom - top + 1 };
 }
-function applySelectionCombination(nextMask, baseMask = doc.selectionMask) {
+function applySelectionCombination(nextMask, baseMask = doc.selectionMask, sourceLabel = 'Selection') {
   const operation = $('#selection-mode')?.value ?? 'replace';
   const combined = combineSelectionMasks(doc.width, doc.height, baseMask, nextMask, operation);
   const bounds = combined ? selectionBounds(combined) : null;
   selection = bounds ? { ...bounds, shape: 'mask', customMask: combined } : null;
   selectionStart = null; selectionPointerId = null; syncSelectionMask();
-  const labels = { replace: 'replaced', add: 'expanded', subtract: 'reduced', intersect: 'intersected' };
-  status(selection ? 'Selection ' + labels[operation] + ' · ' + combined.reduce((sum, value) => sum + value, 0).toLocaleString() + ' pixels' : 'Selection is empty', 'success');
+  const labels = { replace: 'replaced', add: 'added', subtract: 'subtracted', intersect: 'intersected' };
+  const count = combined.reduce((sum, value) => sum + value, 0);
+  if (!selection) status('Selection is empty', 'success');
+  else if (sourceLabel === 'Color selection' && operation === 'replace') status('Color selection: ' + count.toLocaleString() + ' pixels', 'success');
+  else if (operation === 'replace') status('Selected ' + selection.width + ' × ' + selection.height + ' pixels', 'success');
+  else status('Selection ' + labels[operation] + ' · ' + count.toLocaleString() + ' pixels', 'success');
   render();
 }
 function performColorSelection(point) {
@@ -603,7 +607,7 @@ function performColorSelection(point) {
       tolerance: Number($('#magic-tolerance').value), contiguous: $('#magic-mode').value === 'contiguous'
     });
     if (!mask.some(Boolean)) { status('No matching colors selected', 'neutral'); return; }
-    applySelectionCombination(mask);
+    applySelectionCombination(mask, doc.selectionMask, 'Color selection');
   } catch (error) { status(error.message, 'error'); }
 }
 function performFill(point) {
