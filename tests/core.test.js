@@ -576,6 +576,18 @@ test('moving a selection outline clips at canvas edges and never mutates its sou
   assert.throws(() => translateSelectionMask(3, 2, source, .5, 0), /integer pixels/);
 });
 
+test('lasso scanline rasterization handles dense contours with clipped inclusive boundaries', () => {
+  const points = Array.from({ length: 512 }, (_, index) => {
+    const angle = index * Math.PI * 2 / 512;
+    return { x: Math.round(512 + Math.cos(angle) * 480), y: Math.round(512 + Math.sin(angle) * 480) };
+  });
+  const mask = createSelectionMask(1024, 1024, { x: 32, y: 32, width: 961, height: 961, shape: 'polygon', points });
+  const count = mask.reduce((sum, value) => sum + value, 0);
+  assert.ok(count > 700_000 && count < 760_000, 'dense circular lasso should fill its interior without per-pixel edge rescans');
+  assert.equal(mask[512 * 1024 + 512], 1, 'the polygon center must be selected');
+  assert.equal(mask[0], 0, 'pixels outside the lasso must remain unselected');
+});
+
 test('copyRect copies only selected pixels and leaves unselected clipboard pixels transparent', () => {
   const doc = new RasterDocument(3, 3);
   const stroke = doc.beginStroke({ color: '#ff0000' });
