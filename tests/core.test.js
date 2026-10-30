@@ -577,6 +577,30 @@ test('rectangle and ellipse selection masks produce clipped deterministic pixel 
   assert.throws(() => createSelectionMask(5, 5, { x: 0, y: 0, width: 2, height: 2, shape: 'lasso' }), /supported rect\/ellipse\/polygon/);
 });
 
+test('linear selection morphology matches a brute-force Manhattan reference for varied masks and radii', () => {
+  let seed = 0x51ec710;
+  const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 0x100000000; };
+  const width = 13, height = 9;
+  for (let sample = 0; sample < 12; sample++) {
+    const mask = Uint8Array.from({ length: width * height }, () => random() > 0.58 ? 1 : 0);
+    for (let radius = 1; radius <= 5; radius++) for (const operation of ['expand', 'contract']) {
+      const expected = new Uint8Array(mask.length);
+      for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+        let selected = operation === 'contract';
+        for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+          if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+          const px = x + dx, py = y + dy;
+          const neighbor = px >= 0 && py >= 0 && px < width && py < height && mask[py * width + px] === 1;
+          if (operation === 'expand' && neighbor) selected = true;
+          if (operation === 'contract' && !neighbor) selected = false;
+        }
+        expected[y * width + x] = selected ? 1 : 0;
+      }
+      assert.deepEqual([...modifySelectionMask(width, height, mask, operation, radius)], [...expected], `${operation} radius ${radius}, sample ${sample}`);
+    }
+  }
+});
+
 test('selection combination supports replace, add, subtract and intersect without mutating inputs', () => {
   const base = new Uint8Array([1, 1, 0, 0, 1, 0]);
   const next = new Uint8Array([0, 1, 1, 0, 0, 1]);
