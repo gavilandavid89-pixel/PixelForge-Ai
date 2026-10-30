@@ -60,12 +60,14 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Rectangular, elliptical and freehand lasso selections generate masks shared by pencil, eraser, fill, clear, color replacement, clipboard, outline and flip operations.
 - [x] Magic-wand selection by connected or global matching colors, with RGBA-aware transparency and tolerance.
 - [x] Invert, expand and contract selection masks with bounded Manhattan-distance radius and visible pixel contours for custom masks.
-- [ ] Click-to-place polygon selection, feathering, add/subtract/intersect selection modes and saved selection sets.
+- [ ] Click-to-place polygon selection, feathering and saved selection sets.
+- [x] Replace/add/subtract/intersect selection composition for marquee, lasso and magic-wand results.
+- [x] Move the selection outline independently in one-pixel steps without moving artwork; clipping and source-mask preservation are core-tested.
 - [x] Internal active-layer pixel copy/cut/paste with clipped bounds, selection-aware paste, and atomic undo for cut/paste.
 - [ ] Move/duplicate pasted pixels independently, system clipboard interoperability, and copy merged composite.
 - [x] Horizontal/vertical flip of the selected rectangle or whole active layer, selection-aware and one-step undoable.
 - [x] Move selected pixels independently from the selection outline; preserve irregular selection masks through translation and quarter-turn rotation; core regression tests pass.
-- [ ] Move the selection outline without moving pixels.
+- [x] Move the selection outline without moving pixels.
 - [x] Scale, skew and rotate selected pixels with a non-destructive preview, cancel/apply, interpolation choices, clipping and one-step undo/redo.
 - [x] Crop the full canvas to selection bounds through a preview; all layers resize together and undo/redo restores exact dimensions and pixels.
 - [x] Preview/cancel/commit, interpolation choices, clipping and single-step undo for selection transforms and canvas crop.
