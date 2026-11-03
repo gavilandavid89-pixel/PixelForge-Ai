@@ -24,7 +24,7 @@ const SYSTEM_PROMPT = [
   'Available actions: ' + JSON.stringify(AI_ACTION_CONTRACT),
 ].join('\n');
 
-function validatePlan(value) {
+function isPngDataUrl(value) {\n  return typeof value === 'string' && value.startsWith('data:image/png;base64,') && /^[A-Za-z0-9+/=]+$/.test(value.slice('data:image/png;base64,'.length));\n}\n\nfunction validatePlan(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Provider response must be a JSON object.');
   if (typeof value.summary !== 'string' || !value.summary.trim() || value.summary.length > 500) throw new TypeError('Plan summary must contain 1–500 characters.');
   if (!Array.isArray(value.actions) || value.actions.length > 16) throw new TypeError('Plan actions must be an array of at most 16 commands.');
