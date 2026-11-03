@@ -24,7 +24,13 @@ const SYSTEM_PROMPT = [
   'Available actions: ' + JSON.stringify(AI_ACTION_CONTRACT),
 ].join('\n');
 
-function isPngDataUrl(value) {\n  return typeof value === 'string' && value.startsWith('data:image/png;base64,') && /^[A-Za-z0-9+/=]+$/.test(value.slice('data:image/png;base64,'.length));\n}\n\nfunction validatePlan(value) {
+function isPngDataUrl(value) {
+  const prefix = 'data:image/png;base64,';
+  return typeof value === 'string' && value.startsWith(prefix) &&
+    /^[A-Za-z0-9+/=]+$/.test(value.slice(prefix.length));
+}
+
+function validatePlan(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Provider response must be a JSON object.');
   if (typeof value.summary !== 'string' || !value.summary.trim() || value.summary.length > 500) throw new TypeError('Plan summary must contain 1–500 characters.');
   if (!Array.isArray(value.actions) || value.actions.length > 16) throw new TypeError('Plan actions must be an array of at most 16 commands.');
@@ -64,14 +70,13 @@ export class OpenAICompatibleProvider {
 
   async generatePlan({ prompt, context, imageDataUrl, imageDataUrls, signal } = {}) {
     if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 4000) throw new TypeError('Prompt must contain 1–4000 characters.');
-    if (imageDataUrl !== undefined && (typeof imageDataUrl !== 'string' || !/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(imageDataUrl) || imageDataUrl.length > 8 * 1024 * 1024)) {
-      throw new TypeError('Artwork context must be a PNG data URL no larger than 8 MiB.');
-    }
     const images = imageDataUrls ?? (imageDataUrl ? [{ label: 'Artwork context', dataUrl: imageDataUrl }] : []);
     if (!Array.isArray(images) || images.length > 24) throw new RangeError('At most 24 visual references may be attached.');
     let imageBytes = 0;
     for (const image of images) {
-      if (!image || typeof image.label !== 'string' || image.label.length > 180 || typeof image.dataUrl !== 'string' || !/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(image.dataUrl)) throw new TypeError('Every visual reference must have a label and PNG data URL.');
+      if (!image || typeof image.label !== 'string' || image.label.length > 180 || !isPngDataUrl(image.dataUrl)) {
+        throw new TypeError('Every visual reference must have a label and PNG data URL.');
+      }
       if (image.dataUrl.length > 8 * 1024 * 1024) throw new RangeError('Each visual reference must be no larger than 8 MiB.');
       imageBytes += image.dataUrl.length;
     }
