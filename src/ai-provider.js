@@ -62,12 +62,12 @@ export class OpenAICompatibleProvider {
   #apiKey;
   #fetch;
 
-  async generatePlan({ prompt, context, imageDataUrl, signal } = {}) {
+  async generatePlan({ prompt, context, imageDataUrl, imageDataUrls, signal } = {}) {
     if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 4000) throw new TypeError('Prompt must contain 1–4000 characters.');
     if (imageDataUrl !== undefined && (typeof imageDataUrl !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(imageDataUrl) || imageDataUrl.length > 8 * 1024 * 1024)) {
       throw new TypeError('Artwork context must be a PNG data URL no larger than 8 MiB.');
     }
-    const serializedContext = JSON.stringify(context ?? {});
+    const images = imageDataUrls ?? (imageDataUrl ? [{ label: 'Artwork context', dataUrl: imageDataUrl }] : []);\n    if (!Array.isArray(images) || images.length > 24) throw new RangeError('At most 24 visual references may be attached.');\n    let imageBytes = 0;\n    for (const image of images) {\n      if (!image || typeof image.label !== 'string' || image.label.length > 180 || typeof image.dataUrl !== 'string' || !/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(image.dataUrl)) throw new TypeError('Every visual reference must have a label and PNG data URL.');\n      if (image.dataUrl.length > 8 * 1024 * 1024) throw new RangeError('Each visual reference must be no larger than 8 MiB.');\n      imageBytes += image.dataUrl.length;\n    }\n    if (imageBytes > 16 * 1024 * 1024) throw new RangeError('Combined visual references exceed 16 MiB.');\n    const serializedContext = JSON.stringify(context ?? {});
     if (serializedContext.length > 50000) throw new RangeError('Editor context exceeds the 50,000-character safety limit.');
     const userText = JSON.stringify({ request: prompt.trim(), editorContext: context ?? {} });
     const content = imageDataUrl
@@ -106,7 +106,7 @@ export class AIEditCoordinator {
     this.provider = provider;
   }
 
-  async requestEdit(prompt, { includeArtwork = false, imageDataUrl, signal } = {}) {
+  async requestEdit(prompt, { includeArtwork = false, imageDataUrl, visionSnapshot, signal } = {}) {
     if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 4000) return { status: 'rejected', reason: 'invalid-prompt' };
     if (this.workspace.hasProposal || this.workspace.hasSandboxChanges) return { status: 'rejected', reason: 'pending-sandbox-work' };
     if (imageDataUrl !== undefined && !includeArtwork) return { status: 'rejected', reason: 'artwork-consent-required' };
