@@ -64,14 +64,24 @@ export class OpenAICompatibleProvider {
 
   async generatePlan({ prompt, context, imageDataUrl, imageDataUrls, signal } = {}) {
     if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 4000) throw new TypeError('Prompt must contain 1–4000 characters.');
-    if (imageDataUrl !== undefined && (typeof imageDataUrl !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(imageDataUrl) || imageDataUrl.length > 8 * 1024 * 1024)) {
+    if (imageDataUrl !== undefined && (typeof imageDataUrl !== 'string' || !/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(imageDataUrl) || imageDataUrl.length > 8 * 1024 * 1024)) {
       throw new TypeError('Artwork context must be a PNG data URL no larger than 8 MiB.');
     }
-    const images = imageDataUrls ?? (imageDataUrl ? [{ label: 'Artwork context', dataUrl: imageDataUrl }] : []);\n    if (!Array.isArray(images) || images.length > 24) throw new RangeError('At most 24 visual references may be attached.');\n    let imageBytes = 0;\n    for (const image of images) {\n      if (!image || typeof image.label !== 'string' || image.label.length > 180 || typeof image.dataUrl !== 'string' || !/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(image.dataUrl)) throw new TypeError('Every visual reference must have a label and PNG data URL.');\n      if (image.dataUrl.length > 8 * 1024 * 1024) throw new RangeError('Each visual reference must be no larger than 8 MiB.');\n      imageBytes += image.dataUrl.length;\n    }\n    if (imageBytes > 16 * 1024 * 1024) throw new RangeError('Combined visual references exceed 16 MiB.');\n    const serializedContext = JSON.stringify(context ?? {});
+    const images = imageDataUrls ?? (imageDataUrl ? [{ label: 'Artwork context', dataUrl: imageDataUrl }] : []);
+    if (!Array.isArray(images) || images.length > 24) throw new RangeError('At most 24 visual references may be attached.');
+    let imageBytes = 0;
+    for (const image of images) {
+      if (!image || typeof image.label !== 'string' || image.label.length > 180 || typeof image.dataUrl !== 'string' || !/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(image.dataUrl)) throw new TypeError('Every visual reference must have a label and PNG data URL.');
+      if (image.dataUrl.length > 8 * 1024 * 1024) throw new RangeError('Each visual reference must be no larger than 8 MiB.');
+      imageBytes += image.dataUrl.length;
+    }
+    if (imageBytes > 16 * 1024 * 1024) throw new RangeError('Combined visual references exceed 16 MiB.');
+    const serializedContext = JSON.stringify(context ?? {});
     if (serializedContext.length > 50000) throw new RangeError('Editor context exceeds the 50,000-character safety limit.');
     const userText = JSON.stringify({ request: prompt.trim(), editorContext: context ?? {} });
-    const content = imageDataUrl
-      ? [{ type: 'text', text: userText }, { type: 'image_url', image_url: { url: imageDataUrl, detail: 'high' } }]
+    const content = images.length
+      ? [{ type: 'text', text: userText + '\nVisual references (in order): ' + images.map((image, index) => index + ': ' + image.label).join('; ') },
+        ...images.map(image => ({ type: 'image_url', image_url: { url: image.dataUrl, detail: 'high' } }))]
       : userText;
     const headers = { 'Content-Type': 'application/json' };
     if (this.#apiKey) headers.Authorization = 'Bearer ' + this.#apiKey;
@@ -109,8 +119,10 @@ export class AIEditCoordinator {
   async requestEdit(prompt, { includeArtwork = false, imageDataUrl, visionSnapshot, signal } = {}) {
     if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 4000) return { status: 'rejected', reason: 'invalid-prompt' };
     if (this.workspace.hasProposal || this.workspace.hasSandboxChanges) return { status: 'rejected', reason: 'pending-sandbox-work' };
-    if (imageDataUrl !== undefined && !includeArtwork) return { status: 'rejected', reason: 'artwork-consent-required' };
-    if (includeArtwork && !imageDataUrl) return { status: 'rejected', reason: 'artwork-preview-required' };
+    if ((imageDataUrl !== undefined || visionSnapshot !== undefined) && !includeArtwork) return { status: 'rejected', reason: 'artwork-consent-required' };
+    if (includeArtwork && !imageDataUrl && !visionSnapshot) return { status: 'rejected', reason: 'artwork-preview-required' };
+    if (visionSnapshot && (!Array.isArray(visionSnapshot.images) || !visionSnapshot.context || visionSnapshot.images.length < 1 || visionSnapshot.images.length > 24)) return { status: 'rejected', reason: 'invalid-vision-snapshot' };
+    const imageDataUrls = visionSnapshot?.images?.map(image => ({ label: image.label, dataUrl: image.dataUrl }));
     const baseRevision = this.workspace.baseRevision;
     if (this.workspace.sourceRevision !== baseRevision) {
       this.workspace.syncFromUser();
@@ -122,8 +134,8 @@ export class AIEditCoordinator {
     try {
       plan = validatePlan(await this.provider.generatePlan({
         prompt: prompt.trim(),
-        context: { document: summaryResult.result, availableActions: AI_ACTION_CONTRACT },
-        ...(includeArtwork ? { imageDataUrl } : {}),
+        context: { document: summaryResult.result, availableActions: AI_ACTION_CONTRACT, ...(visionSnapshot ? { visualObservation: visionSnapshot.context } : {}) },
+        ...(includeArtwork ? (visionSnapshot ? { imageDataUrls } : { imageDataUrl }) : {}),
         signal,
       }));
     } catch (error) {
