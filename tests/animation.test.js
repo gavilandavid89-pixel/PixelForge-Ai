@@ -56,3 +56,10 @@ test('timeline enforces frame count and total pixel-memory budgets before alloca
   const limitedMemory = makeTimeline({ maxBytes: 4 * 4 * 4 * 2 * 1 });
   assert.throws(() => limitedMemory.addFrame(), /memory budget/);
 });
+
+test('reordering cannot silently invert a named animation tag range', () => {
+  const timeline = makeTimeline(), first = timeline.frames[0], second = timeline.addFrame(), third = timeline.addFrame();
+  timeline.createTag('Run', first.id, second.id);
+  assert.throws(() => timeline.moveFrame(first.id, 2), /invert an animation tag range/);
+  assert.deepEqual(timeline.frames.map(frame => frame.id), [first.id, second.id, third.id]);
+});
