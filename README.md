@@ -108,3 +108,10 @@ const result = runtime.acceptProposal();
 Headless mode reuses the same raster engine and allowlisted AI command executor. It has no DOM dependency, filesystem/network access, arbitrary code execution, project deletion or export API. Agent edits stay in the isolated sandbox until explicit proposal acceptance; stale source revisions are rejected. The current API returns raw diff pixels to its trusted host and does not persist or publish files.
 
 Run its isolated regression suite with `npm run test:headless`.
+
+
+### Headless visual observation
+
+The headless host can receive an explicit visual observation packet from its UI adapter. `createVisionSnapshot()` in `src/headless-vision.js` supports three perspectives: `interface` (editor controls), `artwork` (clean artwork composite), and `combined` (both). The packet also carries structured project, viewport, selection and animation metadata. Animation observations include ordered frame images, frame indices, durations, FPS, loop state and selected-frame information. Each frame is sent as a separately labeled image so a vision-capable provider can compare poses.
+
+The browser/editor host must capture and supply the PNG screenshots; the DOM-free runtime cannot see a browser screen by itself. Remote image transmission is opt-in through the AI coordinator's explicit artwork-consent flag. Current limits: 24 images, 8 MiB per image, 16 MiB combined image payload, and 50,000 characters of structured metadata. This is the observation bridge, not yet a finished timeline UI, video encoder, or shared-account web service.
