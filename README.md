@@ -29,6 +29,7 @@ Research and define the editing engine before building the visual interface. Use
 - `docs/FEATURE_SPEC.md` — target feature inventory, including improvements beyond the references.
 - `docs/ARTIST_WORKFLOW_MATRIX.md` — detailed acceptance matrix for painting, design, animation, game assets, AI, mobile, accessibility and release QA.
 - `docs/MASTER_MAP.md` — master roadmap split into Pixel art, General 2D art, and Video-game/game-asset production, with shared dependencies and truthful implementation checkboxes.
+- `docs/SHARED_STUDIO_SPEC.md` — shared workspace, separate human/agent identities, permissions, live visibility and collaboration security contract.
 - `docs/ARCHITECTURE.md` — modular editor architecture, input/document contracts, renderer policy and implementation priorities.
 - `docs/AI_TOOL_API.md` — AI tool registry, permissions, proposal lifecycle and command contract.
 - `docs/ENGINE_TEST_PLAN.md` — central acceptance matrix, release gates, adversarial scenarios and manual test record template.
