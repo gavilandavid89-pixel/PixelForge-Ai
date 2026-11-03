@@ -6,8 +6,11 @@ const META_STORE = 'projectMeta';
 // When PixelForge is hosted inside CodeLab, reuse its HttpOnly session and cloud
 // project API. Standalone deployments remain local-first through IndexedDB.
 let codeLabSessionPromise = null;
+let codeLabSessionCache = null;
+let codeLabSessionCheckedAt = 0;
 const cloudRevisions = new Map();
 async function codeLabSession() {
+  if (codeLabSessionCache && Date.now() - codeLabSessionCheckedAt < 30000) return codeLabSessionCache;
   if (!codeLabSessionPromise) {
     codeLabSessionPromise = (async () => {
       try {
@@ -19,7 +22,18 @@ async function codeLabSession() {
         if (error instanceof TypeError) return null;
         throw error;
       }
-    })().catch(error => { codeLabSessionPromise = null; throw error; });
+    })().then(session => {
+      const oldIdentity = codeLabSessionCache && codeLabSessionCache.user
+        ? codeLabSessionCache.user.provider + ':' + codeLabSessionCache.user.id : null;
+      const newIdentity = session && session.user ? session.user.provider + ':' + session.user.id : null;
+      if (oldIdentity !== newIdentity) cloudRevisions.clear();
+      codeLabSessionCache = session;
+      codeLabSessionCheckedAt = Date.now();
+      return session;
+    }).catch(error => {
+      codeLabSessionPromise = null;
+      throw error;
+    }).finally(() => { codeLabSessionPromise = null; });
   }
   return codeLabSessionPromise;
 }
