@@ -2,6 +2,36 @@ const DB_NAME = 'pixelforge-ai';
 const DB_VERSION = 2;
 const STORE = 'documents';
 const META_STORE = 'projectMeta';
+
+// When PixelForge is hosted inside CodeLab, reuse its HttpOnly session and cloud
+// project API. Standalone deployments remain local-first through IndexedDB.
+let codeLabSessionPromise = null;
+const cloudRevisions = new Map();
+async function codeLabSession() {
+  if (!codeLabSessionPromise) {
+    codeLabSessionPromise = (async () => {
+      try {
+        const response = await fetch('/api/pixelforge/session', { credentials: 'same-origin', cache: 'no-store' });
+        if (response.status === 401 || response.status === 404) return null;
+        if (!response.ok) throw new Error('CodeLab account status is temporarily unavailable.');
+        return await response.json();
+      } catch (error) {
+        if (error instanceof TypeError) return null;
+        throw error;
+      }
+    })().catch(error => { codeLabSessionPromise = null; throw error; });
+  }
+  return codeLabSessionPromise;
+}
+async function cloudProjectList() {
+  const session = await codeLabSession();
+  if (!session) return null;
+  const response = await fetch('/api/pixelforge/projects', { credentials: 'same-origin', cache: 'no-store' });
+  if (!response.ok) throw new Error(response.status === 401 ? 'Sign in to CodeLab to sync PixelForge projects.' : 'Could not load PixelForge cloud projects.');
+  const payload = await response.json();
+  for (const item of payload.projects || []) if (item && typeof item.id === 'string' && Number.isInteger(item.revision)) cloudRevisions.set(item.id, item.revision);
+  return payload.projects || [];
+}
 function timestampNow() { return globalThis.performance?.timeOrigin ? globalThis.performance.timeOrigin + globalThis.performance.now() : Date.now(); }
 function metadataFor(record) {
   const project = record.project ?? {};
@@ -50,19 +80,61 @@ export async function saveProject(project) {
       tx.onabort = () => reject(tx.error ?? new Error('Save was interrupted.'));
     });
   } finally { db.close(); }
+
+  const session = await codeLabSession();
+  if (!session) return { savedLocally: true, cloud: false };
+  const baseRevision = cloudRevisions.get(project.id);
+  let response;
+  try {
+    response = await fetch('/api/pixelforge/projects/' + encodeURIComponent(project.id), {
+      method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project, ...(baseRevision == null ? {} : { baseRevision }) })
+    });
+  } catch (error) {
+    throw new Error('Local backup saved, but CodeLab cloud sync failed: ' + (error.message || 'network unavailable'));
+  }
+  if (response.status === 409) throw new Error('Local backup saved. This project changed in another tab or device; reload the cloud version before continuing.');
+  if (!response.ok) throw new Error('Local backup saved, but CodeLab cloud sync failed (' + response.status + ').');
+  const result = await response.json();
+  if (Number.isInteger(result.revision)) cloudRevisions.set(project.id, result.revision);
+  return { savedLocally: true, cloud: true, revision: result.revision };
 }
 export async function listSavedProjects() {
   const db = await openDB();
+  let local;
   try {
-    return await new Promise((resolve, reject) => {
+    local = await new Promise((resolve, reject) => {
       const tx = db.transaction(META_STORE, 'readonly');
       const request = tx.objectStore(META_STORE).getAll();
       request.onsuccess = () => resolve(request.result.sort((a, b) => b.lastOpenedAt - a.lastOpenedAt));
       request.onerror = () => reject(request.error ?? new Error('Could not list saved projects.'));
     });
   } finally { db.close(); }
+  try {
+    const cloud = await cloudProjectList();
+    if (!cloud) return local;
+    const merged = new Map(local.map(item => [item.id, item]));
+    for (const item of cloud) merged.set(item.id, { ...item, lastOpenedAt: Date.parse(item.updatedAt) || 0, cloud: true });
+    return [...merged.values()].sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
+  } catch {
+    return local;
+  }
 }
 export async function loadProjectById(id) {
+  try {
+    const session = await codeLabSession();
+    if (session) {
+      const response = await fetch('/api/pixelforge/projects/' + encodeURIComponent(id), { credentials: 'same-origin', cache: 'no-store' });
+      if (response.ok) {
+        const payload = await response.json();
+        if (Number.isInteger(payload.revision)) cloudRevisions.set(id, payload.revision);
+        return payload.project;
+      }
+      if (response.status !== 404) throw new Error('Could not load the CodeLab cloud project (' + response.status + ').');
+    }
+  } catch (error) {
+    if (!(error instanceof TypeError)) throw error;
+  }
   const db = await openDB();
   try {
     return await new Promise((resolve, reject) => {
