@@ -512,10 +512,10 @@ function scheduleAutosave() {
     autosaveTimer = null;
     const savingDoc = doc, version = savingDoc.saveVersion, snapshot = savingDoc.toJSON();
     const operation = autosaveInFlight.catch(() => {}).then(async () => {
-      await saveProject(snapshot);
+      const saveResult = await saveProject(snapshot);
       savingDoc.dirty = savingDoc.saveVersion !== version;
       if (doc === savingDoc) {
-        status(savingDoc.dirty ? 'Unsaved changes' : 'Saved on this device', savingDoc.dirty ? 'warning' : 'success');
+        status(savingDoc.dirty ? 'Unsaved changes' : (saveResult.cloud ? 'Saved to CodeLab cloud' : 'Saved on this device'), savingDoc.dirty ? 'warning' : 'success');
         updateTitle();
       }
     });
@@ -539,19 +539,21 @@ async function flushAutosave({ force = false } = {}) {
     try {
       await autosaveInFlight;
       if (!savingDoc.dirty && !pending && !force) return;
+      let lastSaveResult = null;
       while (doc === savingDoc) {
         const version = savingDoc.saveVersion, snapshot = savingDoc.toJSON();
-        await saveProject(snapshot);
+        lastSaveResult = await saveProject(snapshot);
         if (savingDoc.saveVersion === version) { savingDoc.dirty = false; break; }
         savingDoc.dirty = true;
       }
       if (doc === savingDoc) updateTitle();
+      return lastSaveResult;
     } finally {
       flushInProgress = false;
       if (doc === savingDoc && savingDoc.dirty) scheduleAutosave();
     }
   })();
-  try { await flushPromise; }
+  try { return await flushPromise; }
   finally { flushPromise = null; }
 }
 function changed() { clearTransformPreview(); clearCropPreview(); syncAIWorkspaceFromUser(); render(); updateTitle(); scheduleAutosave(); }
@@ -1456,8 +1458,10 @@ $('#create-new').addEventListener('click', async () => {
   } catch (error) { $('#new-error').textContent = error.message; status(`Could not switch documents: ${error.message}`, 'error'); }
 });
 $('#save').addEventListener('click', async () => {
-  try { await flushAutosave({ force: true }); status('Saved on this device', 'success'); }
-  catch (error) { status(`Save failed: ${error.message}`, 'error'); }
+  try {
+    const result = await flushAutosave({ force: true });
+    status(result?.cloud ? 'Saved to CodeLab cloud' : 'Saved on this device', 'success');
+  } catch (error) { status(`Save failed: ${error.message}`, 'error'); }
 });
 $('#export-project').addEventListener('click', () => {
   try {
@@ -1523,8 +1527,8 @@ $('#import-file').addEventListener('change', async event => {
         importedDoc.activeLayer.pixels.set(tctx.getImageData(0, 0, bitmap.width, bitmap.height).data);
       } finally { bitmap.close?.(); }
     }
-    await flushAutosave(); await saveProject(importedDoc.toJSON()); doc = importedDoc; clearSelectionState();
-    fitCanvas(); updateTitle(); renderLayers(); status('Import complete and saved locally', 'success');
+    await flushAutosave(); const saveResult = await saveProject(importedDoc.toJSON()); doc = importedDoc; clearSelectionState();
+    fitCanvas(); updateTitle(); renderLayers(); status(saveResult.cloud ? 'Import complete and synced to CodeLab' : 'Import complete and saved locally', 'success');
   } catch (error) { status(`Import failed: ${error.message}`, 'error'); }
   finally { event.target.value = ''; }
 });
