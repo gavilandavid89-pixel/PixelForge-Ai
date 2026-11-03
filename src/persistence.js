@@ -7,10 +7,11 @@ const META_STORE = 'projectMeta';
 // project API. Standalone deployments remain local-first through IndexedDB.
 let codeLabSessionPromise = null;
 let codeLabSessionCache = null;
+let codeLabSessionKnown = false;
 let codeLabSessionCheckedAt = 0;
 const cloudRevisions = new Map();
 async function codeLabSession() {
-  if (codeLabSessionCache && Date.now() - codeLabSessionCheckedAt < 30000) return codeLabSessionCache;
+  if (codeLabSessionKnown && Date.now() - codeLabSessionCheckedAt < 30000) return codeLabSessionCache;
   if (!codeLabSessionPromise) {
     codeLabSessionPromise = (async () => {
       try {
@@ -28,6 +29,7 @@ async function codeLabSession() {
       const newIdentity = session && session.user ? session.user.provider + ':' + session.user.id : null;
       if (oldIdentity !== newIdentity) cloudRevisions.clear();
       codeLabSessionCache = session;
+      codeLabSessionKnown = true;
       codeLabSessionCheckedAt = Date.now();
       return session;
     }).catch(error => {
