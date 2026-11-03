@@ -25,7 +25,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Persistent-in-session selection mask constrains pencil, eraser, fill, shapes, clear, color replacement, copy/cut/paste, outline and flips; masks are dimension-validated and excluded from artwork serialization.
 - [ ] Unified command/transaction API for tools, filters, selections and AI edits.
 - [ ] Schema migrations, checksums, recovery snapshots and storage-quota UX.
-- [x] DOM-free headless runtime exposes the shared raster engine and isolated AI sandbox to Node/worker hosts, with explicit proposal acceptance and no filesystem/network/export surface (headless regression suite added).\n- [ ] Worker-friendly large operations and cancellable exports.
+- [x] DOM-free headless runtime exposes the shared raster engine and isolated AI sandbox to Node/worker hosts, with explicit proposal acceptance and no filesystem/network/export surface (headless regression suite added).\n- [x] Headless visual-observation packet supports interface-only, artwork-only and combined views, structured editor context, and ordered per-frame animation images with timing metadata; observation validation tests added.\n- [ ] Browser adapter captures actual interface/artwork screenshots and synchronizes live editor state into Headless.\n- [ ] Worker-friendly large operations and cancellable exports.
 - [ ] Multiple open documents/tabs and unsaved-change guards.
 ### Navigation, QA, usability
 - [x] Zoom, pan, fit, pixel-grid overlay, line/rectangle/ellipse preview and symmetry overlay.
@@ -75,7 +75,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Foreground/background color swap and eight-color recent history with keyboard shortcut.
 - [ ] Named palette sets, reorder/lock/tags/favorites, PAL/PNG export and palette-from-image.
 - [x] Local editable palette swatches with browser persistence and GPL/hex/RGB-list import plus GPL export.
-- [ ] Frame/cel timeline, duration, duplicate/reorder/delete, playback and loops.
+- [ ] Frame/cel timeline, duration, duplicate/reorder/delete, playback and loops.\n- [ ] Headless frame inspection/edit loop connected to the real animation timeline and preview player.
 - [ ] Onion skin, frame tags, named animations, linked cels and frame-range selection.
 - [ ] Sprite sheets and PNG/GIF/APNG/WebP outputs only after decoder/encoder tests.
 
@@ -109,7 +109,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [ ] Reusable asset browser with tags, favorites, variants and project organization.
 - [x] Starter templates for character sprites, game icons, environment tiles, UI elements, backgrounds and VFX, with useful layer stacks and editable dimensions.
 - [ ] Templates for props, animation-ready character sheets, multi-state UI components and engine-specific asset specs.
-- [ ] Named animation cycles (idle/run/jump/attack/hurt) using the same timeline engine.
+- [ ] Named animation cycles (idle/run/jump/attack/hurt) using the same timeline engine.\n- [ ] AI-generated animation review: frame-by-frame pose comparison, timing refinement and playback validation.
 - [ ] Sprite pivots/origins, collision/attachment markers and per-frame metadata.
 - [ ] Rectangular/isometric/hex tilesets and tilemaps.
 - [ ] Autotiling, adjacency rules, seamless-tile preview and seam checks.
