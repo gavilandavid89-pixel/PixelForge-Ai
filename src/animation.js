@@ -107,7 +107,16 @@ export class AnimationTimeline {
     const sourceIndex = this.#frameIndex(frameId);
     if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= this.#frames.length) throw new RangeError('Target frame index is outside the timeline.');
     if (sourceIndex === targetIndex) return false;
-    const [frame] = this.#frames.splice(sourceIndex, 1); this.#frames.splice(targetIndex, 0, frame); this.#revision++; return true;
+    const reordered = [...this.#frames];
+    const [frame] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, frame);
+    const positions = new Map(reordered.map((item, index) => [item.id, index]));
+    for (const tag of this.#tags) {
+      if (positions.get(tag.startFrameId) > positions.get(tag.endFrameId)) {
+        throw new RangeError('Moving this frame would invert an animation tag range.');
+      }
+    }
+    this.#frames = reordered; this.#revision++; return true;
   }
   deleteFrame(frameId) {
     if (this.#frames.length === 1) throw new Error('An animation must retain at least one frame.');
