@@ -55,7 +55,8 @@ function metadataFor(record) {
     id: record.id, name: record.name ?? project.name ?? 'Untitled artwork',
     width: project.width ?? 0, height: project.height ?? 0,
     updatedAt: record.updatedAt ?? 0,
-    lastOpenedAt: record.lastOpenedAt ?? record.updatedAt ?? 0
+    lastOpenedAt: record.lastOpenedAt ?? record.updatedAt ?? 0,
+    cloudOwner: record.cloudOwner ?? null
   };
 }
 
@@ -82,13 +83,18 @@ function openDB() {
     request.onblocked = () => reject(new Error('Project storage upgrade is blocked by another open tab. Close other editor tabs and retry.'));
   });
 }
+function cloudOwnerKey(session) {
+  return session && session.user ? String(session.user.provider) + ':' + String(session.user.id) : null;
+}
 export async function saveProject(project) {
+  const session = await codeLabSession().catch(() => null);
+  const ownerKey = cloudOwnerKey(session);
   const db = await openDB();
   try {
     await new Promise((resolve, reject) => {
       const tx = db.transaction([STORE, META_STORE], 'readwrite');
       const updatedAt = timestampNow();
-      const record = { id: project.id, name: project.name, updatedAt, lastOpenedAt: updatedAt, project };
+      const record = { id: project.id, name: project.name, updatedAt, lastOpenedAt: updatedAt, cloudOwner: ownerKey, project };
       tx.objectStore(STORE).put(record);
       tx.objectStore(META_STORE).put(metadataFor(record));
       tx.oncomplete = resolve;
@@ -97,7 +103,6 @@ export async function saveProject(project) {
     });
   } finally { db.close(); }
 
-  const session = await codeLabSession();
   if (!session) return { savedLocally: true, cloud: false };
   const baseRevision = cloudRevisions.get(project.id);
   let response;
@@ -126,19 +131,23 @@ export async function listSavedProjects() {
       request.onerror = () => reject(request.error ?? new Error('Could not list saved projects.'));
     });
   } finally { db.close(); }
+  const session = await codeLabSession().catch(() => codeLabSessionCache);
+  const ownerKey = cloudOwnerKey(session);
+  const scopedLocal = ownerKey ? local.filter(item => item.cloudOwner === ownerKey) : local;
   try {
     const cloud = await cloudProjectList();
-    if (!cloud) return local;
-    const merged = new Map(local.map(item => [item.id, item]));
-    for (const item of cloud) merged.set(item.id, { ...item, lastOpenedAt: Date.parse(item.updatedAt) || 0, cloud: true });
+    if (!cloud) return scopedLocal;
+    const merged = new Map(scopedLocal.map(item => [item.id, item]));
+    for (const item of cloud) merged.set(item.id, { ...item, lastOpenedAt: Date.parse(item.updatedAt) || 0, cloud: true, cloudOwner: ownerKey });
     return [...merged.values()].sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
   } catch {
-    return local;
+    return scopedLocal;
   }
 }
 export async function loadProjectById(id) {
+  let session = codeLabSessionCache;
   try {
-    const session = await codeLabSession();
+    session = await codeLabSession();
     if (session) {
       const response = await fetch('/api/pixelforge/projects/' + encodeURIComponent(id), { credentials: 'same-origin', cache: 'no-store' });
       if (response.ok) {
@@ -161,6 +170,8 @@ export async function loadProjectById(id) {
       request.onsuccess = () => {
         const record = request.result;
         if (!record) { metadata.delete(id); return; }
+        const ownerKey = cloudOwnerKey(session);
+        if (ownerKey && record.cloudOwner !== ownerKey) return;
         project = record.project;
         const metaRequest = metadata.get(id);
         metaRequest.onsuccess = () => {
