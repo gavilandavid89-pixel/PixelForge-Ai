@@ -25,7 +25,7 @@ Single source of truth for three areas: **Pixel art**, **General 2D art**, and *
 - [x] Persistent-in-session selection mask constrains pencil, eraser, fill, shapes, clear, color replacement, copy/cut/paste, outline and flips; masks are dimension-validated and excluded from artwork serialization.
 - [ ] Unified command/transaction API for tools, filters, selections and AI edits.
 - [ ] Schema migrations, checksums, recovery snapshots and storage-quota UX.
-- [ ] Worker-friendly large operations and cancellable exports.
+- [x] DOM-free headless runtime exposes the shared raster engine and isolated AI sandbox to Node/worker hosts, with explicit proposal acceptance and no filesystem/network/export surface (headless regression suite added).\n- [ ] Worker-friendly large operations and cancellable exports.
 - [ ] Multiple open documents/tabs and unsaved-change guards.
 ### Navigation, QA, usability
 - [x] Zoom, pan, fit, pixel-grid overlay, line/rectangle/ellipse preview and symmetry overlay.
