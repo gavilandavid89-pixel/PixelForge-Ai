@@ -512,10 +512,10 @@ function scheduleAutosave() {
     autosaveTimer = null;
     const savingDoc = doc, version = savingDoc.saveVersion, snapshot = savingDoc.toJSON();
     const operation = autosaveInFlight.catch(() => {}).then(async () => {
-      await saveProject(snapshot);
+      const saveResult = await saveProject(snapshot);
       savingDoc.dirty = savingDoc.saveVersion !== version;
       if (doc === savingDoc) {
-        status(savingDoc.dirty ? 'Unsaved changes' : 'Saved on this device', savingDoc.dirty ? 'warning' : 'success');
+        status(savingDoc.dirty ? 'Unsaved changes' : (saveResult.cloud ? 'Saved to CodeLab cloud' : 'Saved on this device'), savingDoc.dirty ? 'warning' : 'success');
         updateTitle();
       }
     });
@@ -1523,8 +1523,8 @@ $('#import-file').addEventListener('change', async event => {
         importedDoc.activeLayer.pixels.set(tctx.getImageData(0, 0, bitmap.width, bitmap.height).data);
       } finally { bitmap.close?.(); }
     }
-    await flushAutosave(); await saveProject(importedDoc.toJSON()); doc = importedDoc; clearSelectionState();
-    fitCanvas(); updateTitle(); renderLayers(); status('Import complete and saved locally', 'success');
+    await flushAutosave(); const saveResult = await saveProject(importedDoc.toJSON()); doc = importedDoc; clearSelectionState();
+    fitCanvas(); updateTitle(); renderLayers(); status(saveResult.cloud ? 'Import complete and synced to CodeLab' : 'Import complete and saved locally', 'success');
   } catch (error) { status(`Import failed: ${error.message}`, 'error'); }
   finally { event.target.value = ''; }
 });
