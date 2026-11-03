@@ -89,3 +89,22 @@ python3 -m http.server 8000
 Then open `http://localhost:8000` in a modern browser. Use a local HTTP server rather than opening `index.html` directly so ES modules and IndexedDB behave consistently.
 
 For the optional headless browser smoke suite, run `npm install --no-save --package-lock=false playwright@1.55.0`, then `npx playwright install chromium` and `node tests/browser-smoke.mjs`. CI does this in a separate job without adding Playwright as an app runtime dependency.
+
+## Headless runtime
+
+The editor engine can run without the browser UI or a DOM. Import `createHeadlessRuntime` from `src/headless.js` in Node.js or a compatible worker host:
+
+```js
+import { createHeadlessRuntime } from './src/headless.js';
+
+const runtime = createHeadlessRuntime({ width: 64, height: 64, name: 'Batch asset' });
+runtime.execute({ name: 'canvas.draw_line', x0: 4, y0: 4, x1: 20, y1: 20, color: '#7B61FF' });
+const diff = runtime.getDiff();
+const proposal = runtime.createProposal('Diagonal accent');
+// Only an explicit host/user decision applies the proposal to the source.
+const result = runtime.acceptProposal();
+```
+
+Headless mode reuses the same raster engine and allowlisted AI command executor. It has no DOM dependency, filesystem/network access, arbitrary code execution, project deletion or export API. Agent edits stay in the isolated sandbox until explicit proposal acceptance; stale source revisions are rejected. The current API returns raw diff pixels to its trusted host and does not persist or publish files.
+
+Run its isolated regression suite with `npm run test:headless`.
